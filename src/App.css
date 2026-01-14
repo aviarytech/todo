@@ -1,0 +1,164 @@
+.app {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 2rem;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.auth-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background-color: #646cff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #535bf2;
+}
+
+.btn-secondary {
+  background-color: #747bff;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #646cff;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: inherit;
+}
+
+.btn-outline:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.app-main {
+  padding: 2rem;
+}
+
+.auth-state {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.auth-state h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.state-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.state-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.state-label {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.state-value {
+  font-size: 1rem;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.state-value.success {
+  color: #4ade80;
+}
+
+.state-value.error {
+  color: #f87171;
+}
+
+.state-value.warning {
+  color: #fbbf24;
+}
+
+@media (prefers-color-scheme: light) {
+  .app-header {
+    border-bottom-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .state-item {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .state-label {
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .btn-outline {
+    border-color: rgba(0, 0, 0, 0.3);
+  }
+
+  .btn-outline:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+}
