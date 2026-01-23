@@ -15,6 +15,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useCollaborators } from "../hooks/useCollaborators";
 import { useOptimisticItems, type OptimisticItem } from "../hooks/useOptimisticItems";
+import { useOffline } from "../hooks/useOffline";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
@@ -54,6 +55,9 @@ export function ListView() {
 
   // Get publication status (Phase 4)
   const publicationStatus = useQuery(api.publication.getPublicationStatus, { listId });
+
+  // Get online status for disabling destructive operations (Phase 5.9)
+  const { isOnline } = useOffline();
 
   const handleDragStart = useCallback((itemId: Id<"items">) => {
     setDraggedItemId(itemId);
@@ -241,10 +245,15 @@ export function ListView() {
         {/* Action buttons - min 44px height for touch targets */}
         <div className="flex items-center gap-2">
           {/* Publish button - only show for owners (Phase 4) */}
+          {/* Disabled when offline (Phase 5.9) */}
           {canUserDelete && (
             <button
               onClick={() => setIsPublishModalOpen(true)}
+              disabled={!isOnline}
+              title={!isOnline ? "Available when online" : undefined}
               className={`px-4 py-2.5 text-sm rounded-lg ${
+                !isOnline ? "opacity-50 cursor-not-allowed" : ""
+              } ${
                 publicationStatus?.status === "active"
                   ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
                   : "bg-purple-600 text-white hover:bg-purple-700"
@@ -261,10 +270,15 @@ export function ListView() {
               Share
             </button>
           )}
+          {/* Delete button - disabled when offline (Phase 5.9) */}
           {canUserDelete && (
             <button
               onClick={() => setIsDeleteDialogOpen(true)}
-              className="px-4 py-2.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+              disabled={!isOnline}
+              title={!isOnline ? "Available when online" : undefined}
+              className={`px-4 py-2.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 ${
+                !isOnline ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
               Delete
             </button>
