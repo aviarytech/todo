@@ -18,37 +18,93 @@ All 5 major phases complete. Now cleaning up technical debt.
 Phase 6.2: Remove collaboratorDid field from lists table
 
 ### Overview
-The `collaboratorDid` field in the lists table is legacy from the original single-collaborator design. Phase 3 migrated to a proper `collaborators` junction table. The field should be removed.
+The `collaboratorDid` field in the lists table is legacy from the single-collaborator v1 design. Phase 3 migrated to a `collaborators` junction table supporting unlimited collaborators. The migration script has been created (`convex/migrations/migrateCollaborators.ts`) and all code now primarily uses the collaborators table. Time to remove the legacy field.
 
-### Pre-requisites
-- ✅ Migration script `convex/migrations/migrateCollaborators.ts` has been created (Phase 3.2)
-- ⚠️ Verify migration has been run for production data before deploying schema change
+**IMPORTANT**: Before starting, ensure the migration has been run in production. If unsure, ask the operator.
 
 ### Files to Modify
-1. **`convex/schema.ts`** — Remove `collaboratorDid` field from lists table (around line 57)
-2. **Any code referencing `collaboratorDid`** — Search and remove/update
+
+**Convex Backend (6 files):**
+
+1. **`convex/schema.ts`** (lines 57, 62)
+   - Remove `collaboratorDid: v.optional(v.string()),` field from lists table
+   - Remove `.index("by_collaborator", ["collaboratorDid"])` index
+
+2. **`convex/lists.ts`** (lines 24, 98-102, 211-262)
+   - Line 24: Remove `collaboratorDid: undefined,` from createList
+   - Lines 98-102: Remove legacy `by_collaborator` query fallback in getUserLists
+   - Lines 254-260: Remove backward-compat write to `collaboratorDid` in `addCollaborator` function
+
+3. **`convex/invites.ts`** (lines 188-193)
+   - Remove backwards-compat code that sets `collaboratorDid` on first invite accept
+
+4. **`convex/items.ts`** (line 42)
+   - Remove `|| list.collaboratorDid === did` fallback in `canUserEditList`
+
+5. **`convex/categories.ts`** (lines 197-199)
+   - Remove `list.collaboratorDid` check in setListCategory authorization
+
+6. **`convex/collaborators.ts`**
+   - Uses `collaboratorDid` as a **parameter name** (NOT the schema field) — keep these unchanged!
+
+**Frontend (5 files):**
+
+7. **`src/pages/ListView.tsx`** (line 148)
+   - Remove `(list.collaboratorDid && userDids.includes(list.collaboratorDid))` fallback in legacy authorization check
+
+8. **`src/pages/Home.tsx`** (line 44)
+   - Remove `collaboratorDid: list.collaboratorDid,` from cache conversion
+
+9. **`src/lib/offline.ts`** (line 21)
+   - Remove `collaboratorDid?: string;` from OfflineList interface
+
+10. **`src/components/ListCard.tsx`** (line 17)
+    - The `isShared` logic uses `!!list.collaboratorDid`. Change to check collaborators count or accept prop from parent.
+
+11. **`src/components/CollaboratorBadge.tsx`**
+    - **[OPTIONAL]** This component may be unused after Phase 3 introduced `CollaboratorList.tsx`. Check if imported anywhere; remove if unused.
+
+**Keep for reference:**
+- `convex/migrations/migrateCollaborators.ts` — Keep for reference but add comment noting migration is complete
 
 ### Verification Steps
 ```bash
-# Check for references to collaboratorDid
-grep -r "collaboratorDid" convex/ --include="*.ts"
-grep -r "collaboratorDid" src/ --include="*.ts" --include="*.tsx"
+# After changes, verify no remaining references (except migration file and parameter names):
+grep -r "collaboratorDid" convex/ src/ --include="*.ts" --include="*.tsx" | grep -v migrateCollaborators | grep -v "collaboratorDid:" | grep -v "//"
+# Should return nothing
+
+# Test Convex schema compiles:
+npx convex dev --once
+
+# Build and lint:
+bun run build && bun run lint
 ```
 
 ### Acceptance Criteria
 - [ ] `collaboratorDid` field removed from `convex/schema.ts`
-- [ ] No remaining references to `collaboratorDid` in codebase
-- [ ] `npx convex dev` runs without error (schema compiles)
+- [ ] `by_collaborator` index removed from schema
+- [ ] All fallback code using `list.collaboratorDid` removed from Convex functions
+- [ ] Frontend code no longer references `list.collaboratorDid`
+- [ ] `OfflineList` interface updated in `src/lib/offline.ts`
+- [ ] `ListCard.tsx` updated to use collaborators-based sharing check
+- [ ] `CollaboratorBadge.tsx` removed if unused (verify imports first)
+- [ ] `npx convex dev` succeeds (schema compiles)
 - [ ] `bun run build` passes
 - [ ] `bun run lint` passes
+- [ ] Manual test: create list, share via invite, accept invite, verify collaborator features work
+
+### Key Warnings
+- **Breaking schema change** — This removes a database field. Once deployed, the field is gone.
+- **Test collaborator flows** — After changes, verify: invite creation, invite acceptance, role changes, list display for shared lists.
+- **ListCard needs collaborators** — Either query collaborators in ListCard or pass an `isShared` prop from Home.tsx based on collaborators data.
 
 ### Definition of Done
-1. Search for all `collaboratorDid` references
-2. Remove the field from schema
-3. Remove any code references
-4. Verify Convex schema compiles
-5. Run build and lint
-6. Commit with message: `chore: remove legacy collaboratorDid field from lists table (Phase 6.2)`
+When complete, Ralph should:
+1. Make all the changes listed above
+2. Run `npx convex dev --once` to verify schema compiles
+3. Run `bun run build && bun run lint` to verify no errors
+4. Test the app manually (create list, share, accept invite, check items)
+5. Commit with message: `chore: remove deprecated collaboratorDid field (Phase 6.2)`
 
 ---
 
