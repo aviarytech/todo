@@ -5,7 +5,7 @@
  * and a manual sync trigger function.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useConvex } from "convex/react";
 import { syncManager, type SyncStatus } from "../lib/sync";
 import { getQueuedMutations } from "../lib/offline";
@@ -61,6 +61,15 @@ export function useOffline(): UseOfflineResult {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ status: "idle" });
   const [pendingCount, setPendingCount] = useState(0);
   const convex = useConvex();
+  // Track mounted state to prevent setState after unmount
+  const isMounted = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Track online/offline events and trigger sync on reconnect
   useEffect(() => {
@@ -91,7 +100,9 @@ export function useOffline(): UseOfflineResult {
   useEffect(() => {
     const updateCount = async () => {
       const mutations = await getQueuedMutations();
-      setPendingCount(mutations.length);
+      if (isMounted.current) {
+        setPendingCount(mutations.length);
+      }
     };
 
     // Initial count
@@ -109,7 +120,9 @@ export function useOffline(): UseOfflineResult {
   useEffect(() => {
     const updateCount = async () => {
       const mutations = await getQueuedMutations();
-      setPendingCount(mutations.length);
+      if (isMounted.current) {
+        setPendingCount(mutations.length);
+      }
     };
 
     // Update count when sync completes or errors

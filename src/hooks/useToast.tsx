@@ -11,6 +11,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 
@@ -62,8 +63,16 @@ interface ToastProviderProps {
  */
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // Track timeout IDs to clear them when toast is removed early
+  const timeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const removeToast = useCallback((id: string) => {
+    // Clear the auto-dismiss timeout if toast is removed early
+    const timeoutId = timeoutRefs.current.get(id);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutRefs.current.delete(id);
+    }
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
@@ -73,9 +82,11 @@ export function ToastProvider({ children }: ToastProviderProps) {
       setToasts((prev) => [...prev, { id, message, type }]);
 
       // Auto-dismiss after TOAST_DURATION
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
+        timeoutRefs.current.delete(id);
         removeToast(id);
       }, TOAST_DURATION);
+      timeoutRefs.current.set(id, timeoutId);
     },
     [removeToast]
   );

@@ -137,6 +137,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Turnkey client instance - created once per session
   const turnkeyClientRef = useRef<TurnkeyClient | null>(null);
+  // Track mounted state to prevent setState after unmount
+  const isMountedRef = useRef(true);
 
   // Convex mutation for upserting user
   const upsertUserMutation = useMutation(api.auth.upsertUser);
@@ -234,12 +236,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Restore session from localStorage and validate with Turnkey
    */
   useEffect(() => {
+    // Mark as mounted at start, unmount flag in cleanup
+    isMountedRef.current = true;
+
     const restoreSession = async () => {
       try {
         const storedState = localStorage.getItem(AUTH_STORAGE_KEY);
         if (!storedState) {
           console.log("[useAuth] No stored session found");
-          setIsLoading(false);
+          if (isMountedRef.current) setIsLoading(false);
           return;
         }
 
@@ -250,6 +255,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const client = getTurnkeyClient();
         try {
           await fetchUser(client, handleSessionExpired);
+          if (!isMountedRef.current) return;
           console.log("[useAuth] Session valid, restoring state");
 
           // Restore state
@@ -264,6 +270,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setWalletAccount(restoredWalletAccount);
           setPublicKeyMultibase(parsed.publicKeyMultibase);
         } catch (err) {
+          if (!isMountedRef.current) return;
           if (err instanceof TurnkeySessionExpiredError) {
             console.log("[useAuth] Stored session expired");
             handleSessionExpired();
@@ -277,11 +284,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error("[useAuth] Error restoring session:", err);
         localStorage.removeItem(AUTH_STORAGE_KEY);
       } finally {
-        setIsLoading(false);
+        if (isMountedRef.current) setIsLoading(false);
       }
     };
 
     restoreSession();
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [getTurnkeyClient, handleSessionExpired, createSigner]);
 
   /**
