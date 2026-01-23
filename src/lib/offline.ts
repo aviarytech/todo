@@ -18,7 +18,6 @@ export interface OfflineList {
   assetDid: string;
   name: string;
   ownerDid: string;
-  collaboratorDid?: string;
   categoryId?: Id<"categories">;
   createdAt: number;
   // Timestamp when cached locally

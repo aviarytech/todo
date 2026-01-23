@@ -54,12 +54,10 @@ export default defineSchema({
     assetDid: v.string(), // Originals asset DID (did:peer or did:webvh)
     name: v.string(),
     ownerDid: v.string(), // Creator's DID
-    collaboratorDid: v.optional(v.string()), // Partner's DID (max 1 for v1)
     categoryId: v.optional(v.id("categories")), // User's category for this list (Phase 2)
     createdAt: v.number(),
   })
     .index("by_owner", ["ownerDid"])
-    .index("by_collaborator", ["collaboratorDid"])
     .index("by_asset_did", ["assetDid"])
     .index("by_category", ["categoryId"]),
 

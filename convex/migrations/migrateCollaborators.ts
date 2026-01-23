@@ -1,14 +1,16 @@
 import { mutation } from "../_generated/server";
 
 /**
- * Migration: Move from single collaboratorDid on lists to collaborators table.
+ * @deprecated This migration has been completed and collaboratorDid has been removed from the schema.
+ *
+ * Original purpose: Move from single collaboratorDid on lists to collaborators table.
  *
  * For each existing list:
  * 1. Add owner to collaborators table with role "owner"
  * 2. Add collaboratorDid to collaborators table with role "editor" (if exists)
  *
- * Run this migration BEFORE removing collaboratorDid from the lists schema.
- * After migration, the collaboratorDid field can be removed from schema.
+ * This migration was run BEFORE removing collaboratorDid from the lists schema.
+ * The collaboratorDid field has now been removed from schema (Phase 6.2).
  */
 export const migrateToCollaborators = mutation({
   handler: async (ctx) => {
@@ -40,26 +42,9 @@ export const migrateToCollaborators = mutation({
         invitedByDid: undefined, // Owner invited themselves (created the list)
       });
 
-      // Add existing collaborator if any
-      if (list.collaboratorDid) {
-        // Check if collaborator already exists
-        const existingCollab = await ctx.db
-          .query("collaborators")
-          .withIndex("by_list_user", (q) =>
-            q.eq("listId", list._id).eq("userDid", list.collaboratorDid!)
-          )
-          .first();
-
-        if (!existingCollab) {
-          await ctx.db.insert("collaborators", {
-            listId: list._id,
-            userDid: list.collaboratorDid,
-            role: "editor",
-            joinedAt: Date.now(), // Unknown original join time
-            invitedByDid: list.ownerDid,
-          });
-        }
-      }
+      // Note: The collaboratorDid field has been removed from the schema.
+      // This migration can no longer migrate legacy collaborators.
+      // All existing data should have been migrated before the schema change.
 
       migratedCount++;
     }
@@ -75,6 +60,7 @@ export const migrateToCollaborators = mutation({
 
 /**
  * Check migration status: returns lists that haven't been migrated yet.
+ * Checks if owner exists in collaborators table for each list.
  */
 export const checkMigrationStatus = mutation({
   handler: async (ctx) => {

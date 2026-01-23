@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 6.2 — Technical debt cleanup
+**Current Status:** Phase 6.3 — Technical debt cleanup
 
 All 5 major phases complete. Now cleaning up technical debt.
 
@@ -15,96 +15,23 @@ All 5 major phases complete. Now cleaning up technical debt.
 ## Working Context (For Ralph)
 
 ### Current Task
-Phase 6.2: Remove collaboratorDid field from lists table
+Phase 6.3: Protect "Uncategorized" category name
 
 ### Overview
-The `collaboratorDid` field in the lists table is legacy from the single-collaborator v1 design. Phase 3 migrated to a `collaborators` junction table supporting unlimited collaborators. The migration script has been created (`convex/migrations/migrateCollaborators.ts`) and all code now primarily uses the collaborators table. Time to remove the legacy field.
-
-**IMPORTANT**: Before starting, ensure the migration has been run in production. If unsure, ask the operator.
+The "Uncategorized" category name is used as a hardcoded label in `Home.tsx` and `CategoryManager.tsx` for lists that don't have a category. Users should not be able to create a real category with that name, as it would be confusing.
 
 ### Files to Modify
-
-**Convex Backend (6 files):**
-
-1. **`convex/schema.ts`** (lines 57, 62)
-   - Remove `collaboratorDid: v.optional(v.string()),` field from lists table
-   - Remove `.index("by_collaborator", ["collaboratorDid"])` index
-
-2. **`convex/lists.ts`** (lines 24, 98-102, 211-262)
-   - Line 24: Remove `collaboratorDid: undefined,` from createList
-   - Lines 98-102: Remove legacy `by_collaborator` query fallback in getUserLists
-   - Lines 254-260: Remove backward-compat write to `collaboratorDid` in `addCollaborator` function
-
-3. **`convex/invites.ts`** (lines 188-193)
-   - Remove backwards-compat code that sets `collaboratorDid` on first invite accept
-
-4. **`convex/items.ts`** (line 42)
-   - Remove `|| list.collaboratorDid === did` fallback in `canUserEditList`
-
-5. **`convex/categories.ts`** (lines 197-199)
-   - Remove `list.collaboratorDid` check in setListCategory authorization
-
-6. **`convex/collaborators.ts`**
-   - Uses `collaboratorDid` as a **parameter name** (NOT the schema field) — keep these unchanged!
-
-**Frontend (5 files):**
-
-7. **`src/pages/ListView.tsx`** (line 148)
-   - Remove `(list.collaboratorDid && userDids.includes(list.collaboratorDid))` fallback in legacy authorization check
-
-8. **`src/pages/Home.tsx`** (line 44)
-   - Remove `collaboratorDid: list.collaboratorDid,` from cache conversion
-
-9. **`src/lib/offline.ts`** (line 21)
-   - Remove `collaboratorDid?: string;` from OfflineList interface
-
-10. **`src/components/ListCard.tsx`** (line 17)
-    - The `isShared` logic uses `!!list.collaboratorDid`. Change to check collaborators count or accept prop from parent.
-
-11. **`src/components/CollaboratorBadge.tsx`**
-    - **[OPTIONAL]** This component may be unused after Phase 3 introduced `CollaboratorList.tsx`. Check if imported anywhere; remove if unused.
-
-**Keep for reference:**
-- `convex/migrations/migrateCollaborators.ts` — Keep for reference but add comment noting migration is complete
-
-### Verification Steps
-```bash
-# After changes, verify no remaining references (except migration file and parameter names):
-grep -r "collaboratorDid" convex/ src/ --include="*.ts" --include="*.tsx" | grep -v migrateCollaborators | grep -v "collaboratorDid:" | grep -v "//"
-# Should return nothing
-
-# Test Convex schema compiles:
-npx convex dev --once
-
-# Build and lint:
-bun run build && bun run lint
-```
+1. **`convex/categories.ts`** — Add validation in `createCategory` mutation to reject "Uncategorized" name
 
 ### Acceptance Criteria
-- [ ] `collaboratorDid` field removed from `convex/schema.ts`
-- [ ] `by_collaborator` index removed from schema
-- [ ] All fallback code using `list.collaboratorDid` removed from Convex functions
-- [ ] Frontend code no longer references `list.collaboratorDid`
-- [ ] `OfflineList` interface updated in `src/lib/offline.ts`
-- [ ] `ListCard.tsx` updated to use collaborators-based sharing check
-- [ ] `CollaboratorBadge.tsx` removed if unused (verify imports first)
-- [ ] `npx convex dev` succeeds (schema compiles)
+- [ ] `convex/categories.ts` rejects creating a category named "Uncategorized" (case-insensitive)
 - [ ] `bun run build` passes
 - [ ] `bun run lint` passes
-- [ ] Manual test: create list, share via invite, accept invite, verify collaborator features work
-
-### Key Warnings
-- **Breaking schema change** — This removes a database field. Once deployed, the field is gone.
-- **Test collaborator flows** — After changes, verify: invite creation, invite acceptance, role changes, list display for shared lists.
-- **ListCard needs collaborators** — Either query collaborators in ListCard or pass an `isShared` prop from Home.tsx based on collaborators data.
 
 ### Definition of Done
-When complete, Ralph should:
-1. Make all the changes listed above
-2. Run `npx convex dev --once` to verify schema compiles
-3. Run `bun run build && bun run lint` to verify no errors
-4. Test the app manually (create list, share, accept invite, check items)
-5. Commit with message: `chore: remove deprecated collaboratorDid field (Phase 6.2)`
+1. Add validation to `createCategory` mutation
+2. Build and lint pass
+3. Commit with message: `feat: prevent creating category named "Uncategorized" (Phase 6.3)`
 
 ---
 
@@ -117,15 +44,16 @@ When complete, Ralph should:
 - ✅ Verified no active imports existed (only cross-references between deprecated files)
 - ✅ Build and lint pass
 
-#### 6.2 [IN PROGRESS] Remove collaboratorDid field from lists table
+#### 6.2 [COMPLETED] Remove collaboratorDid field from lists table
+- ✅ Removed `collaboratorDid` field and `by_collaborator` index from `convex/schema.ts`
+- ✅ Removed all legacy fallback code from `convex/lists.ts`, `convex/invites.ts`, `convex/items.ts`, `convex/categories.ts`
+- ✅ Updated `src/pages/ListView.tsx`, `src/pages/Home.tsx`, `src/lib/offline.ts`, `src/components/ListCard.tsx`
+- ✅ Deleted deprecated `src/components/CollaboratorBadge.tsx`
+- ✅ Updated `convex/migrations/migrateCollaborators.ts` to note migration is complete
+- ✅ Build and lint pass
+
+#### 6.3 [IN PROGRESS] Protect "Uncategorized" category name
 See Working Context above.
-
-
-#### 6.3 Protect "Uncategorized" category name
-- `convex/categories.ts` should reject creating a category named "Uncategorized"
-- Add validation in `create` mutation
-- Home.tsx and CategoryManager.tsx use "Uncategorized" as a hardcoded label for lists without a category
-- Creating a real category with that name would confuse users
 
 ### Phase 7: Minor Gaps (Optional)
 
@@ -370,11 +298,9 @@ See Working Context above.
 
 ### Collaborators
 
-- [CRITICAL] **Breaking schema change** — Removing `collaboratorDid` from lists is breaking. Run migration before deploying schema change.
+- [RESOLVED] **collaboratorDid field removed** — The legacy `collaboratorDid` field has been removed from the schema (Phase 6.2). All collaborator logic now uses the `collaborators` junction table exclusively.
 
 - [WARNING] **Query performance** — With unlimited collaborators, optimize queries. Don't load all collaborator details eagerly.
-
-- [NOTE] **Migration script available** — Run `convex/migrations/migrateCollaborators.ts:migrateToCollaborators` to migrate existing lists before removing `collaboratorDid` field.
 
 ### Publication
 
@@ -410,6 +336,7 @@ See Working Context above.
 
 ## Recently Completed
 
+- ✓ Phase 6.2: Remove collaboratorDid field — Removed field and index from schema; removed all fallback code from backend and frontend; deleted CollaboratorBadge.tsx; build and lint pass
 - ✓ Phase 6.1: Remove deprecated identity files — Deleted useIdentity.tsx, IdentitySetup.tsx, MigrationPrompt.tsx, identity.ts, migration.ts; build and lint pass
 - ✓ Phase 1.8: Resend OTP — Added `handleResendOtp` in Login.tsx and passed to OtpInput; 60-second cooldown UI; build and lint pass
 - ✓ Phase 5.9: Offline Operation Restrictions — Delete and Publish buttons disabled when offline in `ListView.tsx`; `useOffline` hook provides `isOnline` state; build and lint pass
@@ -438,7 +365,6 @@ See Working Context above.
 ## Backlog (Post v2)
 
 ### Technical Debt
-- [TECH-DEBT] Remove deprecated CollaboratorBadge component (replaced by CollaboratorList)
 - [TECH-DEBT] Add comprehensive E2E tests for new features
 - [TECH-DEBT] Performance audit after all features implemented
 

@@ -41,7 +41,6 @@ export function Home() {
         assetDid: list.assetDid,
         name: list.name,
         ownerDid: list.ownerDid,
-        collaboratorDid: list.collaboratorDid,
         categoryId: list.categoryId,
         createdAt: list.createdAt,
       }));

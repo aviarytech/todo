@@ -39,7 +39,7 @@ async function canUserEditList(
   }
 
   for (const did of didsToCheck) {
-    if (list.ownerDid === did || list.collaboratorDid === did) {
+    if (list.ownerDid === did) {
       return true;
     }
   }

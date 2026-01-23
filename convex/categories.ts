@@ -176,7 +176,7 @@ export const reorderCategory = mutation({
  * Set a list's category.
  *
  * Pass undefined for categoryId to move to uncategorized.
- * Validates that user has access to the list (owner or collaborator).
+ * Validates that user has access to the list (owner or collaborator via collaborators table).
  */
 export const setListCategory = mutation({
   args: {
@@ -191,14 +191,34 @@ export const setListCategory = mutation({
       throw new Error("List not found");
     }
 
-    // Check user has access (owner or collaborator)
-    const isOwner =
-      list.ownerDid === args.userDid || list.ownerDid === args.legacyDid;
-    const isCollaborator =
-      list.collaboratorDid === args.userDid ||
-      list.collaboratorDid === args.legacyDid;
+    // DIDs to check: current DID and optionally legacy DID
+    const didsToCheck = [args.userDid];
+    if (args.legacyDid) {
+      didsToCheck.push(args.legacyDid);
+    }
 
-    if (!isOwner && !isCollaborator) {
+    // Check user has access via collaborators table
+    let hasAccess = false;
+    for (const did of didsToCheck) {
+      const collab = await ctx.db
+        .query("collaborators")
+        .withIndex("by_list_user", (q) =>
+          q.eq("listId", args.listId).eq("userDid", did)
+        )
+        .first();
+
+      if (collab) {
+        hasAccess = true;
+        break;
+      }
+    }
+
+    // Fallback: Check legacy ownerDid field
+    if (!hasAccess) {
+      hasAccess = didsToCheck.includes(list.ownerDid);
+    }
+
+    if (!hasAccess) {
       throw new Error("Not authorized to modify this list");
     }
 

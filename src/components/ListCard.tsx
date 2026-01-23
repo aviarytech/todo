@@ -1,7 +1,9 @@
 /**
  * Card displaying a list summary.
  *
- * Shows list name, shared status, and links to the list view.
+ * Shows list name and ownership status. Links to the list view.
+ * Note: "Shared" badge was removed since collaboratorDid field is deprecated.
+ * Shared status is now determined by collaborators table (shown in ListView).
  */
 
 import { Link } from "react-router-dom";
@@ -14,7 +16,6 @@ interface ListCardProps {
 
 export function ListCard({ list, currentUserDid }: ListCardProps) {
   const isOwner = list.ownerDid === currentUserDid;
-  const isShared = !!list.collaboratorDid;
 
   return (
     <Link
@@ -23,7 +24,7 @@ export function ListCard({ list, currentUserDid }: ListCardProps) {
     >
       <div className="flex items-start justify-between">
         <h3 className="text-lg font-semibold text-gray-900 truncate">{list.name}</h3>
-        {isShared && (
+        {!isOwner && (
           <span className="flex-shrink-0 ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
             Shared
           </span>

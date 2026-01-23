@@ -141,11 +141,9 @@ export function ListView() {
   // userRole will be null if not a collaborator
   const isAuthorized = userRole !== null;
 
-  // Fallback: Also check legacy fields for unmigrated lists
+  // Fallback: Also check legacy ownerDid field for unmigrated lists
   const userDids = [did, legacyDid].filter(Boolean) as string[];
-  const legacyAuthorized =
-    userDids.includes(list.ownerDid) ||
-    (list.collaboratorDid && userDids.includes(list.collaboratorDid));
+  const legacyAuthorized = userDids.includes(list.ownerDid);
 
   if (!isAuthorized && !legacyAuthorized) {
     return (

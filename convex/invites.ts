@@ -184,13 +184,6 @@ export const acceptInvite = mutation({
       joinedAt: args.currentTime,
       invitedByDid: list.ownerDid,
     });
-
-    // Also update legacy field for backwards compatibility (only first collaborator)
-    if (!list.collaboratorDid) {
-      await ctx.db.patch(args.listId, {
-        collaboratorDid: args.userDid,
-      });
-    }
   },
 });
 

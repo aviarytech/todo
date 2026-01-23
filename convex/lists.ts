@@ -21,7 +21,6 @@ export const createList = mutation({
       assetDid: args.assetDid,
       name: args.name,
       ownerDid: args.ownerDid,
-      collaboratorDid: undefined, // Deprecated field, kept for backwards compat
       categoryId: args.categoryId,
       createdAt: args.createdAt,
     });
@@ -87,7 +86,7 @@ export const getUserLists = query({
       }
     }
 
-    // Fallback: Also check legacy fields for unmigrated lists
+    // Fallback: Also check legacy ownerDid field for unmigrated lists
     for (const did of didsToCheck) {
       // Get lists where user is owner (legacy field)
       const ownedLists = await ctx.db
@@ -95,14 +94,8 @@ export const getUserLists = query({
         .withIndex("by_owner", (q) => q.eq("ownerDid", did))
         .collect();
 
-      // Get lists where user is collaborator (legacy field)
-      const collaboratorLists = await ctx.db
-        .query("lists")
-        .withIndex("by_collaborator", (q) => q.eq("collaboratorDid", did))
-        .collect();
-
       // Add to results, avoiding duplicates
-      for (const list of [...ownedLists, ...collaboratorLists]) {
+      for (const list of ownedLists) {
         if (!listMap.has(list._id.toString())) {
           listMap.set(list._id.toString(), list);
         }
@@ -206,7 +199,6 @@ export const deleteList = mutation({
 /**
  * @deprecated Use collaborators.addCollaborator instead (Phase 3).
  * This function is kept for backwards compatibility with existing invites flow.
- * Adds collaborator to both legacy field and collaborators table.
  */
 export const addCollaborator = mutation({
   args: {
@@ -250,13 +242,5 @@ export const addCollaborator = mutation({
       joinedAt,
       invitedByDid: args.invitedByDid ?? list.ownerDid,
     });
-
-    // Also update legacy field for backwards compatibility (only if no existing collaborator)
-    // Note: This maintains backwards compat but will be removed when collaboratorDid is dropped
-    if (!list.collaboratorDid) {
-      await ctx.db.patch(args.listId, {
-        collaboratorDid: args.collaboratorDid,
-      });
-    }
   },
 });
