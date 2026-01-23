@@ -15,10 +15,9 @@ All 6 major phases complete. v2 feature development done. Optional quality impro
 ## Working Context (For Ralph)
 
 ### Current Task
-Phase 7.4 — Complete
+Phase 7.5 — Complete
 
-Phase 7.4 is complete. All debug console.log statements removed from PublishModal.tsx.
-Console.error statements retained for production debugging.
+Phase 7.5 is complete. Bundle size optimization implemented with route-based and modal code splitting.
 
 ---
 
@@ -55,15 +54,14 @@ These were discovered during comprehensive code review. All are optional improve
 - ✅ Kept `console.error` statements for production debugging
 - ✅ Build and lint pass
 
-#### 7.5 Bundle Size Optimization (LOW)
-**Problem:** Build shows chunks >500KB warning
-- `originals-sdk`: 612KB (gzipped: 182KB)
-- `base`: 535KB (gzipped: 171KB)
-- `index`: 802KB (gzipped: 207KB)
-
-**Options:**
-- [ ] Add dynamic imports for heavy routes (PublicList, PublishModal)
-- [ ] Configure `build.rollupOptions.output.manualChunks` for better splitting
+#### 7.5 [COMPLETED] Bundle Size Optimization (LOW)
+- ✅ Added route-based code splitting with `React.lazy()` for ListView, JoinList, PublicList
+- ✅ Added modal code splitting for DeleteListDialog, ShareModal, PublishModal in ListView
+- ✅ Added `Suspense` boundaries with loading fallbacks
+- ✅ Configured `manualChunks` to split `@originals/auth` separately from `@originals/sdk`
+- ✅ Main bundle reduced from 802KB to 501KB (37% reduction)
+- ✅ New lazy-loaded chunks: ListView (20KB), PublicList (7KB), modals (~11KB total)
+- ✅ Build and lint pass
 
 ### Phase 7 (Existing): Minor Feature Gaps
 
@@ -383,6 +381,7 @@ These were discovered during comprehensive code review. All are optional improve
 
 ## Recently Completed
 
+- ✓ Phase 7.5: Bundle Size Optimization — Route-based code splitting with `React.lazy()` for ListView, JoinList, PublicList; modal lazy loading for DeleteListDialog, ShareModal, PublishModal; `@originals/auth` split into separate chunk; main bundle reduced from 802KB to 501KB (37% reduction); build and lint pass
 - ✓ Phase 7.4: Remove Debug Console Logs — Removed 4 `console.log` statements from `PublishModal.tsx`; kept `console.error` for production debugging; build and lint pass
 - ✓ Phase 7.3: Hook Memory Leak Fixes — Added `timeoutRefs` Map to `useToast` for proper timeout cleanup; added `isMounted` refs to `useOffline` and `useAuth` to prevent setState after unmount; build and lint pass
 - ✓ Phase 7.2: Replace window.confirm() — Created reusable `ConfirmDialog` component with `useFocusTrap`, `role="alertdialog"`, `aria-modal`, ARIA labels; replaced 3 `window.confirm()` calls in `CollaboratorList.tsx` (remove/leave) and `CategoryManager.tsx` (delete); build and lint pass

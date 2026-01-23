@@ -5,9 +5,10 @@
  * Updated for Phase 3: unlimited collaborators with roles.
  * Updated for Phase 4: publish/unpublish functionality.
  * Updated for Phase 5.5: optimistic updates for items.
+ * Updated for Phase 7.5: lazy-loaded modals for bundle size optimization.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, lazy, Suspense } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -19,10 +20,12 @@ import { useOffline } from "../hooks/useOffline";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
-import { DeleteListDialog } from "../components/DeleteListDialog";
-import { ShareModal } from "../components/ShareModal";
 import { CollaboratorList } from "../components/sharing/CollaboratorList";
-import { PublishModal } from "../components/publish/PublishModal";
+
+// Lazy-loaded modals for better bundle splitting
+const DeleteListDialog = lazy(() => import("../components/DeleteListDialog").then(m => ({ default: m.DeleteListDialog })));
+const ShareModal = lazy(() => import("../components/ShareModal").then(m => ({ default: m.ShareModal })));
+const PublishModal = lazy(() => import("../components/publish/PublishModal").then(m => ({ default: m.PublishModal })));
 
 export function ListView() {
   const { id } = useParams<{ id: string }>();
@@ -346,22 +349,24 @@ export function ListView() {
         </div>
       )}
 
-      {/* Modals */}
-      {isDeleteDialogOpen && (
-        <DeleteListDialog
-          list={list}
-          onClose={() => setIsDeleteDialogOpen(false)}
-          onDeleted={() => navigate("/")}
-        />
-      )}
+      {/* Modals - lazy-loaded with Suspense for code splitting */}
+      <Suspense fallback={null}>
+        {isDeleteDialogOpen && (
+          <DeleteListDialog
+            list={list}
+            onClose={() => setIsDeleteDialogOpen(false)}
+            onDeleted={() => navigate("/")}
+          />
+        )}
 
-      {isShareModalOpen && (
-        <ShareModal list={list} onClose={() => setIsShareModalOpen(false)} />
-      )}
+        {isShareModalOpen && (
+          <ShareModal list={list} onClose={() => setIsShareModalOpen(false)} />
+        )}
 
-      {isPublishModalOpen && (
-        <PublishModal list={list} onClose={() => setIsPublishModalOpen(false)} />
-      )}
+        {isPublishModalOpen && (
+          <PublishModal list={list} onClose={() => setIsPublishModalOpen(false)} />
+        )}
+      </Suspense>
     </div>
   );
 }

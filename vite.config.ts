@@ -68,7 +68,9 @@ export default defineConfig({
           // Split vendor chunks for better caching
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'convex-vendor': ['convex'],
+          // Split @originals packages for better code splitting
           'originals-sdk': ['@originals/sdk'],
+          'originals-auth': ['@originals/auth'],
         },
       },
     },
