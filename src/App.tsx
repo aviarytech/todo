@@ -1,7 +1,10 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Link } from 'react-router-dom'
 import { useIdentity } from './hooks/useIdentity'
 import { IdentitySetup } from './components/IdentitySetup'
 import { ProfileBadge } from './components/ProfileBadge'
+import { Home } from './pages/Home'
+import { ListView } from './pages/ListView'
+import { JoinList } from './pages/JoinList'
 
 function App() {
   const { hasIdentity, isLoading } = useIdentity()
@@ -21,16 +24,18 @@ function App() {
 
       <header className="bg-white shadow-sm p-4">
         <div className="container mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-bold">Lisa</h1>
+          <Link to="/" className="text-xl font-bold hover:text-gray-700">
+            Lisa
+          </Link>
           <ProfileBadge />
         </div>
       </header>
 
       <main className="container mx-auto p-4">
         <Routes>
-          <Route path="/" element={<div>Home placeholder</div>} />
-          <Route path="/list/:id" element={<div>ListView placeholder</div>} />
-          <Route path="/join/:listId/:token" element={<div>JoinList placeholder</div>} />
+          <Route path="/" element={<Home />} />
+          <Route path="/list/:id" element={<ListView />} />
+          <Route path="/join/:listId/:token" element={<JoinList />} />
         </Routes>
       </main>
     </div>

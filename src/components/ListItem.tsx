@@ -1,0 +1,129 @@
+/**
+ * Component for a single item in a list.
+ *
+ * Shows checkbox, name, attribution, and remove button.
+ */
+
+import { useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Doc } from "../../convex/_generated/dataModel";
+import { signItemAction } from "../lib/originals";
+import { ItemAttribution } from "./ItemAttribution";
+
+interface ListItemProps {
+  item: Doc<"items">;
+  list: Doc<"lists">;
+  userDid: string;
+  userPrivateKey: string;
+}
+
+export function ListItem({ item, list, userDid, userPrivateKey }: ListItemProps) {
+  const checkItem = useMutation(api.items.checkItem);
+  const uncheckItem = useMutation(api.items.uncheckItem);
+  const removeItem = useMutation(api.items.removeItem);
+
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleToggleCheck = async () => {
+    if (isUpdating) return;
+
+    setIsUpdating(true);
+
+    try {
+      if (item.checked) {
+        // Sign uncheck credential (best-effort)
+        try {
+          await signItemAction("ItemUnchecked", list.assetDid, item._id, userDid, userPrivateKey);
+        } catch (err) {
+          console.warn("Failed to sign uncheck credential:", err);
+        }
+
+        await uncheckItem({ itemId: item._id, userDid });
+      } else {
+        // Sign check credential (best-effort)
+        try {
+          await signItemAction("ItemChecked", list.assetDid, item._id, userDid, userPrivateKey);
+        } catch (err) {
+          console.warn("Failed to sign check credential:", err);
+        }
+
+        await checkItem({
+          itemId: item._id,
+          checkedByDid: userDid,
+          checkedAt: Date.now(),
+        });
+      }
+    } catch (err) {
+      console.error("Failed to toggle item:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (isUpdating) return;
+
+    setIsUpdating(true);
+
+    try {
+      // Sign remove credential (best-effort)
+      try {
+        await signItemAction("ItemRemoved", list.assetDid, item._id, userDid, userPrivateKey);
+      } catch (err) {
+        console.warn("Failed to sign remove credential:", err);
+      }
+
+      await removeItem({ itemId: item._id, userDid });
+    } catch (err) {
+      console.error("Failed to remove item:", err);
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 p-4 hover:bg-gray-50">
+      {/* Checkbox */}
+      <button
+        onClick={handleToggleCheck}
+        disabled={isUpdating}
+        className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+          item.checked
+            ? "bg-blue-600 border-blue-600 text-white"
+            : "border-gray-300 hover:border-blue-400"
+        } disabled:opacity-50`}
+        aria-label={item.checked ? "Uncheck item" : "Check item"}
+      >
+        {item.checked && (
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clipRule="evenodd"
+            />
+          </svg>
+        )}
+      </button>
+
+      {/* Item content */}
+      <div className="flex-1 min-w-0">
+        <p className={`text-gray-900 ${item.checked ? "line-through text-gray-500" : ""}`}>
+          {item.name}
+        </p>
+        <ItemAttribution item={item} />
+      </div>
+
+      {/* Remove button */}
+      <button
+        onClick={handleRemove}
+        disabled={isUpdating}
+        className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 disabled:opacity-50"
+        aria-label="Remove item"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
