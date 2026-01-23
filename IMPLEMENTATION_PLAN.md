@@ -15,10 +15,77 @@ All 6 major phases complete. v2 feature development done. Optional quality impro
 ## Working Context (For Ralph)
 
 ### Current Task
-No active task — Phase 7.1 complete
+[IN PROGRESS] Phase 7.2 — Replace window.confirm() with Accessible Modals
 
 ### Overview
-Phase 7.1 Modal Accessibility is complete. All 5 modals now have focus trap, ARIA roles, and keyboard navigation.
+Replace native browser `window.confirm()` dialogs with accessible custom modal dialogs that match the app's UI and support focus trap, ARIA attributes, and keyboard navigation.
+
+### Files to Read First
+- `src/components/DeleteListDialog.tsx` — **Pattern to follow**: accessible alertdialog with useFocusTrap, ARIA roles, loading state
+- `src/hooks/useFocusTrap.tsx` — Reusable focus trap hook (already exists)
+
+### Files to Create
+- `src/components/ConfirmDialog.tsx` — **New** reusable confirmation dialog component
+
+### Files to Modify
+- `src/components/sharing/CollaboratorList.tsx` — Replace 2 `window.confirm()` calls (lines 46, 64)
+- `src/components/lists/CategoryManager.tsx` — Replace 1 `confirm()` call (line 110)
+
+### Implementation Approach
+
+1. **Create a reusable `ConfirmDialog` component** with these props:
+   ```typescript
+   interface ConfirmDialogProps {
+     title: string;
+     message: string;
+     confirmLabel?: string;       // Default: "Confirm"
+     cancelLabel?: string;        // Default: "Cancel"
+     variant?: "danger" | "warning" | "default";  // For button styling
+     isLoading?: boolean;
+     onConfirm: () => void;
+     onCancel: () => void;
+   }
+   ```
+
+2. **ConfirmDialog features:**
+   - Uses `useFocusTrap` for accessibility
+   - `role="alertdialog"` with `aria-modal`, `aria-labelledby`, `aria-describedby`
+   - Supports loading state (like DeleteListDialog)
+   - Variant prop controls confirm button color (red for danger, etc.)
+
+3. **Update CollaboratorList.tsx:**
+   - Add state: `showRemoveDialog` with collaborator to remove
+   - Add state: `showLeaveDialog` boolean
+   - Replace `window.confirm()` in `handleRemove` with dialog trigger
+   - Replace `window.confirm()` in `handleLeave` with dialog trigger
+   - Render `<ConfirmDialog>` conditionally
+
+4. **Update CategoryManager.tsx:**
+   - Add state: `showDeleteDialog` with category to delete
+   - Replace `confirm()` in `handleDeleteCategory` with dialog trigger
+   - Render `<ConfirmDialog>` conditionally
+
+### Acceptance Criteria
+- [ ] Create `src/components/ConfirmDialog.tsx` with reusable confirmation dialog
+- [ ] ConfirmDialog uses `useFocusTrap` hook
+- [ ] ConfirmDialog has `role="alertdialog"`, `aria-modal`, `aria-labelledby`, `aria-describedby`
+- [ ] Replace `window.confirm()` in `CollaboratorList.tsx` (lines 46, 64)
+- [ ] Replace `confirm()` in `CategoryManager.tsx` (line 110)
+- [ ] All confirmations show proper loading state during async operations
+- [ ] Build passes (`bun run build`)
+- [ ] Lint passes (`bun run lint`)
+
+### Key Context
+- Follow the exact pattern from `DeleteListDialog.tsx` for structure and styling
+- The dialog should look consistent with existing modals (bg-black/50 overlay, white rounded card)
+- For danger actions (remove, leave, delete), use red confirm button
+- Cancel button should be gray/neutral
+
+### Definition of Done
+When complete, Ralph should:
+1. All acceptance criteria checked
+2. Commit with message like: `feat(a11y): replace window.confirm with accessible ConfirmDialog (Phase 7.2)`
+3. Update this section to mark Phase 7.2 complete
 
 ---
 
@@ -37,11 +104,11 @@ These were discovered during comprehensive code review. All are optional improve
 - ✅ `src/components/CreateListModal.tsx` — `role="dialog"`, `aria-modal`, `aria-labelledby`
 - ✅ Build and lint pass
 
-#### 7.2 Replace window.confirm() with Accessible Modals (MEDIUM)
+#### 7.2 [IN PROGRESS] Replace window.confirm() with Accessible Modals (MEDIUM)
 **Problem:** Native `window.confirm()` is inaccessible and inconsistent with UI
 **Files:**
 - `src/components/sharing/CollaboratorList.tsx` (lines 46, 64) — remove/leave confirmations
-- `src/components/lists/CategoryManager.tsx` (line 108) — delete category confirmation
+- `src/components/lists/CategoryManager.tsx` (line 110) — delete category confirmation
 
 **Acceptance Criteria:**
 - [ ] Create reusable `ConfirmDialog` component (or reuse DeleteListDialog pattern)
