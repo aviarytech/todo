@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { ConvexProvider, ConvexReactClient } from 'convex/react'
 import { AuthProvider } from './hooks/useAuth'
+import { ToastProvider } from './hooks/useToast'
 import { registerServiceWorker } from './lib/sw-registration'
 import './index.css'
 import App from './App.tsx'
@@ -23,9 +24,11 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ConvexProvider client={convex}>
       <AuthProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <ToastProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </ToastProvider>
       </AuthProvider>
     </ConvexProvider>
   </StrictMode>,

@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProfileBadge } from './components/ProfileBadge'
 import { OfflineIndicator } from './components/offline/OfflineIndicator'
+import { ToastContainer } from './components/notifications/Toast'
 import { Home } from './pages/Home'
 import { ListView } from './pages/ListView'
 import { JoinList } from './pages/JoinList'
@@ -32,6 +33,7 @@ function App() {
           <Route path="/public/:did" element={<PublicList />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        <ToastContainer />
       </>
     )
   }
@@ -62,6 +64,7 @@ function App() {
         </ErrorBoundary>
       </main>
       </div>
+      <ToastContainer />
     </>
   )
 }

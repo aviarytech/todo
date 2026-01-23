@@ -87,6 +87,7 @@ export const addItem = mutation({
       0
     );
 
+    const now = Date.now();
     return await ctx.db.insert("items", {
       listId: args.listId,
       name: args.name,
@@ -96,6 +97,7 @@ export const addItem = mutation({
       createdAt: args.createdAt,
       checkedAt: undefined,
       order: maxOrder + 1,
+      updatedAt: now,
     });
   },
 });
@@ -132,6 +134,7 @@ export const checkItem = mutation({
       checked: true,
       checkedByDid: args.checkedByDid,
       checkedAt: args.checkedAt,
+      updatedAt: Date.now(),
     });
   },
 });
@@ -167,6 +170,7 @@ export const uncheckItem = mutation({
       checked: false,
       checkedByDid: undefined,
       checkedAt: undefined,
+      updatedAt: Date.now(),
     });
   },
 });
@@ -259,8 +263,19 @@ export const reorderItems = mutation({
 
       // Verify item belongs to this list
       if (item && item.listId === args.listId) {
-        await ctx.db.patch(itemId, { order: i });
+        await ctx.db.patch(itemId, { order: i, updatedAt: Date.now() });
       }
     }
+  },
+});
+
+/**
+ * Get an item by ID for sync conflict checking.
+ * Returns null if item doesn't exist (was deleted).
+ */
+export const getItemForSync = query({
+  args: { itemId: v.id("items") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.itemId);
   },
 });

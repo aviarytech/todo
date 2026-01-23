@@ -3,6 +3,9 @@
  *
  * Processes queued mutations when the user comes back online.
  * Uses exponential backoff for retries and notifies listeners of status changes.
+ *
+ * Phase 5.8 adds conflict detection: checks server state before applying
+ * check/uncheck mutations and notifies users of conflicts via toast.
  */
 
 import type { ConvexReactClient } from "convex/react";
@@ -14,6 +17,7 @@ import {
   updateMutationRetry,
   type QueuedMutation,
 } from "./offline";
+import { showGlobalToast } from "./toast";
 
 // ============================================================================
 // Constants
@@ -33,6 +37,12 @@ export type SyncStatusType = "idle" | "syncing" | "synced" | "error";
 export interface SyncStatus {
   status: SyncStatusType;
   message?: string;
+}
+
+/** Result of conflict check before executing a mutation */
+interface ConflictCheckResult {
+  hasConflict: boolean;
+  reason?: string;
 }
 
 // ============================================================================
@@ -114,12 +124,28 @@ export class SyncManager {
 
       for (const mutation of mutations) {
         try {
+          // Phase 5.8: Check for conflicts before executing check/uncheck mutations
+          const conflictCheck = await this.checkForConflict(convex, mutation);
+          if (conflictCheck.hasConflict) {
+            // Conflict detected - discard local change and notify user
+            await clearMutation(mutation.id!);
+            showGlobalToast(conflictCheck.reason || "Conflict detected", "warning");
+            continue;
+          }
+
           await this.executeMutation(convex, mutation);
           // Success - remove from queue
           await clearMutation(mutation.id!);
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
+
+          // Check if item was deleted (server returns "Item not found")
+          if (errorMessage.includes("not found")) {
+            await clearMutation(mutation.id!);
+            showGlobalToast("Item was deleted by another user", "warning");
+            continue;
+          }
 
           if (mutation.retryCount >= MAX_RETRIES) {
             // Max retries reached - discard mutation and notify
@@ -149,6 +175,51 @@ export class SyncManager {
       });
     } finally {
       this.isSyncing = false;
+    }
+  }
+
+  /**
+   * Check for conflicts before executing a mutation.
+   * Only applies to check/uncheck operations on items.
+   *
+   * Strategy: If server item's updatedAt > mutation's timestamp, there's a conflict.
+   */
+  private async checkForConflict(
+    convex: ConvexReactClient,
+    mutation: QueuedMutation
+  ): Promise<ConflictCheckResult> {
+    // Only check conflicts for check/uncheck mutations
+    if (mutation.type !== "checkItem" && mutation.type !== "uncheckItem") {
+      return { hasConflict: false };
+    }
+
+    const payload = mutation.payload as CheckItemPayload | UncheckItemPayload;
+    const itemId = payload.itemId;
+
+    try {
+      const serverItem = await convex.query(api.items.getItemForSync, { itemId });
+
+      if (!serverItem) {
+        // Item was deleted remotely
+        return {
+          hasConflict: true,
+          reason: "Item was deleted by another user",
+        };
+      }
+
+      // Check if server has newer data
+      if (serverItem.updatedAt && serverItem.updatedAt > mutation.timestamp) {
+        return {
+          hasConflict: true,
+          reason: "Item was updated by another user",
+        };
+      }
+
+      return { hasConflict: false };
+    } catch {
+      // If we can't check, allow the mutation to proceed
+      // The actual mutation will fail if there's an issue
+      return { hasConflict: false };
     }
   }
 

@@ -73,6 +73,7 @@ export default defineSchema({
     createdAt: v.number(),
     checkedAt: v.optional(v.number()),
     order: v.optional(v.number()), // Position in list (lower = higher in list)
+    updatedAt: v.optional(v.number()), // Timestamp of last update (Phase 5.8 conflict resolution)
   }).index("by_list", ["listId"]),
 
   // Invites table - for sharing lists with partners

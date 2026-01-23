@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 5.7 completed — Offline cache fallback implemented
+**Current Status:** Phase 5.8 completed — Conflict resolution for offline sync
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,155 +12,11 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-### Current Task
-Phase 5.8: Conflict Resolution — Detect and handle conflicts when syncing offline changes
-
-### Problem Statement
-When users make offline changes, another collaborator may have edited the same item. Currently, the SyncManager blindly applies local mutations without checking if the server has newer data. This can cause:
-1. Lost updates (collaborator's changes overwritten)
-2. Confusing state when item was deleted remotely
-3. No user feedback about conflicts
-
-### Files to Read First
-- `src/lib/sync.ts` — SyncManager that processes queued mutations
-- `src/lib/offline.ts` — QueuedMutation type and helpers
-- `convex/items.ts` — Item mutations (addItem, checkItem, uncheckItem, reorderItems)
-- `convex/schema.ts` — Items table (currently lacks `updatedAt` field)
-- `specs/features/offline.md` — Conflict resolution spec (lines 389-404)
-
-### Files to Create
-- `src/components/notifications/Toast.tsx` — Simple toast notification component
-- `src/hooks/useToast.tsx` — Toast state management hook
-
-### Files to Modify
-- `convex/schema.ts` — Add `updatedAt` field to items table
-- `convex/items.ts` — Set `updatedAt` on all item mutations
-- `src/lib/sync.ts` — Add timestamp comparison before executing mutations
-- `src/lib/offline.ts` — May need to store expected server state for comparison
-
-### Implementation Approach
-
-**Step 1: Schema Update**
-```typescript
-// convex/schema.ts - Add updatedAt to items
-items: defineTable({
-  // ...existing fields
-  updatedAt: v.optional(v.number()), // Timestamp of last update
-})
-```
-
-**Step 2: Update Item Mutations**
-```typescript
-// convex/items.ts - Set updatedAt on each mutation
-await ctx.db.patch(args.itemId, {
-  checked: true,
-  checkedByDid: args.checkedByDid,
-  checkedAt: args.checkedAt,
-  updatedAt: Date.now(), // Add this
-});
-```
-
-**Step 3: Add Server Query for Conflict Check**
-```typescript
-// convex/items.ts - New query to check item state
-export const getItemForSync = query({
-  args: { itemId: v.id("items") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.itemId);
-  },
-});
-```
-
-**Step 4: Conflict Detection in SyncManager**
-```typescript
-// src/lib/sync.ts - Before executing mutation
-private async executeMutationWithConflictCheck(
-  convex: ConvexReactClient,
-  mutation: QueuedMutation
-): Promise<{ success: boolean; conflict?: string }> {
-  // For check/uncheck, verify item still exists and hasn't been updated
-  if (mutation.type === 'checkItem' || mutation.type === 'uncheckItem') {
-    const payload = mutation.payload as CheckItemPayload;
-    const serverItem = await convex.query(api.items.getItemForSync, {
-      itemId: payload.itemId
-    });
-
-    if (!serverItem) {
-      return { success: false, conflict: 'Item was deleted by another user' };
-    }
-
-    if (serverItem.updatedAt && serverItem.updatedAt > mutation.timestamp) {
-      return { success: false, conflict: 'Item was updated by another user' };
-    }
-  }
-
-  // Execute mutation
-  await this.executeMutation(convex, mutation);
-  return { success: true };
-}
-```
-
-**Step 5: Toast Notification System**
-```typescript
-// src/hooks/useToast.tsx
-export interface Toast {
-  id: string;
-  message: string;
-  type: 'info' | 'warning' | 'error';
-}
-
-export function useToast() {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const addToast = useCallback((message: string, type: Toast['type'] = 'info') => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 5000);
-  }, []);
-
-  return { toasts, addToast };
-}
-```
-
-### Acceptance Criteria
-- [ ] Items table has `updatedAt` field
-- [ ] All item mutations set `updatedAt`
-- [ ] SyncManager checks server state before applying check/uncheck mutations
-- [ ] If server item.updatedAt > mutation.timestamp, mutation is discarded
-- [ ] User sees toast notification when conflict detected
-- [ ] If item was deleted remotely, local change is discarded with notification
-- [ ] Build passes (`bun run build`)
-- [ ] Lint passes (`bun run lint`)
-
-### Key Context
-- The conflict strategy is "server wins" — discard local changes if server is newer
-- Toast notifications should auto-dismiss after 5 seconds
-- Focus on check/uncheck conflicts first — addItem conflicts are rare (unique names)
-- Reorder conflicts are complex; can skip for now (entire order gets overwritten)
-- Keep toast system simple — no need for a library
-
-### Edge Cases to Handle
-1. **Item deleted remotely** — Discard local mutation, notify user
-2. **List deleted remotely** — Clear local cache for that list, redirect to home (defer to Phase 5.9)
-3. **Multiple conflicts** — Show one toast per conflict, don't spam user
-
-### Definition of Done
-When complete, Ralph should:
-1. Test conflict scenario: User A checks item, User B checks same item offline
-2. When User B comes online, their change should be discarded if User A's timestamp is newer
-3. User B sees "Item was updated by another user" toast
-4. All acceptance criteria checked
-5. Commit with message: `feat(offline): add conflict resolution for sync (Phase 5.8)`
-6. Update this section with completion status
+**Phase 5.8 completed.** Lisa to prepare next task context.
 
 ---
 
 ## Next Up (Priority Order)
-
-### Phase 5.8: Conflict Resolution [IN PROGRESS]
-See Working Context above for implementation details.
 
 ### Phase 5.9: Offline Operation Restrictions
 - Prevent list deletion when offline (too destructive)
@@ -366,6 +222,16 @@ See Working Context above for implementation details.
 - ✅ Amber warning banner in `Home.tsx` and `ListView.tsx` when showing cached data
 - ✅ Derived `usingCache` state (not setState in effects) to avoid lint errors
 
+#### 5.8 [COMPLETED] Conflict Resolution
+- ✅ Added `updatedAt` field to items table schema
+- ✅ All item mutations (`addItem`, `checkItem`, `uncheckItem`, `reorderItems`) set `updatedAt`
+- ✅ Added `getItemForSync` query for conflict checking
+- ✅ Created toast notification system: `src/hooks/useToast.tsx`, `src/lib/toast.ts`, `src/components/notifications/Toast.tsx`
+- ✅ Added `checkForConflict` method in SyncManager — checks server state before check/uncheck mutations
+- ✅ If `serverItem.updatedAt > mutation.timestamp`, mutation is discarded with toast notification
+- ✅ Handles item deleted remotely — shows "Item was deleted by another user" toast
+- ✅ ToastProvider mounted in `main.tsx`, ToastContainer in `App.tsx`
+
 ---
 
 ## Warnings & Pitfalls
@@ -404,7 +270,7 @@ See Working Context above for implementation details.
 
 ### Offline
 
-- [CRITICAL] **No conflict resolution** — SyncManager doesn't check server timestamps. Multiple offline edits won't reconcile properly. Phase 5.8 addresses this.
+- [RESOLVED] **Conflict resolution implemented** — SyncManager now checks server timestamps before applying check/uncheck mutations. If server item is newer, local change is discarded with toast notification. (Phase 5.8)
 
 - [CRITICAL] **Service Worker updates** — SW caching can cause users to see stale app. Implement update notification with skipWaiting/claim flow.
 
@@ -426,6 +292,7 @@ See Working Context above for implementation details.
 
 ## Recently Completed
 
+- ✓ Phase 5.8: Conflict Resolution — `updatedAt` field on items table; `getItemForSync` query; `checkForConflict` in SyncManager; toast notification system (`useToast`, `ToastContainer`, `src/lib/toast.ts`); build and lint pass
 - ✓ Phase 5.7: Offline Cache Fallback — `cacheAllLists` helper in offline.ts; cache-through pattern in Home.tsx and useOptimisticItems.tsx; amber warning banner when showing cached data; build and lint pass
 - ✓ Phase 5.6: UI Feedback — `OfflineIndicator.tsx` banner and `SyncStatus.tsx` detailed status component with ARIA accessibility; mounted in App.tsx
 - ✓ Phase 5.5: Optimistic Updates — `src/hooks/useOptimisticItems.tsx` hook with addItem, checkItem, uncheckItem, reorderItems; ListView, AddItemInput, ListItem updated to use callbacks; build and lint pass
