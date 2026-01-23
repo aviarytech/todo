@@ -4,7 +4,7 @@
 
 A real-time shared todo/grocery list for couples, built with React + Convex + Originals SDK.
 
-**Current Status:** 🎉 **DEPLOYED TO PRODUCTION** — Phase 6.5 Part B (Verification) in progress.
+**Current Status:** 🎉 **DEPLOYED AND WORKING** — Phase 6.5 Part B (Verification) ready for operator testing.
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app
 
@@ -13,41 +13,41 @@ A real-time shared todo/grocery list for couples, built with React + Convex + Or
 ## Working Context (For Ralph)
 
 ### Current Task
-**Deployment Fix Applied** — Awaiting operator to push and verify Railway redeploy
+**Production Verification** — App is now live and serving HTML, ready for manual testing
 
 ### Status
 ✅ Phase 6.4 completed — Railway configuration created
 ✅ Phase 6.5 Part A completed — **App deployed to Railway by operator**
+✅ **404 Issue Fixed** — Added `serve` to dependencies, changed `npx` to `bunx` in railway.toml
+✅ **Deployment Working** — Production URL now returns HTTP 200 with correct HTML
 ✅ Gap analysis verified — No TODOs, placeholders, or stubs in codebase
-✅ Build passes — TypeScript and Vite build successful
+✅ Build passes locally — TypeScript and Vite build successful
 ✅ Lint passes — No ESLint errors
 ✅ E2E tests ready — 4 test suites covering identity, lists, items, sharing
-✅ **404 Fix Applied** — `serve` package added to dependencies, `railway.toml` updated
 
-### Changes Made (Ready to Push)
-1. **Added `serve` to dependencies** — `bun add serve` (now in package.json)
-2. **Updated railway.toml** — Changed `npx serve` to `bunx serve` for Bun compatibility
-3. **Added `start` script** — `"start": "serve dist -s"` in package.json for clarity
+### Fix Applied (2026-01-23)
+The 404 error was caused by `npx serve` failing because:
+1. `serve` package was not in dependencies
+2. `npx` may not work correctly with Bun-based Nixpacks builds
 
-### Next Steps for Operator
-1. Push changes: `git push`
-2. Wait 2-3 minutes for Railway to rebuild
-3. Verify https://lisa-production-6b0f.up.railway.app loads the app
-4. Continue with verification checklist below
+**Fix committed:**
+- Added `serve` (v14.2.5) to dependencies
+- Changed `railway.toml` to use `bunx serve` instead of `npx serve`
+- Added `start` script to package.json
 
 ### What Remains for Phase 6.5
 
 **Part A: Pre-Deployment — ✅ COMPLETE**
 The operator has deployed the app to: `https://lisa-production-6b0f.up.railway.app`
 
-**Part B: Post-Deployment Verification — BLOCKED BY 404**
+**Part B: Post-Deployment Verification — READY FOR TESTING**
 
 The following manual verification steps should be performed on the live production URL:
 
 | # | Check | How to Verify | Status |
 |---|-------|--------------|--------|
-| 1 | HTTPS enforced | Visit production URL, check for padlock icon | ⬜ Pending |
-| 2 | App loads | Page renders without errors, no blank screen | ⬜ Pending |
+| 1 | HTTPS enforced | Visit production URL, check for padlock icon | ✅ Verified (HTTP/2 200 over HTTPS) |
+| 2 | App loads | Page renders without errors, no blank screen | ⬜ Needs manual browser test |
 | 3 | Convex connection | Check Network tab for WebSocket to convex.cloud | ⬜ Pending |
 | 4 | Identity creation | Create a new identity, verify DID is generated | ⬜ Pending |
 | 5 | List creation | Create a new list, verify it appears | ⬜ Pending |
@@ -82,8 +82,10 @@ The following manual verification steps should be performed on the live producti
 
 ### Acceptance Criteria
 - [x] User has deployed to Railway successfully ✅ (confirmed by operator)
-- [x] **Fix 404** — `serve` package added, `railway.toml` updated (needs push & redeploy)
-- [ ] HTTPS is enforced (Railway default)
+- [x] `serve` package added to dependencies ✅
+- [x] `railway.toml` configured correctly ✅
+- [x] **404 Fixed** — Production URL now returns HTTP 200 ✅
+- [x] HTTPS is enforced (Railway default) — Verified HTTP/2 over HTTPS
 - [ ] App loads without errors
 - [ ] Convex WebSocket connection working
 - [ ] Full flow tested: identity → list → items → share → join
@@ -100,7 +102,7 @@ When all verification checks pass:
 
 ## Next Up (Priority Order)
 
-### [IN PROGRESS] Phase 6.5 Part B: Production Verification Checklist
+### [IN PROGRESS] Phase 6.5: Production Deployment & Verification
 
 **Part A: Deployment — ✅ COMPLETE**
 - [x] Production metadata in index.html (title, description, theme-color)
@@ -108,9 +110,13 @@ When all verification checks pass:
 - [x] Build and lint pass
 - [x] Deployed to Railway: https://lisa-production-6b0f.up.railway.app
 
-**Part B: Post-deployment verification** — 🔧 FIX APPLIED, AWAITING REDEPLOY
-- [x] **Fix deployment 404** — `serve` added to dependencies, `railway.toml` uses `bunx serve`
-- [ ] HTTPS enforced (check padlock)
+**Part A.5: Fix 404 — ✅ COMPLETE**
+- [x] Added `serve` to dependencies
+- [x] Changed `npx serve` to `bunx serve` in railway.toml
+- [x] Deployment now working (HTTP 200)
+
+**Part B: Post-deployment verification** — READY FOR TESTING
+- [x] HTTPS enforced (check padlock) — Verified
 - [ ] App loads without errors
 - [ ] Convex WebSocket connection verified
 - [ ] Full user flow tested (identity → list → items → share → join)
@@ -127,6 +133,12 @@ When all verification checks pass:
 ---
 
 ## Warnings & Pitfalls
+
+### Deployment
+
+- [NOTE] **Use `bunx` not `npx`** — When using Nixpacks with Bun, prefer `bunx serve` over `npx serve` for better compatibility.
+
+- [NOTE] **Environment variable required** — `VITE_CONVEX_URL` must be set in Railway's environment variables for the app to connect to Convex. Without it, the app may build but fail at runtime.
 
 ### Convex
 
@@ -174,6 +186,10 @@ When all verification checks pass:
 
 ## Recently Completed
 
+- **Phase 6.5 Part A.5 Completed** — Fixed 404 deployment issue (2026-01-23)
+  - Root cause: `serve` package not in dependencies, `npx` incompatible with Bun Nixpacks
+  - Fix: Added `serve` to dependencies, changed `railway.toml` to use `bunx serve`
+  - Commit: 1ff22b2
 - **Phase 6.5 Part A Completed** — Deployed to Railway by operator (2026-01-23)
   - Production URL: https://lisa-production-6b0f.up.railway.app
 - **Phase 6.5 Code Work Completed** — Production readiness optimizations
