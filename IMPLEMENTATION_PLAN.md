@@ -4,7 +4,7 @@
 
 A real-time shared todo/grocery list for couples, built with React + Convex + Originals SDK.
 
-**Current Status:** Phase 1 complete. App has Tailwind, React Router, Convex provider. Ready for Phase 2 (Identity System).
+**Current Status:** Phase 2 complete. Identity system fully implemented. Ready for Phase 3 (List Management).
 
 ---
 
@@ -20,57 +20,46 @@ All setup tasks completed:
 - [x] ESLint configured to ignore `convex/_generated`
 - [x] Build and lint passing
 
-### Phase 2: Identity System [IN PROGRESS]
+### Phase 2: Identity System [COMPLETE]
 
-#### 2.1 Create Identity Storage Utility
+All identity tasks completed:
+- [x] `src/lib/identity.ts` — localStorage persistence (getIdentity, saveIdentity, clearIdentity)
+- [x] `src/hooks/useIdentity.tsx` — React context with IdentityProvider and useIdentity hook
+- [x] `src/components/IdentitySetup.tsx` — First-time setup modal
+- [x] `src/components/ProfileBadge.tsx` — Header display of current user
+- [x] Vite configured with Node polyfills for @originals/sdk browser compatibility
+- [x] IdentityProvider wired into main.tsx (inside ConvexProvider)
+- [x] App.tsx shows IdentitySetup when no identity exists
 
-Create `src/lib/identity.ts`:
-```typescript
-interface StoredIdentity {
-  did: string;           // did:peer:...
-  displayName: string;
-  privateKey: string;    // For signing
-  publicKey: string;
-  createdAt: string;
-}
-```
-Functions needed:
-- `getIdentity(): StoredIdentity | null` — Load from localStorage
-- `saveIdentity(identity: StoredIdentity): void` — Save to localStorage
-- `clearIdentity(): void` — Remove from localStorage
+### Phase 3: List Management [IN PROGRESS]
 
-Storage key: `"lisa-identity"`
+#### 3.1 Build Home Page
 
-[NOTE] `src/lib/originals.ts` already has `createIdentity()` which returns `{ did, privateKey, publicKey, didDocument }`. The storage utility wraps this with display name and localStorage persistence.
+Create `src/pages/Home.tsx`:
+  - "Welcome to Lisa" heading
+  - Brief description: "Enter your name to get started"
+  - Text input for display name (required, trim whitespace)
+  - "Get Started" submit button
+- On submit: call `createAndSaveIdentity(displayName)` from `useIdentity()`
+- Show loading spinner on button during creation
+- Disable input and button while creating
 
-#### 2.2 Create Identity Context/Hook
-
-Create `src/hooks/useIdentity.tsx`:
-- React Context providing `{ did, displayName, privateKey, publicKey, isLoading }`
-- On mount: check localStorage for existing identity
-- Export `IdentityProvider` component to wrap app
-- Export `useIdentity()` hook for consuming context
-
-[CRITICAL] The `privateKey` must be accessible for signing item actions.
-
-#### 2.3 Build IdentitySetup Component
-
-Create `src/components/IdentitySetup.tsx`:
-- Modal that appears when no identity exists
-- Single text input for display name
-- On submit:
-  1. Call `createIdentity()` from `originals.ts`
-  2. Combine with display name, save via identity utility
-  3. Call `registerUser` Convex mutation
-  4. Update context state
-- Cannot be dismissed without completing setup
-
-#### 2.4 Build ProfileBadge Component
+#### 2.5 Build ProfileBadge Component
 
 Create `src/components/ProfileBadge.tsx`:
-- Small component showing current user's display name
-- Placed in the app header
-- Reads from identity context via `useIdentity()`
+- Simple inline component: "Lisa • {displayName}"
+- Reads `displayName` from `useIdentity()`
+- Used in header to show current user
+
+#### 2.6 Update App.tsx with Identity Flow
+
+Update `src/App.tsx`:
+- Use `useIdentity()` hook
+- If `isLoading`: show centered loading spinner
+- If `!hasIdentity`: render `<IdentitySetup />` instead of main content
+- If `hasIdentity`: render normal app with `<ProfileBadge />` in header
+
+[NOTE] The Routes are placeholders. Phase 3 will replace them with actual page components.
 
 ### Phase 3: List Management [BLOCKED: Phase 2]
 
@@ -279,6 +268,8 @@ Create tests for:
 
 - [NOTE] **Convex account required** — `npx convex dev` requires authentication. Create account at https://dashboard.convex.dev if needed.
 
+- [WARNING] **Run `npx convex dev` to generate types** — The `convex/_generated/api.ts` is currently a placeholder. Run `npx convex dev --once --configure=new` for first-time setup, then `npx convex dev` to generate proper TypeScript types and start the backend.
+
 ### Originals SDK
 
 - [WARNING] **Use the wrapper, not SDK directly** — `src/lib/originals.ts` abstracts SDK differences. The SDK API doesn't match the spec naming:
@@ -328,11 +319,13 @@ Create tests for:
 
 ## Recently Completed
 
+- **Phase 2 Complete** — Full identity system with DID generation, localStorage persistence, and UI
+  - `src/lib/identity.ts` — localStorage persistence
+  - `src/hooks/useIdentity.tsx` — React context and hook
+  - `src/components/IdentitySetup.tsx` — First-time setup modal
+  - `src/components/ProfileBadge.tsx` — Header profile display
+  - Vite Node polyfills configured for @originals/sdk browser compatibility
 - **Phase 1 Complete** — Project setup with TailwindCSS v4, React Router v7, Convex Provider
 - Specs written (overview, architecture, features, constraints)
-- Implementation plan created
-- Vite + React + TypeScript project initialized
 - Convex backend fully implemented
-- Originals SDK wrapper fixed (removed unused imports, added required `defaultKeyType`)
-- Folder structure created (components, hooks, pages, lib directories)
-- ESLint configured to ignore generated Convex files
+- Originals SDK wrapper fixed
