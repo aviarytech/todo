@@ -15,10 +15,76 @@ All 6 major phases complete. v2 feature development done. Optional quality impro
 ## Working Context (For Ralph)
 
 ### Current Task
-No active task — Phase 7.2 complete
+Phase 7.3 — Hook Memory Leak Fixes
 
 ### Overview
-Phase 7.2 Replace window.confirm() is complete. All 3 window.confirm() calls replaced with accessible ConfirmDialog modals.
+Fix potential memory leaks and race conditions in three hooks: `useToast`, `useOffline`, and `useAuth`.
+
+### Files to Read First
+- `src/hooks/useToast.tsx` — setTimeout not cleared when toast removed early (lines 70-81)
+- `src/hooks/useOffline.tsx` — polling can cause setState after unmount (lines 91-106)
+- `src/hooks/useAuth.tsx` — session restoration can cause setState after unmount (lines 236-285)
+
+### Files to Modify
+- `src/hooks/useToast.tsx` — store timeout IDs and clear on early removal
+- `src/hooks/useOffline.tsx` — add mounted flag to prevent setState after unmount
+- `src/hooks/useAuth.tsx` — add cleanup/abort mechanism for async restoration
+
+### Acceptance Criteria
+- [ ] `useToast`: Store timeout IDs in a Map keyed by toast ID; clear timeout in `removeToast` before removing
+- [ ] `useOffline`: Add `isMounted` ref; check before `setPendingCount` in async `updateCount` functions
+- [ ] `useAuth`: Add `isMounted` ref; check before all `setState` calls in `restoreSession` async function
+- [ ] Build passes (`npm run build`)
+- [ ] Lint passes (`npm run lint`)
+
+### Key Context
+**useToast (lines 70-81):**
+```tsx
+// CURRENT (leaky): setTimeout created but never stored
+setTimeout(() => {
+  removeToast(id);
+}, TOAST_DURATION);
+
+// FIX: Store timeout ID, clear in removeToast
+const timeoutRefs = useRef<Map<string, number>>(new Map());
+// In addToast: timeoutRefs.current.set(id, setTimeout(...))
+// In removeToast: clearTimeout(timeoutRefs.current.get(id)); timeoutRefs.current.delete(id)
+```
+
+**useOffline (lines 91-106):**
+```tsx
+// CURRENT (race condition): setState may run after unmount
+const updateCount = async () => {
+  const mutations = await getQueuedMutations();
+  setPendingCount(mutations.length); // ← Can run after unmount
+};
+
+// FIX: Add mounted ref, check before setState
+const isMounted = useRef(true);
+useEffect(() => { return () => { isMounted.current = false; }; }, []);
+// In updateCount: if (isMounted.current) setPendingCount(...)
+```
+
+**useAuth (lines 236-285):**
+```tsx
+// CURRENT (race condition): restoreSession runs async, may setState after unmount
+const restoreSession = async () => {
+  // ... async work ...
+  setUser(parsed.user);  // ← Can run after unmount
+  setIsLoading(false);   // ← Can run after unmount
+};
+
+// FIX: Add mounted ref, check before all setState calls
+const isMounted = useRef(true);
+useEffect(() => { return () => { isMounted.current = false; }; }, []);
+// Before each setState: if (!isMounted.current) return;
+```
+
+### Definition of Done
+When complete, Ralph should:
+1. All acceptance criteria checked
+2. Commit with message: `fix: prevent memory leaks in hooks (Phase 7.3)`
+3. Update this section with completion status
 
 ---
 
@@ -44,7 +110,7 @@ These were discovered during comprehensive code review. All are optional improve
 - ✅ ConfirmDialog supports loading state and danger/primary variants
 - ✅ Build and lint pass
 
-#### 7.3 Hook Memory Leak Fixes (MEDIUM)
+#### 7.3 [IN PROGRESS] Hook Memory Leak Fixes (MEDIUM)
 **Problem:** Several hooks have potential memory leaks or race conditions
 
 **useToast.tsx (line 70-81):** setTimeout not cleared when toast removed early
