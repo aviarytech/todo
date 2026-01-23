@@ -47,7 +47,14 @@ Technical debt cleanup is complete. See Phase 7: Minor Gaps for optional improve
 
 ### Phase 7: Minor Gaps (Optional)
 
-- Auth: Use AuthGuard component instead of inline check in App.tsx
+#### 7.1 [COMPLETED] Use AuthGuard component in App.tsx
+- ✅ Refactored App.tsx to use AuthGuard for protected routes
+- ✅ Created `AuthenticatedLayout` component for header/main layout
+- ✅ Created `ProtectedRoute` wrapper combining AuthGuard with layout
+- ✅ Public routes (/login, /join, /public) remain accessible without auth
+- ✅ Build and lint pass
+
+#### Remaining Optional Items
 - Publication: VerifyButton component for per-item credential verification
 - Publication: RequestAccessButton for "Join this list" flow
 - Publication: Rate limiting on public list queries
@@ -326,6 +333,7 @@ Technical debt cleanup is complete. See Phase 7: Minor Gaps for optional improve
 
 ## Recently Completed
 
+- ✓ Phase 7.1: Use AuthGuard component in App.tsx — Refactored to use AuthGuard for protected routes; created AuthenticatedLayout and ProtectedRoute wrappers; public routes remain accessible; build and lint pass
 - ✓ Phase 6.3: Protect "Uncategorized" category name — Added validation to `createCategory` and `renameCategory` in `convex/categories.ts`; rejects "Uncategorized" (case-insensitive); build and lint pass
 - ✓ Phase 6.2: Remove collaboratorDid field — Removed field and index from schema; removed all fallback code from backend and frontend; deleted CollaboratorBadge.tsx; build and lint pass
 - ✓ Phase 6.1: Remove deprecated identity files — Deleted useIdentity.tsx, IdentitySetup.tsx, MigrationPrompt.tsx, identity.ts, migration.ts; build and lint pass
