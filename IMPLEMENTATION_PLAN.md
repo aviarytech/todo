@@ -4,44 +4,61 @@
 
 A real-time shared todo/grocery list for couples, built with React + Convex + Originals SDK.
 
-**Current Status:** Phases 1-5 COMPLETE, Phase 6.1-6.3 COMPLETE. Ready for Phase 6.4-6.5 (Deploy).
+**Current Status:** Phases 1-6.4 COMPLETE. Ready for Phase 6.5 (Production Readiness).
 
 ---
 
 ## Working Context (For Ralph)
 
 ### Current Task
-Phase 6.4: Configure Railway Deployment
+Phase 6.5: Production Readiness Checklist
 
 ### Status
-✅ Phase 6.1-6.3 committed (commit 1ab8e42)
-- ErrorBoundary component added
-- Responsive design improvements (44x44px touch targets)
-- Playwright E2E tests added
+✅ Phase 6.4 completed — Railway configuration created
 
-### Next Steps
-1. Configure Railway deployment
-2. Production readiness checklist (Phase 6.5)
+### What Was Done in Phase 6.4
+- Created `railway.toml` with:
+  - Build command: `bun install && bun run build`
+  - Start command: `npx serve dist -s -l $PORT`
+  - Health check configuration
+  - Restart policy
+- Created `.env.example` documenting required environment variables
 
-### Key Context
-- **No remote configured** — Need to add git remote before Railway deployment
-- **E2E tests require Convex backend** — Run `npx convex dev` before `bun run test:e2e`
+### Manual Steps Remaining (For User)
+Before the app is live in production, the user needs to:
+
+1. **Create GitHub repo and push code**
+   ```bash
+   git remote add origin git@github.com:username/lisa.git
+   git push -u origin main
+   ```
+
+2. **Deploy Convex to production**
+   ```bash
+   npx convex deploy
+   ```
+   This outputs the production URL (e.g., `https://xxx.convex.cloud`)
+
+3. **Create Railway project**
+   - Go to https://railway.app
+   - Create new project → "Deploy from GitHub repo"
+   - Select the `lisa` repository
+
+4. **Set environment variables in Railway**
+   - Navigate to Settings → Variables
+   - Add: `VITE_CONVEX_URL=https://xxx.convex.cloud`
+
+5. **Deploy and verify**
+   - Railway will auto-build and deploy
+   - Test the production URL
 
 ---
 
 ## Next Up (Priority Order)
 
-### [IN PROGRESS] Phase 6.4: Configure Railway Deployment
+### [IN PROGRESS] Phase 6.5 Production Readiness Checklist
 
-1. Create Railway project
-2. Connect to Git repo
-3. Set environment variables:
-   - `VITE_CONVEX_URL` — Convex deployment URL
-4. Configure build command: `bun run build`
-5. Configure start: serve `dist/` directory
-6. Enable auto-deploy on `main` branch
-
-### Phase 6.5 Production Readiness Checklist
+After deployment, verify:
 
 - [ ] HTTPS enforced (Railway default)
 - [ ] Run Lighthouse audit, target 90+ performance
@@ -99,6 +116,10 @@ Phase 6.4: Configure Railway Deployment
 
 ## Recently Completed
 
+- **Phase 6.4 Completed** — Railway deployment configuration
+  - Created `railway.toml` for Nixpacks build and static file serving
+  - Created `.env.example` for environment variable documentation
+  - Manual steps documented for user: GitHub push, Convex deploy, Railway setup
 - **Phase 6.1-6.3 Committed** — Commit 1ab8e42
   - ErrorBoundary component for graceful error handling
   - Responsive design with 44x44px minimum touch targets
@@ -119,6 +140,13 @@ Phase 6.4: Configure Railway Deployment
 
 ## Backlog (Post-MVP)
 
+### Technical Debt (Lower Priority)
+- [TECH-DEBT] Add scalability limits to backend (max 500 items/list, max 50 lists/user per constraints.md)
+- [TECH-DEBT] Improve `verifyItemAction()` error handling (currently best-effort, silently fails)
+- [TECH-DEBT] Batch `getUsersByDids` optimization (currently potential N+1 in ItemAttribution)
+- [TECH-DEBT] Add performance monitoring (verify < 3s initial load, < 1s item sync)
+
+### Future Features
 - Bitcoin inscription for lists (did:btco layer)
 - Multiple lists with categories
 - Due dates and reminders
@@ -127,6 +155,4 @@ Phase 6.4: Configure Railway Deployment
 - Secure key storage (Web Crypto API)
 - Push notifications
 - Native mobile apps
-- Improve `verifyItemAction()` error handling (currently best-effort, silently fails)
-- Batch `getUsersByDids` optimization (currently potential N+1 in ItemAttribution)
 - did:webvh publication for lists
