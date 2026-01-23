@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 6.1 — Technical debt cleanup
+**Current Status:** Phase 6.2 — Technical debt cleanup
 
 All 5 major phases complete. Now cleaning up technical debt.
 
@@ -15,43 +15,40 @@ All 5 major phases complete. Now cleaning up technical debt.
 ## Working Context (For Ralph)
 
 ### Current Task
-Phase 6.1: Remove deprecated localStorage identity files
+Phase 6.2: Remove collaboratorDid field from lists table
 
 ### Overview
-Now that Turnkey authentication is fully implemented and working (Phases 1.1-1.8 complete), the legacy localStorage-based identity system can be removed. These files are marked `@deprecated` and only kept for reference during transition.
+The `collaboratorDid` field in the lists table is legacy from the original single-collaborator design. Phase 3 migrated to a proper `collaborators` junction table. The field should be removed.
 
-### Files to Delete
-All these files contain deprecation notices and are no longer used:
+### Pre-requisites
+- ✅ Migration script `convex/migrations/migrateCollaborators.ts` has been created (Phase 3.2)
+- ⚠️ Verify migration has been run for production data before deploying schema change
 
-1. **`src/hooks/useIdentity.tsx`** — Legacy identity hook, replaced by `useAuth`
-2. **`src/components/IdentitySetup.tsx`** — Legacy identity creation UI
-3. **`src/components/auth/MigrationPrompt.tsx`** — One-time migration UI (migration complete)
-4. **`src/lib/identity.ts`** — Legacy identity utilities
-5. **`src/lib/migration.ts`** — Migration utilities for MigrationPrompt
+### Files to Modify
+1. **`convex/schema.ts`** — Remove `collaboratorDid` field from lists table (around line 57)
+2. **Any code referencing `collaboratorDid`** — Search and remove/update
 
 ### Verification Steps
-Before deleting, verify no active imports exist:
 ```bash
-# Check for any imports of these files (should return nothing or only deprecated files)
-grep -r "useIdentity" src/ --include="*.tsx" --include="*.ts" | grep -v "deprecated"
-grep -r "IdentitySetup" src/ --include="*.tsx" --include="*.ts" | grep -v "deprecated"
-grep -r "MigrationPrompt" src/ --include="*.tsx" --include="*.ts" | grep -v "deprecated"
-grep -r "from.*identity" src/ --include="*.tsx" --include="*.ts" | grep -v "deprecated"
-grep -r "from.*migration" src/ --include="*.tsx" --include="*.ts" | grep -v "deprecated"
+# Check for references to collaboratorDid
+grep -r "collaboratorDid" convex/ --include="*.ts"
+grep -r "collaboratorDid" src/ --include="*.ts" --include="*.tsx"
 ```
 
 ### Acceptance Criteria
-- [ ] All 5 files listed above are deleted
-- [ ] No build errors (`bun run build`)
-- [ ] No lint errors (`bun run lint`)
-- [ ] App runs and authentication still works
+- [ ] `collaboratorDid` field removed from `convex/schema.ts`
+- [ ] No remaining references to `collaboratorDid` in codebase
+- [ ] `npx convex dev` runs without error (schema compiles)
+- [ ] `bun run build` passes
+- [ ] `bun run lint` passes
 
 ### Definition of Done
-When complete, Ralph should:
-1. Verify no active imports exist (run grep commands above)
-2. Delete the 5 files
-3. Run build and lint to verify nothing broke
-4. Commit with message: `chore: remove deprecated localStorage identity files (Phase 6.1)`
+1. Search for all `collaboratorDid` references
+2. Remove the field from schema
+3. Remove any code references
+4. Verify Convex schema compiles
+5. Run build and lint
+6. Commit with message: `chore: remove legacy collaboratorDid field from lists table (Phase 6.2)`
 
 ---
 
@@ -59,15 +56,14 @@ When complete, Ralph should:
 
 ### Phase 6: Technical Debt Cleanup
 
-#### 6.1 [IN PROGRESS] Remove deprecated identity files
+#### 6.1 [COMPLETED] Remove deprecated identity files
+- ✅ Deleted `src/hooks/useIdentity.tsx`, `src/components/IdentitySetup.tsx`, `src/components/auth/MigrationPrompt.tsx`, `src/lib/identity.ts`, `src/lib/migration.ts`
+- ✅ Verified no active imports existed (only cross-references between deprecated files)
+- ✅ Build and lint pass
+
+#### 6.2 [IN PROGRESS] Remove collaboratorDid field from lists table
 See Working Context above.
 
-#### 6.2 Remove collaboratorDid field from lists table
-- The `collaboratorDid` field in lists table is legacy (Phase 3 migrated to collaborators table)
-- Before removing: verify migration script has been run for production data
-- Remove field from `convex/schema.ts` line ~57
-- Remove any remaining references in code
-- Run `npx convex dev` to verify schema compiles
 
 #### 6.3 Protect "Uncategorized" category name
 - `convex/categories.ts` should reject creating a category named "Uncategorized"
@@ -358,6 +354,7 @@ See Working Context above.
 
 ## Recently Completed
 
+- ✓ Phase 6.1: Remove deprecated identity files — Deleted useIdentity.tsx, IdentitySetup.tsx, MigrationPrompt.tsx, identity.ts, migration.ts; build and lint pass
 - ✓ Phase 1.8: Resend OTP — Added `handleResendOtp` in Login.tsx and passed to OtpInput; 60-second cooldown UI; build and lint pass
 - ✓ Phase 5.9: Offline Operation Restrictions — Delete and Publish buttons disabled when offline in `ListView.tsx`; `useOffline` hook provides `isOnline` state; build and lint pass
 - ✓ Phase 5.8: Conflict Resolution — `updatedAt` field on items table; `getItemForSync` query; `checkForConflict` in SyncManager; toast notification system (`useToast`, `ToastContainer`, `src/lib/toast.ts`); build and lint pass
