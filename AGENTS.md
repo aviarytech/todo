@@ -1,19 +1,26 @@
 ## Build & Run
 
-Succinct rules for how to BUILD the project:
+```bash
+bun install        # Install dependencies
+bun run dev        # Start Vite dev server
+bun run build      # TypeScript compile + Vite build
+npx convex dev     # Start Convex backend (required in separate terminal)
+```
 
 ## Validation
 
-Run these after implementing to get immediate feedback:
-
-- Tests: `[test command]`
-- Typecheck: `[typecheck command]`
-- Lint: `[lint command]`
+```bash
+bun run build      # TypeScript type check + build
+bun run lint       # ESLint
+```
 
 ## Operational Notes
 
-- No git remote configured — `git push` will fail until `git remote add origin <url>` is run
+- TailwindCSS v4 uses `@tailwindcss/vite` plugin (no `tailwind.config.js` needed)
+- Convex generated files in `convex/_generated/` are ignored by ESLint
+- `.env.local` must contain `VITE_CONVEX_URL` for Convex to work
 
 ### Codebase Patterns
 
-...
+- Use `src/lib/originals.ts` wrapper for all Originals SDK operations
+- Convex mutations require timestamps passed from client (`createdAt: Date.now()`)

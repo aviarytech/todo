@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Loop Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Berkeley+Mono:wght@400;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0a0c;
+      --bg-panel: #111115;
+      --bg-card: #18181c;
+      --border: #2a2a32;
+      --text: #e8e8ed;
+      --text-dim: #6b6b78;
+      --lisa: #f0abfc;
+      --lisa-bg: rgba(240, 171, 252, 0.08);
+      --ralph: #fbbf24;
+      --ralph-bg: rgba(251, 191, 36, 0.08);
+      --system: #60a5fa;
+      --success: #4ade80;
+      --error: #f87171;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Instrument Sans', -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-panel);
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--lisa), var(--ralph));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--error);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    .status-dot.connected {
+      background: var(--success);
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .controls {
+      display: flex;
+      gap: 8px;
+    }
+    
+    button {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    button:hover {
+      background: var(--border);
+    }
+    
+    main {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+    }
+    
+    .output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      font-family: 'Berkeley Mono', 'SF Mono', 'Menlo', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      scroll-behavior: smooth;
+    }
+    
+    .output::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .output::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .output::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+    
+    .line {
+      padding: 4px 12px;
+      margin: 2px 0;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    
+    .line.lisa {
+      background: var(--lisa-bg);
+      border-left: 3px solid var(--lisa);
+    }
+    
+    .line.ralph {
+      background: var(--ralph-bg);
+      border-left: 3px solid var(--ralph);
+    }
+    
+    .line.system {
+      color: var(--text-dim);
+      font-style: italic;
+    }
+    
+    .line.separator {
+      text-align: center;
+      color: var(--text-dim);
+      margin: 16px 0;
+      border: none;
+      background: none;
+    }
+    
+    .prefix {
+      font-weight: 600;
+      margin-right: 8px;
+    }
+    
+    .prefix.lisa { color: var(--lisa); }
+    .prefix.ralph { color: var(--ralph); }
+    
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-dim);
+      text-align: center;
+      gap: 16px;
+    }
+    
+    .empty-state-icon {
+      font-size: 48px;
+      opacity: 0.5;
+    }
+    
+    .empty-state p {
+      max-width: 300px;
+      line-height: 1.6;
+    }
+    
+    code {
+      background: var(--bg-card);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Berkeley Mono', monospace;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 24px;
+      padding: 12px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-panel);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .stat-value {
+      color: var(--text);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">🎬</div>
+        <h1>Agent Loop Viewer</h1>
+      </div>
+      <div class="status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Connecting...</span>
+      </div>
+      <div class="controls">
+        <button onclick="toggleAutoScroll()" id="scrollBtn">Auto-scroll: ON</button>
+        <button onclick="clearOutput()">Clear</button>
+      </div>
+    </header>
+    
+    <main>
+      <div class="output" id="output">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-state-icon">📺</div>
+          <p>Waiting for agent output...</p>
+          <p>Run <code>./loop.sh</code> to start the agents.</p>
+        </div>
+      </div>
+    </main>
+    
+    <div class="stats">
+      <div class="stat">
+        <span>Lines:</span>
+        <span class="stat-value" id="lineCount">0</span>
+      </div>
+      <div class="stat">
+        <span>Lisa messages:</span>
+        <span class="stat-value" id="lisaCount">0</span>
+      </div>
+      <div class="stat">
+        <span>Ralph messages:</span>
+        <span class="stat-value" id="ralphCount">0</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const output = document.getElementById('output');
+    const emptyState = document.getElementById('emptyState');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const scrollBtn = document.getElementById('scrollBtn');
+    
+    let autoScroll = true;
+    let lineCount = 0;
+    let lisaCount = 0;
+    let ralphCount = 0;
+    
+    function toggleAutoScroll() {
+      autoScroll = !autoScroll;
+      scrollBtn.textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+    }
+    
+    function updateStats() {
+      document.getElementById('lineCount').textContent = lineCount;
+      document.getElementById('lisaCount').textContent = lisaCount;
+      document.getElementById('ralphCount').textContent = ralphCount;
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Parse a JSONL line and return display elements
+    function parseLine(text) {
+      if (!text.trim()) return null;
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        return null; // Skip invalid JSON
+      }
+      
+      const agent = data.agent || 'system';
+      const agentLower = agent.toLowerCase();
+      
+      // Track agent counts
+      if (agent === 'LISA') lisaCount++;
+      else if (agent === 'RALPH') ralphCount++;
+      
+      // System log messages (banners, status)
+      if (data.type === 'log') {
+        const msg = data.message || '';
+        if (!msg) return null;
+        
+        const div = document.createElement('div');
+        div.className = 'line system';
+        if (msg.includes('━━━') || msg.includes('═══')) {
+          div.classList.add('separator');
+        }
+        div.innerHTML = escapeHtml(msg);
+        lineCount++;
+        return div;
+      }
+      
+      // Assistant messages with text or tool_use
+      if (data.type === 'assistant' && data.message?.content) {
+        const fragment = document.createDocumentFragment();
+        
+        for (const item of data.message.content) {
+          if (item.type === 'text' && item.text) {
+            // Show text content, split by lines
+            for (const line of item.text.split('\n')) {
+              if (line.trim()) {
+                const div = document.createElement('div');
+                div.className = `line ${agentLower}`;
+                div.innerHTML = `<span class="prefix ${agentLower}">[${agent}]</span> ${escapeHtml(line)}`;
+                fragment.appendChild(div);
+                lineCount++;
+              }
+            }
+          } else if (item.type === 'tool_use' && item.name) {
+            const div = document.createElement('div');
+            div.className = `line ${agentLower}`;
+            const detail = item.input?.file_path || item.input?.command || item.input?.pattern || item.input?.description || '';
+            div.innerHTML = `<span class="prefix ${agentLower}">[${agent}]</span> 🔧 <strong>${escapeHtml(item.name)}</strong> <span style="color:var(--text-dim)">${escapeHtml(String(detail).slice(0,100))}</span>`;
+            fragment.appendChild(div);
+            lineCount++;
+          }
+        }
+        
+        return fragment.childNodes.length > 0 ? fragment : null;
+      }
+      
+      // Tool results - show file paths or short output
+      if (data.type === 'user') {
+        const result = data.tool_use_result;
+        if (result?.filePath) {
+          const div = document.createElement('div');
+          div.className = `line ${agentLower}`;
+          div.innerHTML = `<span class="prefix ${agentLower}">[${agent}]</span> ✅ ${escapeHtml(result.filePath)}`;
+          lineCount++;
+          return div;
+        }
+        // Skip verbose tool results
+        return null;
+      }
+      
+      // Skip everything else (system init, streaming metadata, etc)
+      return null;
+    }
+    
+    function appendContent(content) {
+      if (emptyState.parentNode) {
+        emptyState.remove();
+      }
+      
+      const lines = content.split('\n');
+      const fragment = document.createDocumentFragment();
+      
+      for (const line of lines) {
+        if (line.trim() || lines.length === 1) {
+          const parsed = parseLine(line);
+          if (parsed) {
+            fragment.appendChild(parsed);
+          }
+        }
+      }
+      
+      output.appendChild(fragment);
+      updateStats();
+      
+      if (autoScroll) {
+        output.scrollTop = output.scrollHeight;
+      }
+    }
+    
+    async function clearOutput() {
+      await fetch('/clear');
+      output.innerHTML = '';
+      output.appendChild(emptyState);
+      lineCount = 0;
+      lisaCount = 0;
+      ralphCount = 0;
+      updateStats();
+    }
+    
+    function connect() {
+      const evtSource = new EventSource('/stream');
+      
+      evtSource.onopen = () => {
+        statusDot.classList.add('connected');
+        statusText.textContent = 'Connected';
+      };
+      
+      evtSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.initial) {
+          // Initial load - clear and add all content
+          output.innerHTML = '';
+          lineCount = 0;
+          lisaCount = 0;
+          ralphCount = 0;
+        }
+        if (data.content) {
+          appendContent(data.content);
+        }
+      };
+      
+      evtSource.onerror = () => {
+        statusDot.classList.remove('connected');
+        statusText.textContent = 'Disconnected - retrying...';
+        evtSource.close();
+        setTimeout(connect, 2000);
+      };
+    }
+    
+    connect();
+  </script>
+</body>
+</html>

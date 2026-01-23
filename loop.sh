@@ -18,6 +18,48 @@ set -e
 
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
 
+# Set up logging for web viewer
+LOG_DIR="$(dirname "$0")/.logs"
+LOG_FILE="$LOG_DIR/agent.log"
+mkdir -p "$LOG_DIR"
+
+# Output a JSON log line (for JSONL format)
+log_json() {
+    local type="$1"
+    local agent="$2"
+    local message="$3"
+    # Escape special chars for JSON using perl
+    local escaped=$(printf '%s' "$message" | perl -pe 's/\\/\\\\/g; s/"/\\"/g; s/\n/\\n/g; s/\r/\\r/g; s/\t/\\t/g')
+    local json="{\"type\":\"$type\",\"agent\":\"$agent\",\"message\":\"$escaped\",\"ts\":$(date +%s)}"
+    echo "$json" >> "$LOG_FILE"
+    # Also echo readable version to terminal
+    echo "$message"
+}
+
+# Echo to terminal and log as JSON
+log_echo() {
+    log_json "log" "system" "$*"
+}
+
+# Wrap Claude's JSON output with agent field and append to log
+log_claude() {
+    local agent="$1"
+    local logfile="$LOG_FILE"
+    perl -e '
+        $|=1;  # unbuffered
+        my $agent = shift;
+        my $logfile = shift;
+        open(my $log, ">>", $logfile) or die "Cannot open $logfile: $!";
+        select($log); $|=1; select(STDOUT);  # unbuffer log file too
+        while (<STDIN>) {
+            s/^\{/{"agent":"$agent",/;
+            print $log $_;
+            print "[$agent] $_";
+        }
+        close($log);
+    ' "$agent" "$logfile"
+}
+
 # Check if project needs initialization
 needs_init() {
     # Check if IMPLEMENTATION_PLAN.md is missing or contains "NOT INITIALIZED"
@@ -75,7 +117,7 @@ run_agent() {
     local LOG_PREFIX=$4
     local ITERATION=0
 
-    echo "[$LOG_PREFIX] Starting $AGENT_NAME agent..."
+    log_echo "[$LOG_PREFIX] Starting $AGENT_NAME agent..."
     
     # Verify prompt file exists
     if [ ! -f "$PROMPT_FILE" ]; then
@@ -85,19 +127,21 @@ run_agent() {
 
     while true; do
         if [ $MAX_ITERATIONS -gt 0 ] && [ $ITERATION -ge $MAX_ITERATIONS ]; then
-            echo "[$LOG_PREFIX] Reached max iterations: $MAX_ITERATIONS"
+            log_echo "[$LOG_PREFIX] Reached max iterations: $MAX_ITERATIONS"
             break
         fi
 
         ITERATION=$((ITERATION + 1))
-        echo -e "\n[$LOG_PREFIX] ═══════════════ LOOP $ITERATION ═══════════════\n"
+        log_echo ""
+        log_echo "[$LOG_PREFIX] ═══════════════ LOOP $ITERATION ═══════════════"
+        log_echo ""
 
         # Run agent iteration
         cat "$PROMPT_FILE" | claude -p \
             --dangerously-skip-permissions \
             --output-format=stream-json \
             --model opus \
-            --verbose 2>&1 | sed "s/^/[$LOG_PREFIX] /"
+            --verbose 2>&1 | log_claude "$LOG_PREFIX"
 
         # Push changes after each iteration
         git push origin "$CURRENT_BRANCH" 2>/dev/null || {
@@ -107,7 +151,7 @@ run_agent() {
 
         # Lisa runs less frequently — pause between planning passes
         if [ "$AGENT_NAME" = "Lisa" ]; then
-            echo "[$LOG_PREFIX] Sleeping 60s before next planning pass..."
+            log_echo "[$LOG_PREFIX] Sleeping 60s before next planning pass..."
             sleep 60
         fi
     done
@@ -123,13 +167,17 @@ if [[ "$1" =~ ^[0-9]+$ ]]; then
     MAX_ITERATIONS=$1
 fi
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  🎬 The Simpsons Agentic Loop"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Mode:   $MODE"
-echo "  Branch: $CURRENT_BRANCH"
-[ $MAX_ITERATIONS -gt 0 ] && echo "  Max:    $MAX_ITERATIONS iterations"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+# Clear log file on new run
+> "$LOG_FILE"
+
+log_echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_echo "  🎬 The Simpsons Agentic Loop"
+log_echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_echo "  Mode:   $MODE"
+log_echo "  Branch: $CURRENT_BRANCH"
+[ $MAX_ITERATIONS -gt 0 ] && log_echo "  Max:    $MAX_ITERATIONS iterations"
+log_echo "  Viewer: http://localhost:3333"
+log_echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 case "$MODE" in
     ralph|build)
@@ -143,7 +191,7 @@ case "$MODE" in
             echo ""
             exit 1
         fi
-        echo "🔨 Ralph: \"Me fail English? That's unpossible!\""
+        log_echo "🔨 Ralph: \"Me fail English? That's unpossible!\""
         run_agent "Ralph" "PROMPT_build.md" "$MAX_ITERATIONS" "RALPH"
         ;;
     lisa|plan)
@@ -152,7 +200,7 @@ case "$MODE" in
             echo "📚 Lisa: \"I see this is a new project. Let's set it up!\""
             run_lisa_interactive
         else
-            echo "📚 Lisa: \"A well-organized plan is the foundation of success.\""
+            log_echo "📚 Lisa: \"A well-organized plan is the foundation of success.\""
             run_agent "Lisa" "PROMPT_plan.md" "$MAX_ITERATIONS" "LISA"
         fi
         ;;
@@ -167,32 +215,32 @@ case "$MODE" in
             exit 1
         fi
         
-        echo "📚 Lisa: \"First, we need a plan.\""
-        echo "🔨 Ralph: \"I'm helping!\""
-        echo ""
+        log_echo "📚 Lisa: \"First, we need a plan.\""
+        log_echo "🔨 Ralph: \"I'm helping!\""
+        log_echo ""
         
         # Trap to kill both processes on exit
-        trap 'echo -e "\n\nShutting down agents..."; kill $(jobs -p) 2>/dev/null; exit' INT TERM
+        trap 'log_echo ""; log_echo "Shutting down agents..."; kill $(jobs -p) 2>/dev/null; exit' INT TERM
         
         # PHASE 1: Lisa creates/updates the initial plan (synchronous)
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  Phase 1: Lisa creates the plan..."
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_echo "  Phase 1: Lisa creates the plan..."
+        log_echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         
         cat "PROMPT_plan.md" | claude -p \
             --dangerously-skip-permissions \
             --output-format=stream-json \
             --model opus \
-            --verbose 2>&1 | sed "s/^/[LISA] /"
+            --verbose 2>&1 | log_claude "LISA"
         
         git push origin "$CURRENT_BRANCH" 2>/dev/null || git push -u origin "$CURRENT_BRANCH" 2>/dev/null || true
         
         # PHASE 2: Both agents loop in parallel
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  Phase 2: Ralph builds while Lisa steers..."
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
+        log_echo ""
+        log_echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_echo "  Phase 2: Ralph builds while Lisa steers..."
+        log_echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_echo ""
         
         run_agent "Ralph" "PROMPT_build.md" "$MAX_ITERATIONS" "RALPH" &
         RALPH_PID=$!
@@ -200,9 +248,9 @@ case "$MODE" in
         run_agent "Lisa" "PROMPT_plan.md" "$MAX_ITERATIONS" "LISA" &
         LISA_PID=$!
         
-        echo "Ralph PID: $RALPH_PID"
-        echo "Lisa PID:  $LISA_PID"
-        echo ""
+        log_echo "Ralph PID: $RALPH_PID"
+        log_echo "Lisa PID:  $LISA_PID"
+        log_echo ""
         
         # Wait for both to complete
         wait $RALPH_PID $LISA_PID
