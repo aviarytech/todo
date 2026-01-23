@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 5.4 complete — Ready for Phase 5.5 (Optimistic Updates)
+**Current Status:** Phase 5.5 ready for implementation (Optimistic Updates)
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,7 +12,7 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[READY]** Phase 5.5: Optimistic Updates
+**[IN PROGRESS]** Phase 5.5: Optimistic Updates
 
 Continuing Phase 5: Offline Support. useOffline hook is complete (Phase 5.4). Now implement optimistic updates for item mutations so users see immediate feedback even when offline.
 
@@ -39,19 +39,19 @@ Create a hook and wrapper logic that enables optimistic UI updates for item muta
 
 ### Implementation Guidance
 
-The spec at `specs/features/offline.md` provides the pattern. Key architecture:
+The spec at `specs/features/offline.md` provides the pattern. Below is the complete hook architecture with all methods implemented:
 
 ```typescript
 // src/hooks/useOptimisticItems.tsx
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { useOffline } from "./useOffline";
 import { queueMutation } from "../lib/offline";
 
-interface OptimisticItem extends Doc<"items"> {
+export interface OptimisticItem extends Doc<"items"> {
   _isOptimistic?: boolean; // Flag for UI styling (e.g., dimmed)
 }
 
@@ -72,7 +72,6 @@ export function useOptimisticItems(listId: Id<"lists">) {
     legacyDid?: string;
     createdAt: number;
   }) => {
-    // Create temp ID and optimistic item
     const tempId = `temp-${Date.now()}` as Id<"items">;
     const optimistic: OptimisticItem = {
       _id: tempId,
@@ -90,16 +89,11 @@ export function useOptimisticItems(listId: Id<"lists">) {
     if (isOnline) {
       try {
         await addItemMutation({ listId, ...args });
-        // Server item will appear via useQuery, remove optimistic
-        // But we can't match by ID since server generates new ID
-        // Rely on server response and natural query update
       } catch (err) {
-        // Rollback on failure
         setOptimisticItems(prev => prev.filter(i => i._id !== tempId));
         throw err;
       }
     } else {
-      // Queue for later sync
       await queueMutation({
         type: "addItem",
         payload: { listId, ...args },
@@ -109,35 +103,112 @@ export function useOptimisticItems(listId: Id<"lists">) {
     }
   }, [isOnline, listId, addItemMutation]);
 
-  // Similar pattern for checkItem, uncheckItem
-  const checkItem = useCallback(async (itemId: Id<"items">, checkedByDid: string, legacyDid?: string) => {
-    // Update optimistically
-    setOptimisticItems(prev =>
-      prev.map(i => i._id === itemId ? { ...i, checked: true, checkedByDid, checkedAt: Date.now() } : i)
-    );
+  // Check item with optimistic update
+  const checkItem = useCallback(async (
+    itemId: Id<"items">,
+    checkedByDid: string,
+    legacyDid?: string
+  ) => {
+    const checkedAt = Date.now();
+
+    // Find original state for potential rollback
+    const originalItem = [...(serverItems ?? []), ...optimisticItems].find(i => i._id === itemId);
+
+    setOptimisticItems(prev => {
+      // If item exists in optimistic list, update it
+      const exists = prev.some(i => i._id === itemId);
+      if (exists) {
+        return prev.map(i => i._id === itemId
+          ? { ...i, checked: true, checkedByDid, checkedAt, _isOptimistic: true }
+          : i
+        );
+      }
+      // If not in optimistic list, add the server item with optimistic update
+      if (originalItem) {
+        return [...prev, { ...originalItem, checked: true, checkedByDid, checkedAt, _isOptimistic: true }];
+      }
+      return prev;
+    });
 
     if (isOnline) {
       try {
-        await checkItemMutation({ itemId, checkedByDid, legacyDid, checkedAt: Date.now() });
+        await checkItemMutation({ itemId, checkedByDid, legacyDid, checkedAt });
       } catch (err) {
         // Rollback
-        setOptimisticItems(prev =>
-          prev.map(i => i._id === itemId ? { ...i, checked: false, checkedByDid: undefined, checkedAt: undefined } : i)
-        );
+        setOptimisticItems(prev => prev.filter(i => i._id !== itemId));
         throw err;
       }
     } else {
       await queueMutation({
         type: "checkItem",
-        payload: { itemId, checkedByDid, legacyDid, checkedAt: Date.now() },
+        payload: { itemId, checkedByDid, legacyDid, checkedAt },
         timestamp: Date.now(),
         retryCount: 0,
       });
     }
-  }, [isOnline, checkItemMutation]);
+  }, [isOnline, checkItemMutation, serverItems, optimisticItems]);
+
+  // Uncheck item with optimistic update
+  const uncheckItem = useCallback(async (
+    itemId: Id<"items">,
+    userDid: string,
+    legacyDid?: string
+  ) => {
+    const originalItem = [...(serverItems ?? []), ...optimisticItems].find(i => i._id === itemId);
+
+    setOptimisticItems(prev => {
+      const exists = prev.some(i => i._id === itemId);
+      if (exists) {
+        return prev.map(i => i._id === itemId
+          ? { ...i, checked: false, checkedByDid: undefined, checkedAt: undefined, _isOptimistic: true }
+          : i
+        );
+      }
+      if (originalItem) {
+        return [...prev, { ...originalItem, checked: false, checkedByDid: undefined, checkedAt: undefined, _isOptimistic: true }];
+      }
+      return prev;
+    });
+
+    if (isOnline) {
+      try {
+        await uncheckItemMutation({ itemId, userDid, legacyDid });
+      } catch (err) {
+        setOptimisticItems(prev => prev.filter(i => i._id !== itemId));
+        throw err;
+      }
+    } else {
+      await queueMutation({
+        type: "uncheckItem",
+        payload: { itemId, userDid, legacyDid },
+        timestamp: Date.now(),
+        retryCount: 0,
+      });
+    }
+  }, [isOnline, uncheckItemMutation, serverItems, optimisticItems]);
+
+  // Reorder items with optimistic update (lower priority - can be simplified)
+  const reorderItems = useCallback(async (
+    itemIds: Id<"items">[],
+    userDid: string,
+    legacyDid?: string
+  ) => {
+    // For reorder, we don't need optimistic UI since drag-drop already shows the result
+    // Just queue if offline, execute if online
+    if (isOnline) {
+      await reorderItemsMutation({ listId, itemIds, userDid, legacyDid });
+    } else {
+      await queueMutation({
+        type: "reorderItem",
+        payload: { listId, itemIds, userDid, legacyDid },
+        timestamp: Date.now(),
+        retryCount: 0,
+      });
+    }
+  }, [isOnline, listId, reorderItemsMutation]);
 
   // Merge server items with optimistic items
-  const items = useMemo(() => {
+  const items = useMemo((): OptimisticItem[] => {
     if (!serverItems) return optimisticItems;
 
     const serverIds = new Set(serverItems.map(i => i._id));
@@ -150,7 +221,7 @@ export function useOptimisticItems(listId: Id<"lists">) {
 
     // Add optimistic items that don't exist on server yet (temp IDs)
     const newOptimistic = optimisticItems.filter(o =>
-      o._id.startsWith("temp-") || !serverIds.has(o._id)
+      (o._id as string).startsWith("temp-") || !serverIds.has(o._id)
     );
 
     return [...merged, ...newOptimistic];
@@ -160,14 +231,21 @@ export function useOptimisticItems(listId: Id<"lists">) {
   useEffect(() => {
     if (!serverItems) return;
 
-    // Remove optimistic items that now exist on server (by matching name+createdAt for new items)
     setOptimisticItems(prev => prev.filter(o => {
-      if (!o._id.startsWith("temp-")) return true; // Keep check/uncheck optimism
-      // For new items, check if server now has an item with same name from same user
+      // Keep check/uncheck optimistic updates until server confirms
+      if (!(o._id as string).startsWith("temp-")) {
+        // For existing items, clear optimistic state once server matches
+        const serverItem = serverItems.find(s => s._id === o._id);
+        if (serverItem && serverItem.checked === o.checked) {
+          return false; // Server caught up, remove optimistic
+        }
+        return true; // Keep until server confirms
+      }
+      // For new items, check if server now has matching item
       const existsOnServer = serverItems.some(s =>
         s.name === o.name &&
         s.createdByDid === o.createdByDid &&
-        Math.abs(s.createdAt - o.createdAt) < 5000 // Within 5s
+        Math.abs(s.createdAt - o.createdAt) < 5000
       );
       return !existsOnServer;
     }));
@@ -177,32 +255,83 @@ export function useOptimisticItems(listId: Id<"lists">) {
     items,
     addItem,
     checkItem,
-    uncheckItem: /* similar pattern */,
-    reorderItems: /* similar pattern */,
+    uncheckItem,
+    reorderItems,
     isLoading: serverItems === undefined,
   };
 }
 ```
 
+### Integration Pattern
+
+**1. ListView.tsx Changes:**
+Replace direct `useQuery` and `useMutation` calls with `useOptimisticItems`:
+
+```typescript
+// Before:
+const items = useQuery(api.items.getListItems, { listId });
+const reorderItems = useMutation(api.items.reorderItems);
+
+// After:
+const { items, addItem, checkItem, uncheckItem, reorderItems, isLoading } = useOptimisticItems(listId);
+```
+
+Pass the mutation functions to children, and use `isLoading` for loading state.
+
+**2. AddItemInput.tsx Changes:**
+Accept `onAddItem` callback prop instead of using `useMutation` directly:
+
+```typescript
+interface AddItemInputProps {
+  listId: Id<"lists">;
+  assetDid: string;
+  onAddItem: (args: { name: string; createdByDid: string; legacyDid?: string; createdAt: number }) => Promise<void>;
+}
+```
+
+**3. ListItem.tsx Changes:**
+Accept `onCheck` and `onUncheck` callbacks instead of using `useMutation` directly:
+
+```typescript
+interface ListItemProps {
+  // ... existing props ...
+  onCheck: (itemId: Id<"items">, checkedByDid: string, legacyDid?: string) => Promise<void>;
+  onUncheck: (itemId: Id<"items">, userDid: string, legacyDid?: string) => Promise<void>;
+}
+```
+
+**4. Visual Feedback for Optimistic Items:**
+Items with `_isOptimistic: true` should render slightly dimmed:
+
+```typescript
+<div className={`... ${item._isOptimistic ? "opacity-60" : ""}`}>
+```
+
 ### Acceptance Criteria
 - [ ] `src/hooks/useOptimisticItems.tsx` created with `useOptimisticItems` hook
-- [ ] Optimistic add: new items appear immediately with `_isOptimistic: true` flag
-- [ ] Optimistic check/uncheck: toggle state appears immediately
-- [ ] Offline queueing: mutations queued via `queueMutation` when `!isOnline`
-- [ ] Rollback on failure: optimistic state reverted if mutation throws
+- [ ] Hook exports `OptimisticItem` interface with `_isOptimistic?: boolean` flag
+- [ ] `addItem`: new items appear immediately with temp ID and `_isOptimistic: true`
+- [ ] `checkItem`: toggle state appears immediately with `_isOptimistic: true`
+- [ ] `uncheckItem`: toggle state appears immediately with `_isOptimistic: true`
+- [ ] `reorderItems`: queues mutation when offline (optimistic UI already handled by drag-drop)
+- [ ] Offline queueing: all mutations queued via `queueMutation` when `!isOnline`
+- [ ] Rollback on failure: optimistic state reverted if online mutation throws
 - [ ] Server merge: optimistic items cleaned up when server data arrives
-- [ ] `AddItemInput.tsx` updated to use `useOptimisticItems.addItem`
-- [ ] `ListItem.tsx` updated to use optimistic check/uncheck (passed from parent)
-- [ ] `ListView.tsx` uses `useOptimisticItems` for items and mutations
+- [ ] `AddItemInput.tsx` accepts `onAddItem` callback prop (passed from ListView)
+- [ ] `ListItem.tsx` accepts `onCheck`/`onUncheck` callbacks (passed from ListView)
+- [ ] `ListView.tsx` uses `useOptimisticItems` hook and passes callbacks to children
+- [ ] Visual feedback: items with `_isOptimistic: true` render with `opacity-60`
 - [ ] Build passes (`bun run build`)
 - [ ] Lint passes (`bun run lint`)
 
 ### Key Context
-- Temp IDs use `temp-${Date.now()}` pattern (cast as `Id<"items">`)
-- Items with `_isOptimistic: true` should appear slightly dimmed in UI (visual feedback)
-- Matching new items to server items is tricky — use name + createdByDid + timestamp proximity
-- The `reorderItems` mutation is lower priority — can be Phase 5.5b if complex
-- Keep credential signing (`signItemActionWithSigner`) in components for now — it's best-effort
+- **Temp IDs**: Use `temp-${Date.now()}` pattern cast as `Id<"items">` — TypeScript will complain but it works at runtime
+- **Visual feedback**: Items with `_isOptimistic: true` should have `opacity-60` class for dimmed appearance
+- **Matching new items**: Match by `name + createdByDid + timestamp proximity (within 5s)` — not by ID since server generates new ID
+- **Reorder simplification**: The drag-drop UI already shows the new order, so `reorderItems` just needs offline queueing, not optimistic state management
+- **Credential signing**: Keep `signItemActionWithSigner` calls in `AddItemInput` and `ListItem` — they're best-effort and don't need to move
+- **Type assertion**: Cast `o._id as string` before calling `.startsWith("temp-")` to satisfy TypeScript
+- **Callback pattern**: ListView owns `useOptimisticItems` hook and passes mutation callbacks down to children
 
 ### Definition of Done
 When complete, Ralph should:
