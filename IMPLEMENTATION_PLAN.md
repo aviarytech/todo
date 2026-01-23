@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 3 complete — Ready for Phase 4 (did:webvh Publication)
+**Current Status:** Phase 4 complete — Ready for Phase 5 (Offline Support)
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,50 +12,9 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[COMPLETED]** Phase 3: Unlimited Collaborators
+**[COMPLETED]** Phase 4: did:webvh Publication
 
-### Changes Made
-
-**Schema Updates:**
-- Added `collaborators` table with `listId`, `userDid`, `role`, `joinedAt`, `invitedByDid` fields
-- Added indices: `by_list`, `by_user`, `by_list_user`
-- Added `role` optional field to `invites` table (editor/viewer)
-- Kept `collaboratorDid` on lists for backwards compatibility during migration
-
-**Convex Functions:**
-- Created `convex/collaborators.ts` with:
-  - `getListCollaborators` — query collaborators with user info
-  - `getUserRole` — get user's role on a list (supports legacyDid)
-  - `getUserCollaborations` — get all lists user collaborates on
-  - `addCollaborator` — add user to list with role
-  - `updateCollaboratorRole` — owner can change roles
-  - `removeCollaborator` — owner can remove or user can leave
-  - `canUserEdit` — helper for authorization checks
-- Created `convex/migrations/migrateCollaborators.ts` — migration script for existing lists
-- Updated `convex/lists.ts`:
-  - `createList` now adds owner to collaborators table
-  - `getUserLists` queries from collaborators table with fallback
-  - `deleteList` now deletes collaborators entries
-  - `addCollaborator` updated for backwards compat (both tables)
-- Updated `convex/invites.ts`:
-  - `createInvite` accepts optional `role` parameter
-  - `validateInvite` returns role and checks if already collaborator
-  - `acceptInvite` adds to collaborators table with role
-- Updated `convex/items.ts`:
-  - All mutations use `canUserEditList` helper for authorization
-  - Supports `legacyDid` for migrated users
-
-**Frontend:**
-- Created `src/lib/permissions.ts` — role helper functions (canEdit, canManageCollaborators, canDeleteList, canInvite)
-- Created `src/hooks/useCollaborators.tsx` — hook for collaborator operations
-- Created `src/components/sharing/CollaboratorList.tsx` — shows collaborators with role management
-- Updated `src/components/ShareModal.tsx` — role selector (editor/viewer) for invites
-- Updated `src/components/ListItem.tsx` — respects canEdit prop, supports legacyDid
-- Updated `src/pages/ListView.tsx`:
-  - Uses `useCollaborators` hook for role-based authorization
-  - Collapsible collaborators panel
-  - Share button always visible for owners (unlimited collaborators)
-  - View-only notice for viewers
+All Phase 4 tasks have been completed. The system now supports publishing lists to did:webvh.
 
 ---
 
@@ -166,31 +125,31 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ---
 
-### Phase 4: did:webvh Publication
+### Phase 4: did:webvh Publication [COMPLETED]
 
-#### 4.1 Schema
-- Create `publications` table
-- Add indices for lookup
+#### 4.1 [COMPLETED] Schema
+- ✅ Created `publications` table with all required fields
+- ✅ Added indices: `by_list`, `by_webvh_did`, `by_status`
 
-#### 4.2 Publication Logic
-- Create `src/lib/publication.ts`
-- Integrate with Originals SDK for did:webvh creation
-- Connect Turnkey signer for publication signing
+#### 4.2 [COMPLETED] Publication Logic
+- ✅ Created `src/lib/publication.ts` with `createListDID`, `getPublicListUrl`, `getDIDFromPublicUrl`
+- ✅ Integrated with Originals SDK via `createDIDWithTurnkey` from `src/lib/turnkey.ts`
+- ✅ `createWebvhDID` implemented in useAuth.tsx (exposed via useCurrentUser)
 
-#### 4.3 Convex Functions
-- Create `convex/publication.ts`
-- Record publication status
-- Query public lists
+#### 4.3 [COMPLETED] Convex Functions
+- ✅ Created `convex/publication.ts` with publishList, unpublishList, getPublicList, getPublicationStatus
+- ✅ Proper ownership verification
+- ✅ Legacy DID support for user lookups
 
-#### 4.4 UI Components
-- Create `PublishModal.tsx`
-- Create `PublicListView.tsx`
-- Add publish/unpublish buttons to ListView
+#### 4.4 [COMPLETED] UI Components
+- ✅ Created `src/components/publish/PublishModal.tsx`
+- ✅ Created `src/components/publish/VerificationBadge.tsx`
+- ✅ Added publish/unpublish button to ListView.tsx
+- ✅ PublishModal integrated with button (state management)
 
-#### 4.5 Public Route
-- Create `src/pages/PublicList.tsx`
-- Add route `/public/:did`
-- Handle verification display
+#### 4.5 [COMPLETED] Public Route
+- ✅ Created `src/pages/PublicList.tsx`
+- ✅ Added route `/public/:did` to App.tsx (accessible without authentication)
 
 ---
 
@@ -263,6 +222,10 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 - [NOTE] **did:webvh creation requires signing** — Must use Turnkey signer, not localStorage keys.
 
+- [NOTE] **Public route outside auth** — The `/public/:did` route must be added BEFORE the auth check in App.tsx so unauthenticated users can view public lists.
+
+- [NOTE] **DID URL encoding** — The did:webvh DID contains colons. When used in URLs, consider encoding or using just the unique portion after `did:webvh:`.
+
 ### Offline
 
 - [WARNING] **Conflict resolution is lossy** — Server wins conflicts. User may lose offline changes if collaborator edited same item.
@@ -275,6 +238,7 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Recently Completed
 
+- ✓ Phase 4: did:webvh Publication — schema, Convex functions, publication UI, public list view, verification badge, publish/unpublish flow
 - ✓ Phase 3: Unlimited Collaborators — collaborators table, role-based invites, UI for managing collaborators, role change/remove/leave functionality
 - ✓ Phase 2: Multiple Lists with Categories — schema, CRUD operations, UI components, Home page grouping, CategoryManager
 - ✓ Phase 1.7: Replace Identity System — Turnkey-only auth, deprecated localStorage identity

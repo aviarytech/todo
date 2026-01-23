@@ -87,4 +87,18 @@ export default defineSchema({
   })
     .index("by_token", ["token"])
     .index("by_list", ["listId"]),
+
+  // Publications table - did:webvh publication tracking (Phase 4)
+  publications: defineTable({
+    listId: v.id("lists"),
+    webvhDid: v.string(), // did:webvh:...
+    publishedAt: v.number(),
+    publishedByDid: v.string(), // Owner who published
+    status: v.union(v.literal("active"), v.literal("unpublished")),
+    didDocument: v.optional(v.string()), // Cached DID document JSON
+    didLog: v.optional(v.string()), // DID log for verification
+  })
+    .index("by_list", ["listId"])
+    .index("by_webvh_did", ["webvhDid"])
+    .index("by_status", ["status"]),
 });

@@ -30,6 +30,7 @@ import {
   getKeyByCurve,
   TurnkeyDIDSigner,
   TurnkeySessionExpiredError,
+  createDIDWithTurnkey,
   type TurnkeyWallet,
 } from "../lib/turnkey";
 import type { TurnkeyClient, WalletAccount } from "@turnkey/core";
@@ -46,6 +47,15 @@ export interface AuthUser {
   did: string;
   /** Display name (defaults to email prefix) */
   displayName: string;
+}
+
+/**
+ * Result of creating a did:webvh DID
+ */
+export interface CreateDIDResult {
+  did: string;
+  didDocument: unknown;
+  didLog: unknown;
 }
 
 /**
@@ -66,6 +76,8 @@ interface AuthContextValue {
   logout: () => void;
   /** Get the Turnkey DID signer for signing operations */
   getSigner: () => TurnkeyDIDSigner | null;
+  /** Create a did:webvh DID for publishing (Phase 4) */
+  createWebvhDID: (domain: string, slug: string) => Promise<CreateDIDResult | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -112,6 +124,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [signer, setSigner] = useState<TurnkeyDIDSigner | null>(null);
+  // Store wallet account for did:webvh creation (Phase 4)
+  const [walletAccount, setWalletAccount] = useState<WalletAccount | null>(null);
+  const [publicKeyMultibase, setPublicKeyMultibase] = useState<string | null>(null);
 
   // Track OTP flow state (stored in component state, not exposed)
   const [otpFlowState, setOtpFlowState] = useState<OtpFlowState>({
@@ -143,6 +158,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     console.log("[useAuth] Session expired, clearing state");
     setUser(null);
     setSigner(null);
+    setWalletAccount(null);
+    setPublicKeyMultibase(null);
     setOtpFlowState({ otpId: null, email: null, legacyDid: null });
     localStorage.removeItem(AUTH_STORAGE_KEY);
     turnkeyClientRef.current = null;
@@ -237,11 +254,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           // Restore state
           setUser(parsed.user);
+          const restoredWalletAccount = parsed.walletAccount as WalletAccount;
           const restoredSigner = createSigner(
-            parsed.walletAccount as WalletAccount,
+            restoredWalletAccount,
             parsed.publicKeyMultibase
           );
           setSigner(restoredSigner);
+          // Restore wallet account for did:webvh creation (Phase 4)
+          setWalletAccount(restoredWalletAccount);
+          setPublicKeyMultibase(parsed.publicKeyMultibase);
         } catch (err) {
           if (err instanceof TurnkeySessionExpiredError) {
             console.log("[useAuth] Stored session expired");
@@ -373,6 +394,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Update state
         setUser(authUser);
         setSigner(newSigner);
+        setWalletAccount(walletAccount);
+        setPublicKeyMultibase(publicKeyMultibase);
         setOtpFlowState({ otpId: null, email: null, legacyDid: null });
 
         console.log("[useAuth] Authentication complete");
@@ -400,6 +423,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     console.log("[useAuth] Logging out");
     setUser(null);
     setSigner(null);
+    setWalletAccount(null);
+    setPublicKeyMultibase(null);
     setOtpFlowState({ otpId: null, email: null, legacyDid: null });
     localStorage.removeItem(AUTH_STORAGE_KEY);
     // Clear the Turnkey client so a fresh one is created on next login
@@ -414,6 +439,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return signer;
   }, [signer]);
 
+  /**
+   * Create a did:webvh DID for publishing.
+   * Returns null if not authenticated or missing required state.
+   */
+  const createWebvhDID = useCallback(
+    async (domain: string, slug: string): Promise<CreateDIDResult | null> => {
+      if (!walletAccount || !publicKeyMultibase) {
+        console.error("[useAuth] Cannot create DID: missing wallet data");
+        return null;
+      }
+
+      const client = getTurnkeyClient();
+      console.log("[useAuth] Creating did:webvh with domain:", domain, "slug:", slug);
+
+      try {
+        const result = await createDIDWithTurnkey({
+          turnkeyClient: client,
+          updateKeyAccount: walletAccount,
+          authKeyPublic: walletAccount.address,
+          assertionKeyPublic: walletAccount.address,
+          updateKeyPublic: walletAccount.address,
+          domain,
+          slug,
+          onExpired: handleSessionExpired,
+        });
+
+        console.log("[useAuth] Created did:webvh:", result.did);
+        return result;
+      } catch (err) {
+        console.error("[useAuth] Failed to create did:webvh:", err);
+        throw err;
+      }
+    },
+    [walletAccount, publicKeyMultibase, getTurnkeyClient, handleSessionExpired]
+  );
+
   const value: AuthContextValue = {
     isAuthenticated: user !== null,
     isLoading,
@@ -422,6 +483,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     verifyOtp,
     logout,
     getSigner,
+    createWebvhDID,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

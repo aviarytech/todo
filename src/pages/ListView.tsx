@@ -3,6 +3,7 @@
  *
  * Displays list header with actions, items, and add item input.
  * Updated for Phase 3: unlimited collaborators with roles.
+ * Updated for Phase 4: publish/unpublish functionality.
  */
 
 import { useState, useCallback } from "react";
@@ -18,6 +19,7 @@ import { ListItem } from "../components/ListItem";
 import { DeleteListDialog } from "../components/DeleteListDialog";
 import { ShareModal } from "../components/ShareModal";
 import { CollaboratorList } from "../components/sharing/CollaboratorList";
+import { PublishModal } from "../components/publish/PublishModal";
 
 export function ListView() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +28,7 @@ export function ListView() {
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
@@ -37,6 +40,9 @@ export function ListView() {
 
   // Get user's role and collaborators (Phase 3)
   const { userRole, collaborators, isLoading: collabLoading } = useCollaborators(listId);
+
+  // Get publication status (Phase 4)
+  const publicationStatus = useQuery(api.publication.getPublicationStatus, { listId });
 
   const handleDragStart = useCallback((itemId: Id<"items">) => {
     setDraggedItemId(itemId);
@@ -228,6 +234,19 @@ export function ListView() {
 
         {/* Action buttons - min 44px height for touch targets */}
         <div className="flex items-center gap-2">
+          {/* Publish button - only show for owners (Phase 4) */}
+          {canUserDelete && (
+            <button
+              onClick={() => setIsPublishModalOpen(true)}
+              className={`px-4 py-2.5 text-sm rounded-lg ${
+                publicationStatus?.status === "active"
+                  ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                  : "bg-purple-600 text-white hover:bg-purple-700"
+              }`}
+            >
+              {publicationStatus?.status === "active" ? "Published" : "Publish"}
+            </button>
+          )}
           {canUserInvite && (
             <button
               onClick={() => setIsShareModalOpen(true)}
@@ -308,6 +327,10 @@ export function ListView() {
 
       {isShareModalOpen && (
         <ShareModal list={list} onClose={() => setIsShareModalOpen(false)} />
+      )}
+
+      {isPublishModalOpen && (
+        <PublishModal list={list} onClose={() => setIsPublishModalOpen(false)} />
       )}
     </div>
   );

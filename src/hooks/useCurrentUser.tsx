@@ -9,7 +9,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useAuth } from "./useAuth";
+import { useAuth, type CreateDIDResult } from "./useAuth";
 import type { TurnkeyDIDSigner } from "../lib/turnkey";
 
 export interface CurrentUser {
@@ -27,6 +27,8 @@ export interface CurrentUser {
   isLoading: boolean;
   /** Get the Turnkey signer for signing operations */
   getSigner: () => TurnkeyDIDSigner | null;
+  /** Create a did:webvh DID for publishing (Phase 4) */
+  createWebvhDID: (domain: string, slug: string) => Promise<CreateDIDResult | null>;
 }
 
 /**
@@ -40,7 +42,7 @@ export interface CurrentUser {
  * which is used for backwards-compatible ownership checks on pre-migration lists.
  */
 export function useCurrentUser(): CurrentUser {
-  const { isAuthenticated, user: authUser, isLoading: authLoading, getSigner } = useAuth();
+  const { isAuthenticated, user: authUser, isLoading: authLoading, getSigner, createWebvhDID } = useAuth();
 
   // If Turnkey authenticated, fetch user record to get legacyDid
   const turnkeyUser = useQuery(
@@ -62,6 +64,7 @@ export function useCurrentUser(): CurrentUser {
       isAuthenticated: true,
       isLoading,
       getSigner,
+      createWebvhDID,
     };
   }
 
@@ -74,5 +77,6 @@ export function useCurrentUser(): CurrentUser {
     isAuthenticated: false,
     isLoading,
     getSigner: () => null,
+    createWebvhDID: async () => null,
   };
 }

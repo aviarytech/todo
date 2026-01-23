@@ -6,6 +6,7 @@ import { Home } from './pages/Home'
 import { ListView } from './pages/ListView'
 import { JoinList } from './pages/JoinList'
 import { Login } from './pages/Login'
+import { PublicList } from './pages/PublicList'
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -19,12 +20,13 @@ function App() {
     )
   }
 
-  // Unauthenticated users see the login page
+  // Unauthenticated users see the login page (but public lists are accessible)
   if (!isAuthenticated) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/join/:listId/:token" element={<JoinList />} />
+        <Route path="/public/:did" element={<PublicList />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     )
@@ -48,6 +50,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/list/:id" element={<ListView />} />
             <Route path="/join/:listId/:token" element={<JoinList />} />
+            <Route path="/public/:did" element={<PublicList />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
           </Routes>
         </ErrorBoundary>

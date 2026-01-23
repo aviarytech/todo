@@ -15,6 +15,7 @@ import type * as invites from "../invites.js";
 import type * as items from "../items.js";
 import type * as lists from "../lists.js";
 import type * as migrations_migrateCollaborators from "../migrations/migrateCollaborators.js";
+import type * as publication from "../publication.js";
 import type * as users from "../users.js";
 
 import type {
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   items: typeof items;
   lists: typeof lists;
   "migrations/migrateCollaborators": typeof migrations_migrateCollaborators;
+  publication: typeof publication;
   users: typeof users;
 }>;
 
