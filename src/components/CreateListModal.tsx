@@ -8,7 +8,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation } from "convex/react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
-import { useIdentity } from "../hooks/useIdentity";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import { createListAsset } from "../lib/originals";
 
 interface CreateListModalProps {
@@ -16,7 +16,7 @@ interface CreateListModalProps {
 }
 
 export function CreateListModal({ onClose }: CreateListModalProps) {
-  const { did } = useIdentity();
+  const { did } = useCurrentUser();
   const navigate = useNavigate();
   const createList = useMutation(api.lists.createList);
 

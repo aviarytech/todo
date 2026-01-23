@@ -8,17 +8,23 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
-import { useIdentity } from "../hooks/useIdentity";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import { ListCard } from "../components/ListCard";
 import { CreateListModal } from "../components/CreateListModal";
 
 export function Home() {
-  const { did } = useIdentity();
+  const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const lists = useQuery(api.lists.getUserLists, did ? { userDid: did } : "skip");
+  // Query lists for current DID, including legacyDid for migrated users
+  const lists = useQuery(
+    api.lists.getUserLists,
+    did
+      ? { userDid: did, legacyDid: legacyDid ?? undefined }
+      : "skip"
+  );
 
-  if (!did) {
+  if (!did && !userLoading) {
     return null; // IdentitySetup will show instead
   }
 
@@ -62,7 +68,7 @@ export function Home() {
         </div>
       )}
 
-      {!isLoading && hasLists && (
+      {!isLoading && hasLists && did && (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {lists.map((list: Doc<"lists">) => (
             <ListCard key={list._id} list={list} currentUserDid={did} />

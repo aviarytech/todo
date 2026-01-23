@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 
 /**
  * Create a new list.
@@ -36,27 +37,42 @@ export const getList = query({
 
 /**
  * Get all lists where user is owner OR collaborator.
+ * Supports migrated users by checking both current DID and legacy DID.
  */
 export const getUserLists = query({
-  args: { userDid: v.string() },
+  args: {
+    userDid: v.string(),
+    // Optional legacy DID for migrated users (their old localStorage DID)
+    legacyDid: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    // Get lists where user is owner
-    const ownedLists = await ctx.db
-      .query("lists")
-      .withIndex("by_owner", (q) => q.eq("ownerDid", args.userDid))
-      .collect();
+    // DIDs to check: current DID and optionally legacy DID
+    const didsToCheck = [args.userDid];
+    if (args.legacyDid) {
+      didsToCheck.push(args.legacyDid);
+    }
 
-    // Get lists where user is collaborator
-    const collaboratorLists = await ctx.db
-      .query("lists")
-      .withIndex("by_collaborator", (q) => q.eq("collaboratorDid", args.userDid))
-      .collect();
+    const allLists: Doc<"lists">[] = [];
 
-    // Combine and deduplicate (in case somehow user is both)
-    const allLists = [...ownedLists];
-    for (const list of collaboratorLists) {
-      if (!allLists.find((l) => l._id === list._id)) {
-        allLists.push(list);
+    // Query for each DID
+    for (const did of didsToCheck) {
+      // Get lists where user is owner
+      const ownedLists = await ctx.db
+        .query("lists")
+        .withIndex("by_owner", (q) => q.eq("ownerDid", did))
+        .collect();
+
+      // Get lists where user is collaborator
+      const collaboratorLists = await ctx.db
+        .query("lists")
+        .withIndex("by_collaborator", (q) => q.eq("collaboratorDid", did))
+        .collect();
+
+      // Add to results, avoiding duplicates
+      for (const list of [...ownedLists, ...collaboratorLists]) {
+        if (!allLists.find((l) => l._id === list._id)) {
+          allLists.push(list);
+        }
       }
     }
 
@@ -68,11 +84,14 @@ export const getUserLists = query({
 /**
  * Delete a list and all its items and pending invites.
  * Only the owner can delete a list.
+ * Supports migrated users by checking both current DID and legacy DID.
  */
 export const deleteList = mutation({
   args: {
     listId: v.id("lists"),
     userDid: v.string(),
+    // Optional legacy DID for migrated users
+    legacyDid: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const list = await ctx.db.get(args.listId);
@@ -80,8 +99,12 @@ export const deleteList = mutation({
       throw new Error("List not found");
     }
 
-    // Only owner can delete
-    if (list.ownerDid !== args.userDid) {
+    // Check ownership against current DID or legacy DID
+    const isOwner =
+      list.ownerDid === args.userDid ||
+      (args.legacyDid && list.ownerDid === args.legacyDid);
+
+    if (!isOwner) {
       throw new Error("Only the list owner can delete this list");
     }
 

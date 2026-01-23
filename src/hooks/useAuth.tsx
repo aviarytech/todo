@@ -58,8 +58,8 @@ interface AuthContextValue {
   isLoading: boolean;
   /** Authenticated user data, or null if not authenticated */
   user: AuthUser | null;
-  /** Start OTP flow by sending code to email */
-  startOtp: (email: string) => Promise<void>;
+  /** Start OTP flow by sending code to email. Pass legacyDid for migration. */
+  startOtp: (email: string, legacyDid?: string) => Promise<void>;
   /** Verify OTP code and complete authentication */
   verifyOtp: (code: string) => Promise<void>;
   /** Log out and clear session */
@@ -80,6 +80,8 @@ interface AuthProviderProps {
 interface OtpFlowState {
   otpId: string | null;
   email: string | null;
+  /** Legacy DID being migrated (from localStorage identity) */
+  legacyDid: string | null;
 }
 
 /**
@@ -115,6 +117,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [otpFlowState, setOtpFlowState] = useState<OtpFlowState>({
     otpId: null,
     email: null,
+    legacyDid: null,
   });
 
   // Turnkey client instance - created once per session
@@ -140,7 +143,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     console.log("[useAuth] Session expired, clearing state");
     setUser(null);
     setSigner(null);
-    setOtpFlowState({ otpId: null, email: null });
+    setOtpFlowState({ otpId: null, email: null, legacyDid: null });
     localStorage.removeItem(AUTH_STORAGE_KEY);
     turnkeyClientRef.current = null;
   }, []);
@@ -262,18 +265,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   /**
    * Start OTP flow by sending verification code to email.
+   * @param email - User's email address
+   * @param legacyDid - Optional: User's old localStorage DID if migrating
    */
   const startOtp = useCallback(
-    async (email: string) => {
+    async (email: string, legacyDid?: string) => {
       setIsLoading(true);
       try {
         const client = getTurnkeyClient();
         console.log("[useAuth] Sending OTP to:", email);
+        if (legacyDid) {
+          console.log("[useAuth] Migration mode, legacy DID:", legacyDid);
+        }
 
         const otpId = await initOtp(client, email);
         console.log("[useAuth] OTP initiated, id:", otpId);
 
-        setOtpFlowState({ otpId, email });
+        setOtpFlowState({ otpId, email, legacyDid: legacyDid ?? null });
       } catch (err) {
         console.error("[useAuth] Failed to start OTP:", err);
         throw err;
@@ -333,13 +341,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
           displayName: otpFlowState.email.split("@")[0],
         };
 
-        // Upsert user in Convex
+        // Upsert user in Convex (with legacyDid for migration)
         console.log("[useAuth] Upserting user in Convex...");
+        if (otpFlowState.legacyDid) {
+          console.log("[useAuth] Including legacyDid for migration:", otpFlowState.legacyDid);
+        }
         await upsertUserMutation({
           turnkeySubOrgId: authUser.turnkeySubOrgId,
           email: authUser.email,
           did: authUser.did,
           displayName: authUser.displayName,
+          legacyDid: otpFlowState.legacyDid ?? undefined,
         });
 
         // Create signer for future operations
@@ -361,7 +373,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Update state
         setUser(authUser);
         setSigner(newSigner);
-        setOtpFlowState({ otpId: null, email: null });
+        setOtpFlowState({ otpId: null, email: null, legacyDid: null });
 
         console.log("[useAuth] Authentication complete");
       } catch (err) {
@@ -388,7 +400,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     console.log("[useAuth] Logging out");
     setUser(null);
     setSigner(null);
-    setOtpFlowState({ otpId: null, email: null });
+    setOtpFlowState({ otpId: null, email: null, legacyDid: null });
     localStorage.removeItem(AUTH_STORAGE_KEY);
     // Clear the Turnkey client so a fresh one is created on next login
     turnkeyClientRef.current = null;

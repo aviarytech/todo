@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useIdentity } from "../hooks/useIdentity";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import type { Doc } from "../../convex/_generated/dataModel";
 
 interface DeleteListDialogProps {
@@ -15,7 +15,7 @@ interface DeleteListDialogProps {
 }
 
 export function DeleteListDialog({ list, onClose, onDeleted }: DeleteListDialogProps) {
-  const { did } = useIdentity();
+  const { did, legacyDid } = useCurrentUser();
   const deleteList = useMutation(api.lists.deleteList);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,12 @@ export function DeleteListDialog({ list, onClose, onDeleted }: DeleteListDialogP
     setError(null);
 
     try {
-      await deleteList({ listId: list._id, userDid: did });
+      // Pass both current and legacy DID for migrated users
+      await deleteList({
+        listId: list._id,
+        userDid: did,
+        legacyDid: legacyDid ?? undefined,
+      });
       onDeleted();
     } catch (err) {
       console.error("Failed to delete list:", err);

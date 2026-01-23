@@ -4,7 +4,7 @@ import { v } from "convex/values";
 export default defineSchema({
   // Users table - for display name lookup by DID
   users: defineTable({
-    did: v.string(), // did:peer:... from Originals SDK
+    did: v.string(), // did:peer:... from Originals SDK or Turnkey
     displayName: v.string(),
     createdAt: v.number(),
     // Turnkey auth fields (added in Phase 1.3)
@@ -12,10 +12,13 @@ export default defineSchema({
     email: v.optional(v.string()), // User's email address
     lastLoginAt: v.optional(v.number()), // Last login timestamp
     legacyIdentity: v.optional(v.boolean()), // true if still using localStorage
+    // Migration support (Phase 1.6)
+    legacyDid: v.optional(v.string()), // Original localStorage DID before Turnkey migration
   })
     .index("by_did", ["did"])
     .index("by_turnkey_id", ["turnkeySubOrgId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_legacy_did", ["legacyDid"]),
 
   // Lists table - each list is an Originals asset
   lists: defineTable({

@@ -10,6 +10,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
 import { useIdentity } from "../hooks/useIdentity";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
 import { DeleteListDialog } from "../components/DeleteListDialog";
@@ -19,7 +20,9 @@ import { CollaboratorBadge } from "../components/CollaboratorBadge";
 export function ListView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { did, privateKey } = useIdentity();
+  // Use both identity systems during migration
+  const { privateKey } = useIdentity(); // Still need privateKey for signing (until Phase 1.7)
+  const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -72,11 +75,12 @@ export function ListView() {
     setDragOverItemId(null);
   }, [draggedItemId, dragOverItemId, items, did, listId, reorderItems]);
 
-  if (!did || !privateKey) {
+  if ((!did && !userLoading) || !privateKey) {
     return null; // IdentitySetup will show instead
   }
 
-  if (list === undefined || items === undefined) {
+  // Loading state (user or data)
+  if (userLoading || !did || list === undefined || items === undefined) {
     return (
       <div className="animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
@@ -101,8 +105,11 @@ export function ListView() {
     );
   }
 
-  const isOwner = list.ownerDid === did;
-  const isAuthorized = isOwner || list.collaboratorDid === did;
+  // Check ownership against current DID or legacy DID (for migrated users)
+  const userDids = [did, legacyDid].filter(Boolean) as string[];
+  const isOwner = userDids.includes(list.ownerDid);
+  const isCollaborator = list.collaboratorDid ? userDids.includes(list.collaboratorDid) : false;
+  const isAuthorized = isOwner || isCollaborator;
 
   if (!isAuthorized) {
     return (
