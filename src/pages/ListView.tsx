@@ -4,15 +4,17 @@
  * Displays list header with actions, items, and add item input.
  * Updated for Phase 3: unlimited collaborators with roles.
  * Updated for Phase 4: publish/unpublish functionality.
+ * Updated for Phase 5.5: optimistic updates for items.
  */
 
 import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import type { Id, Doc } from "../../convex/_generated/dataModel";
+import type { Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useCollaborators } from "../hooks/useCollaborators";
+import { useOptimisticItems, type OptimisticItem } from "../hooks/useOptimisticItems";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
@@ -35,8 +37,16 @@ export function ListView() {
 
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
-  const items = useQuery(api.items.getListItems, { listId });
-  const reorderItems = useMutation(api.items.reorderItems);
+
+  // Use optimistic items hook for Phase 5.5
+  const {
+    items,
+    addItem,
+    checkItem,
+    uncheckItem,
+    reorderItems,
+    isLoading: itemsLoading,
+  } = useOptimisticItems(listId);
 
   // Get user's role and collaborators (Phase 3)
   const { userRole, collaborators, isLoading: collabLoading } = useCollaborators(listId);
@@ -59,7 +69,7 @@ export function ListView() {
   );
 
   const handleDragEnd = useCallback(async () => {
-    if (!draggedItemId || !dragOverItemId || !items || !did) {
+    if (!draggedItemId || !dragOverItemId || items.length === 0 || !did) {
       setDraggedItemId(null);
       setDragOverItemId(null);
       return;
@@ -80,25 +90,20 @@ export function ListView() {
       newItemIds.splice(draggedIndex, 1);
       newItemIds.splice(targetIndex, 0, draggedItemId);
 
-      // Update the order in the database
-      await reorderItems({
-        listId,
-        itemIds: newItemIds,
-        userDid: did,
-        legacyDid: legacyDid ?? undefined,
-      });
+      // Update the order using optimistic reorderItems (queues when offline)
+      await reorderItems(newItemIds, did, legacyDid ?? undefined);
     }
 
     setDraggedItemId(null);
     setDragOverItemId(null);
-  }, [draggedItemId, dragOverItemId, items, did, legacyDid, listId, reorderItems]);
+  }, [draggedItemId, dragOverItemId, items, did, legacyDid, reorderItems]);
 
   // Loading state (user or data)
   if (
     userLoading ||
     !did ||
     list === undefined ||
-    items === undefined ||
+    itemsLoading ||
     collabLoading
   ) {
     return (
@@ -283,7 +288,7 @@ export function ListView() {
             No items yet. Add one below!
           </div>
         ) : (
-          items.map((item: Doc<"items">) => (
+          items.map((item: OptimisticItem) => (
             <ListItem
               key={item._id}
               item={item}
@@ -297,6 +302,8 @@ export function ListView() {
               onDragStart={() => handleDragStart(item._id)}
               onDragOver={(e) => handleDragOver(e, item._id)}
               onDragEnd={handleDragEnd}
+              onCheck={checkItem}
+              onUncheck={uncheckItem}
             />
           ))
         )}
@@ -305,7 +312,7 @@ export function ListView() {
       {/* Add Item Input - only show if user can edit */}
       {canUserEdit && (
         <div className="mt-4">
-          <AddItemInput listId={listId} assetDid={list.assetDid} />
+          <AddItemInput assetDid={list.assetDid} onAddItem={addItem} />
         </div>
       )}
 

@@ -1,22 +1,25 @@
 /**
  * Input component for adding new items to a list.
+ * Updated for Phase 5.5: Accepts onAddItem callback for optimistic updates.
  */
 
 import { useState, type FormEvent } from "react";
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { signItemActionWithSigner } from "../lib/originals";
 
 interface AddItemInputProps {
-  listId: Id<"lists">;
   assetDid: string;
+  /** Callback for adding items - passed from ListView using useOptimisticItems */
+  onAddItem: (args: {
+    name: string;
+    createdByDid: string;
+    legacyDid?: string;
+    createdAt: number;
+  }) => Promise<void>;
 }
 
-export function AddItemInput({ listId, assetDid }: AddItemInputProps) {
+export function AddItemInput({ assetDid, onAddItem }: AddItemInputProps) {
   const { did, legacyDid, getSigner } = useCurrentUser();
-  const addItem = useMutation(api.items.addItem);
 
   const [name, setName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -46,9 +49,8 @@ export function AddItemInput({ listId, assetDid }: AddItemInputProps) {
         }
       }
 
-      // Add the item to Convex
-      await addItem({
-        listId,
+      // Add the item via callback (uses optimistic updates from useOptimisticItems)
+      await onAddItem({
         name: trimmedName,
         createdByDid: did,
         legacyDid: legacyDid ?? undefined,

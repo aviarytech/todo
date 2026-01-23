@@ -2,17 +2,19 @@
  * Component for a single item in a list.
  *
  * Shows checkbox, name, attribution, and remove button.
+ * Updated for Phase 5.5: Accepts onCheck/onUncheck callbacks for optimistic updates.
  */
 
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import type { Doc } from "../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { signItemActionWithSigner, type ExternalSigner } from "../lib/originals";
 import { ItemAttribution } from "./ItemAttribution";
+import type { OptimisticItem } from "../hooks/useOptimisticItems";
 
 interface ListItemProps {
-  item: Doc<"items">;
+  item: OptimisticItem;
   list: Doc<"lists">;
   userDid: string;
   /** Legacy DID for migrated users */
@@ -26,6 +28,10 @@ interface ListItemProps {
   onDragStart?: () => void;
   onDragOver?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
+  /** Callback for checking items - uses optimistic updates from useOptimisticItems */
+  onCheck?: (itemId: Id<"items">, checkedByDid: string, legacyDid?: string) => Promise<void>;
+  /** Callback for unchecking items - uses optimistic updates from useOptimisticItems */
+  onUncheck?: (itemId: Id<"items">, userDid: string, legacyDid?: string) => Promise<void>;
 }
 
 export function ListItem({
@@ -40,9 +46,12 @@ export function ListItem({
   onDragStart,
   onDragOver,
   onDragEnd,
+  onCheck,
+  onUncheck,
 }: ListItemProps) {
-  const checkItem = useMutation(api.items.checkItem);
-  const uncheckItem = useMutation(api.items.uncheckItem);
+  // Fallback mutations for when callbacks aren't provided (backwards compatibility)
+  const checkItemMutation = useMutation(api.items.checkItem);
+  const uncheckItemMutation = useMutation(api.items.uncheckItem);
   const removeItem = useMutation(api.items.removeItem);
 
   const [isUpdating, setIsUpdating] = useState(false);
@@ -63,7 +72,12 @@ export function ListItem({
           }
         }
 
-        await uncheckItem({ itemId: item._id, userDid, legacyDid });
+        // Use optimistic callback if provided, otherwise fallback to direct mutation
+        if (onUncheck) {
+          await onUncheck(item._id, userDid, legacyDid);
+        } else {
+          await uncheckItemMutation({ itemId: item._id, userDid, legacyDid });
+        }
       } else {
         // Sign check credential (best-effort)
         if (signer) {
@@ -74,12 +88,17 @@ export function ListItem({
           }
         }
 
-        await checkItem({
-          itemId: item._id,
-          checkedByDid: userDid,
-          legacyDid,
-          checkedAt: Date.now(),
-        });
+        // Use optimistic callback if provided, otherwise fallback to direct mutation
+        if (onCheck) {
+          await onCheck(item._id, userDid, legacyDid);
+        } else {
+          await checkItemMutation({
+            itemId: item._id,
+            checkedByDid: userDid,
+            legacyDid,
+            checkedAt: Date.now(),
+          });
+        }
       }
     } catch (err) {
       console.error("Failed to toggle item:", err);
@@ -122,7 +141,9 @@ export function ListItem({
       onDragEnd={canUserEdit ? onDragEnd : undefined}
       className={`flex items-center gap-3 p-4 hover:bg-gray-50 transition-all ${
         isDragging ? "opacity-50 bg-gray-100" : ""
-      } ${isDragOver ? "border-t-2 border-blue-500" : ""}`}
+      } ${isDragOver ? "border-t-2 border-blue-500" : ""} ${
+        item._isOptimistic ? "opacity-60" : ""
+      }`}
     >
       {/* Drag handle - only show if user can edit */}
       {canUserEdit && (
