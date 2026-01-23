@@ -15,37 +15,10 @@ All 6 major phases complete. v2 feature development done. Optional quality impro
 ## Working Context (For Ralph)
 
 ### Current Task
-Phase 7.4 — Remove Debug Console Logs
+Phase 7.4 — Complete
 
-### Overview
-Remove debug `console.log` statements from production code in `PublishModal.tsx`.
-
-### Files to Read First
-- `src/components/publish/PublishModal.tsx` — contains 4 debug console.log statements
-
-### Files to Modify
-- `src/components/publish/PublishModal.tsx` — remove or guard console.log calls
-
-### Acceptance Criteria
-- [ ] Remove console.log at line 56: `"[PublishModal] Creating did:webvh for list:"`
-- [ ] Remove console.log at line 63: `"[PublishModal] Created DID:"`
-- [ ] Remove console.log at line 74: `"[PublishModal] Publication recorded in Convex"`
-- [ ] Remove console.log at line 99: `"[PublishModal] List unpublished"`
-- [ ] Keep console.error statements (they're useful for production debugging)
-- [ ] Build passes (`npm run build`)
-- [ ] Lint passes (`npm run lint`)
-
-### Key Context
-- These are debug logs that leak internal state to browser console in production
-- The `console.error` calls (lines 76, 101) should be KEPT — error logging in production is useful
-- Option A (preferred): Simply delete the console.log lines
-- Option B: Wrap in `if (import.meta.env.DEV)` — but this adds clutter for minimal benefit
-
-### Definition of Done
-When complete, Ralph should:
-1. All acceptance criteria checked
-2. Commit with message: `chore: remove debug console.log statements (Phase 7.4)`
-3. Update this section with completion status
+Phase 7.4 is complete. All debug console.log statements removed from PublishModal.tsx.
+Console.error statements retained for production debugging.
 
 ---
 
@@ -77,10 +50,10 @@ These were discovered during comprehensive code review. All are optional improve
 - ✅ `useAuth.tsx` — Added `isMountedRef` ref; check before all `setState` calls in `restoreSession` async function
 - ✅ Build and lint pass
 
-#### 7.4 [IN PROGRESS] Remove Debug Console Logs (LOW)
-**Problem:** Debug logs in production code
-**File:** `src/components/publish/PublishModal.tsx` (lines 56, 63, 74, 99)
-- [ ] Remove the 4 `console.log` statements (keep `console.error` for production debugging)
+#### 7.4 [COMPLETED] Remove Debug Console Logs (LOW)
+- ✅ Removed 4 `console.log` statements from `src/components/publish/PublishModal.tsx`
+- ✅ Kept `console.error` statements for production debugging
+- ✅ Build and lint pass
 
 #### 7.5 Bundle Size Optimization (LOW)
 **Problem:** Build shows chunks >500KB warning
@@ -410,6 +383,7 @@ These were discovered during comprehensive code review. All are optional improve
 
 ## Recently Completed
 
+- ✓ Phase 7.4: Remove Debug Console Logs — Removed 4 `console.log` statements from `PublishModal.tsx`; kept `console.error` for production debugging; build and lint pass
 - ✓ Phase 7.3: Hook Memory Leak Fixes — Added `timeoutRefs` Map to `useToast` for proper timeout cleanup; added `isMounted` refs to `useOffline` and `useAuth` to prevent setState after unmount; build and lint pass
 - ✓ Phase 7.2: Replace window.confirm() — Created reusable `ConfirmDialog` component with `useFocusTrap`, `role="alertdialog"`, `aria-modal`, ARIA labels; replaced 3 `window.confirm()` calls in `CollaboratorList.tsx` (remove/leave) and `CategoryManager.tsx` (delete); build and lint pass
 - ✓ Phase 7.1: Modal Accessibility — Created `useFocusTrap` hook with focus trap, ESC key handling, and focus restoration; added `role="dialog/alertdialog"`, `aria-modal`, `aria-labelledby/describedby` to all 5 modals (DeleteListDialog, ShareModal, PublishModal, CategoryManager, CreateListModal); build and lint pass

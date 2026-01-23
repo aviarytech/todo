@@ -53,14 +53,11 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
       const slug = `list-${list._id.replace(/[^a-zA-Z0-9-]/g, "")}`;
 
       // Create did:webvh using Turnkey
-      console.log("[PublishModal] Creating did:webvh for list:", list._id);
       const result = await createWebvhDID(PUBLICATION_DOMAIN, slug);
 
       if (!result) {
         throw new Error("Failed to create DID - missing authentication data");
       }
-
-      console.log("[PublishModal] Created DID:", result.did);
 
       // Record publication in Convex
       await publishListMutation({
@@ -70,8 +67,6 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
         didLog: JSON.stringify(result.didLog),
         publisherDid: did,
       });
-
-      console.log("[PublishModal] Publication recorded in Convex");
     } catch (err) {
       console.error("[PublishModal] Failed to publish:", err);
       setError(
@@ -96,7 +91,6 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
         listId: list._id,
         userDid: did,
       });
-      console.log("[PublishModal] List unpublished");
     } catch (err) {
       console.error("[PublishModal] Failed to unpublish:", err);
       setError(
