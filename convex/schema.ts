@@ -7,7 +7,15 @@ export default defineSchema({
     did: v.string(), // did:peer:... from Originals SDK
     displayName: v.string(),
     createdAt: v.number(),
-  }).index("by_did", ["did"]),
+    // Turnkey auth fields (added in Phase 1.3)
+    turnkeySubOrgId: v.optional(v.string()), // Turnkey sub-organization ID
+    email: v.optional(v.string()), // User's email address
+    lastLoginAt: v.optional(v.number()), // Last login timestamp
+    legacyIdentity: v.optional(v.boolean()), // true if still using localStorage
+  })
+    .index("by_did", ["did"])
+    .index("by_turnkey_id", ["turnkeySubOrgId"])
+    .index("by_email", ["email"]),
 
   // Lists table - each list is an Originals asset
   lists: defineTable({

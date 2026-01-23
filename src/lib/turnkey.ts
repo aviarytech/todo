@@ -13,9 +13,14 @@ import {
   initOtp,
   completeOtp,
   fetchWallets,
+  fetchUser,
+  getKeyByCurve,
+  ensureWalletWithAccounts,
   TurnkeyDIDSigner,
+  TurnkeySessionExpiredError,
   createDIDWithTurnkey,
 } from "@originals/auth/client";
+import type { TurnkeyWallet } from "@originals/auth/types";
 
 // Re-export functions and classes for consumers
 export {
@@ -23,6 +28,12 @@ export {
   initOtp,
   completeOtp,
   fetchWallets,
+  fetchUser,
+  getKeyByCurve,
+  ensureWalletWithAccounts,
   TurnkeyDIDSigner,
+  TurnkeySessionExpiredError,
   createDIDWithTurnkey,
 };
+
+export type { TurnkeyWallet };

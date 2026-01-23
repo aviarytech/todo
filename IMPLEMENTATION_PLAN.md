@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 1.2 complete — Ready for Phase 1.3 (Auth Flow Integration)
+**Current Status:** Phase 1.3 complete — Ready for Phase 1.6 (Migration Path)
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,12 +12,17 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[COMPLETED]** Phase 1.2: Login UI Components
+**[COMPLETED]** Phase 1.3: Auth Flow Integration
 
 Created:
-- `src/pages/Login.tsx` — Two-step login flow (email → OTP)
-- `src/components/auth/OtpInput.tsx` — 6-digit code entry with auto-advance, paste support, resend cooldown
-- `src/components/auth/AuthGuard.tsx` — Protected route wrapper with loading state
+- Full OTP flow in `src/hooks/useAuth.tsx` — `startOtp`/`verifyOtp` with real Turnkey API calls
+- Session restoration from localStorage with Turnkey validation on mount
+- DID generation using did:peer:2 format from Ed25519 wallet key
+- `TurnkeyDIDSigner` creation for future signing operations
+- `convex/auth.ts` — User upsert mutation with Turnkey ID support
+- Updated `convex/schema.ts` — Added `turnkeySubOrgId`, `email`, `lastLoginAt`, `legacyIdentity` fields with indices
+- Added `AuthProvider` to `src/main.tsx` (wraps `IdentityProvider` for migration period)
+- Updated `.env.example` with `VITE_TURNKEY_AUTH_PROXY_CONFIG_ID` and `VITE_TURNKEY_ORGANIZATION_ID`
 
 ---
 
@@ -35,20 +40,22 @@ Created:
 - Create `src/components/auth/OtpInput.tsx` for OTP entry
 - Create `src/components/auth/AuthGuard.tsx` wrapper component
 
-#### 1.3 [NEXT] Auth Flow Integration
-- Implement full OTP flow in useAuth
-- Connect to Convex for user upsert
-- Handle session storage (coordinate with Turnkey session tokens)
+#### 1.3 [COMPLETED] Auth Flow Integration
+- ✅ Implement full OTP flow in useAuth (startOtp, verifyOtp)
+- ✅ Connect to Convex for user upsert
+- ✅ Handle session storage (localStorage + Turnkey validation on mount)
+- ✅ DID generation via did:peer:2 from Ed25519 wallet key
+- ✅ TurnkeyDIDSigner creation for signing operations
 
-#### 1.4 Convex Schema Update
-- Add `turnkeySubOrgId`, `email`, `lastLoginAt` to users table
-- Add indices for new fields
-- Create `convex/auth.ts` for auth-related functions
+#### 1.4 [COMPLETED] Convex Schema Update
+- ✅ Add `turnkeySubOrgId`, `email`, `lastLoginAt`, `legacyIdentity` to users table
+- ✅ Add indices for new fields (`by_turnkey_id`, `by_email`)
+- ✅ Create `convex/auth.ts` with upsertUser, getUserByTurnkeyId, getUserByEmail
 
-#### 1.5 DID Creation with Turnkey
-- Use `createDIDWithTurnkey` for new user DID generation
-- Create `TurnkeyDIDSigner` wrapper for signing
-- Update originals.ts to support Turnkey signer
+#### 1.5 [OPTIONAL] DID Creation with Turnkey (did:webvh upgrade)
+- Currently using did:peer:2 format from Ed25519 key (sufficient for MVP)
+- Future: Upgrade to `createDIDWithTurnkey` for did:webvh if needed
+- TurnkeyDIDSigner is already available for signing
 
 #### 1.6 Migration Path
 - Detect localStorage identity on app load
@@ -200,6 +207,8 @@ Created:
 
 - [NOTE] **Migration complexity** — Existing users have DIDs from localStorage. Migration should preserve their DID or create mapping.
 
+- [NOTE] **DID implementation uses did:peer** — Phase 1.3 uses simple did:peer:2 format from Ed25519 key instead of `createDIDWithTurnkey`. The `createDIDWithTurnkey` function was imported but is unused. Phase 1.5 can upgrade to did:webvh if needed.
+
 ### Categories
 
 - [NOTE] **Categories are per-user** — Each user has their own category organization. A shared list can be in different categories for different users.
@@ -228,6 +237,8 @@ Created:
 
 ## Recently Completed
 
+- ✓ Phase 1.3: Full OTP flow integration in useAuth with Turnkey API calls
+- ✓ Phase 1.4: Convex schema updated with Turnkey fields and auth.ts created
 - ✓ Phase 1.2: Login page and auth UI components (Login.tsx, OtpInput.tsx, AuthGuard.tsx)
 - ✓ Phase 1.1: Turnkey client setup and useAuth hook shell
 - ✓ Planning complete — Specs created for all 5 features
