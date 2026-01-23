@@ -281,6 +281,14 @@
         <span>Ralph:</span>
         <span class="stat-value" id="ralphCount">0</span>
       </div>
+      <div class="stat" style="margin-left: auto; border-left: 2px solid var(--lisa); padding-left: 8px;">
+        <span style="color: var(--lisa);">Lisa ctx:</span>
+        <span class="stat-value" id="lisaContext">—</span>
+      </div>
+      <div class="stat" style="border-left: 2px solid var(--ralph); padding-left: 8px;">
+        <span style="color: var(--ralph);">Ralph ctx:</span>
+        <span class="stat-value" id="ralphContext">—</span>
+      </div>
     </div>
   </div>
 
@@ -296,15 +304,29 @@
     let lisaCount = 0;
     let ralphCount = 0;
     
+    // Per-loop context tracking (peak cache_read_input_tokens for current loop)
+    let lisaLoop = 0;
+    let ralphLoop = 0;
+    let lisaPeakContext = 0;
+    let ralphPeakContext = 0;
+    
     function toggleAutoScroll() {
       autoScroll = !autoScroll;
       scrollBtn.textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+    }
+    
+    function formatTokens(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return Math.round(n / 1000) + 'k';
+      return n.toString();
     }
     
     function updateStats() {
       document.getElementById('lineCount').textContent = lineCount;
       document.getElementById('lisaCount').textContent = lisaCount;
       document.getElementById('ralphCount').textContent = ralphCount;
+      document.getElementById('lisaContext').textContent = lisaLoop > 0 ? `#${lisaLoop}: ${formatTokens(lisaPeakContext)}` : '—';
+      document.getElementById('ralphContext').textContent = ralphLoop > 0 ? `#${ralphLoop}: ${formatTokens(ralphPeakContext)}` : '—';
     }
     
     function escapeHtml(text) {
@@ -331,10 +353,24 @@
       if (agent === 'LISA') lisaCount++;
       else if (agent === 'RALPH') ralphCount++;
       
-      // System log messages (banners, status)
+      // System log messages (banners, status) - detect loop starts
       if (data.type === 'log') {
         const msg = data.message || '';
         if (!msg) return null;
+        
+        // Detect new loop start: "[LISA] ═══════════════ LOOP 2 ═══════════════"
+        const loopMatch = msg.match(/\[(\w+)\].*LOOP\s+(\d+)/);
+        if (loopMatch) {
+          const loopAgent = loopMatch[1].toUpperCase();
+          const loopNum = parseInt(loopMatch[2], 10);
+          if (loopAgent === 'LISA') {
+            lisaLoop = loopNum;
+            lisaPeakContext = 0; // Reset for new loop
+          } else if (loopAgent === 'RALPH') {
+            ralphLoop = loopNum;
+            ralphPeakContext = 0; // Reset for new loop
+          }
+        }
         
         const div = document.createElement('div');
         div.className = 'line system';
@@ -344,6 +380,19 @@
         div.innerHTML = escapeHtml(msg);
         lineCount++;
         return div;
+      }
+      
+      // Track peak context from assistant messages
+      if (data.type === 'assistant' && data.message?.usage) {
+        const usage = data.message.usage;
+        const contextTokens = (usage.cache_read_input_tokens || 0) + (usage.input_tokens || 0);
+        
+        if (agent === 'LISA') {
+          lisaPeakContext = Math.max(lisaPeakContext, contextTokens);
+        } else if (agent === 'RALPH') {
+          ralphPeakContext = Math.max(ralphPeakContext, contextTokens);
+        }
+        updateStats();
       }
       
       // Assistant messages with text or tool_use
@@ -425,6 +474,10 @@
       lineCount = 0;
       lisaCount = 0;
       ralphCount = 0;
+      lisaLoop = 0;
+      ralphLoop = 0;
+      lisaPeakContext = 0;
+      ralphPeakContext = 0;
       updateStats();
     }
     
@@ -444,6 +497,10 @@
           lineCount = 0;
           lisaCount = 0;
           ralphCount = 0;
+          lisaLoop = 0;
+          ralphLoop = 0;
+          lisaPeakContext = 0;
+          ralphPeakContext = 0;
         }
         if (data.content) {
           appendContent(data.content);
