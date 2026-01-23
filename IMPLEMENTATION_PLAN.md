@@ -4,57 +4,35 @@
 
 A real-time shared todo/grocery list for couples, built with React + Convex + Originals SDK.
 
-**Current Status:** Phases 1-5 COMPLETE and committed. Ready for Phase 6 (Polish & Deploy).
+**Current Status:** Phases 1-5 COMPLETE, Phase 6.1-6.3 COMPLETE. Ready for Phase 6.4-6.5 (Deploy).
 
 ---
 
 ## Working Context (For Ralph)
 
 ### Current Task
-Phase 6: Polish & Deploy
+Phase 6.4: Configure Railway Deployment
 
 ### Status
-✅ Phases 3-5 committed (v0.0.3) - Ready for Phase 6
+✅ Phase 6.1-6.3 committed (commit 1ab8e42)
+- ErrorBoundary component added
+- Responsive design improvements (44x44px touch targets)
+- Playwright E2E tests added
 
 ### Next Steps
-1. Add Error Boundary component
-2. Responsive design pass
-3. E2E tests with Playwright
-4. Railway deployment
+1. Configure Railway deployment
+2. Production readiness checklist (Phase 6.5)
 
 ### Key Context
-- **No remote configured** — Push skipped; set up remote when ready
-- **Tag v0.0.3** — Marks Phase 3-5 completion
-- **Build output notes:** Chunk size warnings are acceptable for v1
+- **No remote configured** — Need to add git remote before Railway deployment
+- **E2E tests require Convex backend** — Run `npx convex dev` before `bun run test:e2e`
 
 ---
 
 ## Next Up (Priority Order)
 
-### [IN PROGRESS] Phase 6: Polish & Deploy
+### [IN PROGRESS] Phase 6.4: Configure Railway Deployment
 
-#### 6.1 Add Loading and Error States
-- Add error boundary component wrapping main routes
-- Handle "list not found" with friendly message + back link (already done in ListView)
-- Handle mutation errors with inline error messages (already done in most components)
-
-#### 6.2 Responsive Design Pass
-- Test on mobile viewport (375px width)
-- Ensure touch targets are minimum 44x44px
-- Stack layouts vertically on mobile where needed
-- Test modal dialogs work on mobile (no overflow issues)
-
-#### 6.3 Add E2E Tests with Playwright
-Install Playwright: `bun add -D @playwright/test`
-
-Create tests for:
-1. Identity creation flow (enter name, verify identity created)
-2. Create list flow (create new list, verify appears on home)
-3. Add/check/remove item flow
-4. Share flow (generate invite, copy link)
-5. Join flow (open invite link, accept, verify list access)
-
-#### 6.4 Configure Railway Deployment
 1. Create Railway project
 2. Connect to Git repo
 3. Set environment variables:
@@ -63,7 +41,8 @@ Create tests for:
 5. Configure start: serve `dist/` directory
 6. Enable auto-deploy on `main` branch
 
-#### 6.5 Production Readiness Checklist
+### Phase 6.5 Production Readiness Checklist
+
 - [ ] HTTPS enforced (Railway default)
 - [ ] Run Lighthouse audit, target 90+ performance
 - [ ] Test full flow on production
@@ -120,6 +99,10 @@ Create tests for:
 
 ## Recently Completed
 
+- **Phase 6.1-6.3 Committed** — Commit 1ab8e42
+  - ErrorBoundary component for graceful error handling
+  - Responsive design with 44x44px minimum touch targets
+  - Playwright E2E tests for identity, lists, items, sharing flows
 - **Phases 3-5 Committed** — Commit 5392c89, tag v0.0.3
 - **Phases 1-5 Implementation** — All core features implemented:
   - Phase 1: Project setup with TailwindCSS v4, React Router v7, Convex Provider
