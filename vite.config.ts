@@ -21,4 +21,16 @@ export default defineConfig({
     // Force pre-bundling of problematic dependencies
     include: ['@originals/sdk'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'convex-vendor': ['convex'],
+          'originals-sdk': ['@originals/sdk'],
+        },
+      },
+    },
+  },
 })
