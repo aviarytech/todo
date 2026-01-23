@@ -1,52 +1,95 @@
 /**
  * Home page showing user's lists.
  *
- * Displays a grid of list cards or an empty state prompting list creation.
+ * Displays lists grouped by category with collapsible sections.
+ * Empty categories are hidden. Uncategorized lists appear at the end.
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import type { Doc } from "../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useCategories } from "../hooks/useCategories";
 import { ListCard } from "../components/ListCard";
 import { CreateListModal } from "../components/CreateListModal";
+import { CategoryHeader } from "../components/lists/CategoryHeader";
+import { CategoryManager } from "../components/lists/CategoryManager";
 
 export function Home() {
   const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
+  const { categories, isLoading: categoriesLoading } = useCategories();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
 
   // Query lists for current DID, including legacyDid for migrated users
   const lists = useQuery(
     api.lists.getUserLists,
-    did
-      ? { userDid: did, legacyDid: legacyDid ?? undefined }
-      : "skip"
+    did ? { userDid: did, legacyDid: legacyDid ?? undefined } : "skip"
   );
+
+  // Group lists by category
+  const groupedLists = useMemo<{
+    categorized: Map<Id<"categories">, Doc<"lists">[]>;
+    uncategorized: Doc<"lists">[];
+  }>(() => {
+    if (!lists) {
+      return {
+        categorized: new Map<Id<"categories">, Doc<"lists">[]>(),
+        uncategorized: [],
+      };
+    }
+
+    const categorized = new Map<Id<"categories">, Doc<"lists">[]>();
+    const uncategorized: Doc<"lists">[] = [];
+
+    for (const list of lists) {
+      if (list.categoryId) {
+        const existing = categorized.get(list.categoryId) ?? [];
+        existing.push(list);
+        categorized.set(list.categoryId, existing);
+      } else {
+        uncategorized.push(list);
+      }
+    }
+
+    return { categorized, uncategorized };
+  }, [lists]);
 
   if (!did && !userLoading) {
     return null; // Login page will show instead (handled by App.tsx)
   }
 
-  const isLoading = lists === undefined;
+  const isLoading = lists === undefined || categoriesLoading;
   const hasLists = lists && lists.length > 0;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Your Lists</h2>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          New List
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsCategoryManagerOpen(true)}
+            className="text-gray-600 px-3 py-2 rounded-md font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          >
+            Manage Categories
+          </button>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            New List
+          </button>
+        </div>
       </div>
 
       {isLoading && (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-lg shadow p-4 animate-pulse">
+            <div
+              key={i}
+              className="bg-white rounded-lg shadow p-4 animate-pulse"
+            >
               <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
               <div className="h-4 bg-gray-200 rounded w-1/2"></div>
             </div>
@@ -57,8 +100,12 @@ export function Home() {
       {!isLoading && !hasLists && (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <div className="text-gray-400 text-5xl mb-4">📝</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No lists yet</h3>
-          <p className="text-gray-500 mb-4">Create your first list to get started!</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No lists yet
+          </h3>
+          <p className="text-gray-500 mb-4">
+            Create your first list to get started!
+          </p>
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700"
@@ -69,15 +116,46 @@ export function Home() {
       )}
 
       {!isLoading && hasLists && did && (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {lists.map((list: Doc<"lists">) => (
-            <ListCard key={list._id} list={list} currentUserDid={did} />
-          ))}
+        <div>
+          {/* Categorized lists */}
+          {categories.map((category) => {
+            const categoryLists = groupedLists.categorized.get(category._id);
+            // Hide empty categories
+            if (!categoryLists || categoryLists.length === 0) return null;
+
+            return (
+              <CategoryHeader
+                key={category._id}
+                name={category.name}
+                listCount={categoryLists.length}
+              >
+                {categoryLists.map((list) => (
+                  <ListCard key={list._id} list={list} currentUserDid={did} />
+                ))}
+              </CategoryHeader>
+            );
+          })}
+
+          {/* Uncategorized lists */}
+          {groupedLists.uncategorized.length > 0 && (
+            <CategoryHeader
+              name="Uncategorized"
+              listCount={groupedLists.uncategorized.length}
+            >
+              {groupedLists.uncategorized.map((list) => (
+                <ListCard key={list._id} list={list} currentUserDid={did} />
+              ))}
+            </CategoryHeader>
+          )}
         </div>
       )}
 
       {isCreateModalOpen && (
         <CreateListModal onClose={() => setIsCreateModalOpen(false)} />
+      )}
+
+      {isCategoryManagerOpen && (
+        <CategoryManager onClose={() => setIsCategoryManagerOpen(false)} />
       )}
     </div>
   );

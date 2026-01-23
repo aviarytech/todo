@@ -2,14 +2,17 @@
  * Modal for creating a new list.
  *
  * Creates an Originals asset for the list, then saves it to Convex.
+ * Allows selecting a category for the new list.
  */
 
 import { useState, type FormEvent } from "react";
 import { useMutation } from "convex/react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { createListAsset } from "../lib/originals";
+import { CategorySelector } from "./lists/CategorySelector";
 
 interface CreateListModalProps {
   onClose: () => void;
@@ -21,6 +24,9 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
   const createList = useMutation(api.lists.createList);
 
   const [name, setName] = useState("");
+  const [categoryId, setCategoryId] = useState<Id<"categories"> | undefined>(
+    undefined
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +56,7 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
         assetDid: listAsset.assetDid,
         name: trimmedName,
         ownerDid: did,
+        categoryId,
         createdAt: Date.now(),
       });
 
@@ -82,9 +89,15 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
             autoFocus
           />
 
-          {error && (
-            <p className="mt-2 text-sm text-red-600">{error}</p>
-          )}
+          <div className="mt-4">
+            <CategorySelector
+              value={categoryId}
+              onChange={setCategoryId}
+              disabled={isCreating}
+            />
+          </div>
+
+          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
           <div className="mt-4 flex gap-3 justify-end">
             <button

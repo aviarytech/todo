@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 1.7 complete — Ready for Phase 2 (Multiple Lists with Categories)
+**Current Status:** Phase 2 complete — Ready for Phase 3 (Unlimited Collaborators)
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,62 +12,34 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[IN PROGRESS]** Phase 2.1: Schema Changes for Categories
+**[COMPLETED]** Phase 2: Multiple Lists with Categories
 
-### Current Task
+### Changes Made
 
-Add the `categories` table to the Convex schema and add `categoryId` field to the lists table. This is the foundation for the categories feature.
+**Schema Updates:**
+- Added `categories` table with `ownerDid`, `name`, `order`, `createdAt` fields
+- Added indices: `by_owner`, `by_owner_name`
+- Added `categoryId` optional field to `lists` table
+- Added `by_category` index to `lists` table
 
-### Files to Read First
+**Convex Functions:**
+- Created `convex/categories.ts` with:
+  - `getUserCategories` — query user's categories sorted by order
+  - `createCategory` — create with unique name validation
+  - `renameCategory` — rename with ownership check
+  - `deleteCategory` — delete and move lists to uncategorized
+  - `reorderCategory` — update order field
+  - `setListCategory` — assign list to category with access check
+- Updated `convex/lists.ts`:
+  - `createList` now accepts optional `categoryId`
 
-- `convex/schema.ts` — Current schema, add categories table here
-- `specs/features/categories.md` — Full spec for categories feature (lines 47-66 have exact schema)
-- `convex/lists.ts` — Current list queries, understand existing patterns
-
-### Files to Create/Modify
-
-- `convex/schema.ts` — Add categories table, add categoryId to lists
-
-### Exact Schema to Add
-
-```typescript
-// Add to convex/schema.ts
-
-// Categories table - for organizing lists (per-user)
-categories: defineTable({
-  ownerDid: v.string(),        // User who owns this category
-  name: v.string(),            // Category name (e.g., "Groceries", "Work")
-  order: v.number(),           // Sort order for display
-  createdAt: v.number(),       // Timestamp
-})
-  .index("by_owner", ["ownerDid"])
-  .index("by_owner_name", ["ownerDid", "name"]),
-
-// Update lists table - add this field:
-categoryId: v.optional(v.id("categories")), // null = Uncategorized
-```
-
-### Acceptance Criteria
-
-- [ ] `categories` table added with fields: `ownerDid`, `name`, `order`, `createdAt`
-- [ ] `categories` table has indices: `by_owner`, `by_owner_name`
-- [ ] `lists` table has new field: `categoryId: v.optional(v.id("categories"))`
-- [ ] Build passes (`bun run build`)
-- [ ] Convex dev server accepts schema (`npx convex dev` runs without error)
-
-### Key Context
-
-- Categories are per-user — each user organizes their own lists
-- A shared list can be in different categories for different users
-- `categoryId: undefined` means "Uncategorized" (the default)
-- The `by_owner_name` index enables checking for duplicate category names per user
-
-### Definition of Done
-
-When complete, Ralph should:
-1. All acceptance criteria checked
-2. Commit with message: `feat(categories): add categories table to Convex schema`
-3. Update this section with completion status
+**UI Components:**
+- Created `src/hooks/useCategories.tsx` — hook for category operations
+- Created `src/components/lists/CategorySelector.tsx` — dropdown with inline create
+- Created `src/components/lists/CategoryHeader.tsx` — collapsible section header
+- Created `src/components/lists/CategoryManager.tsx` — full category management modal
+- Updated `src/components/CreateListModal.tsx` — added category selection
+- Updated `src/pages/Home.tsx` — lists grouped by category with collapsible sections
 
 ---
 
@@ -117,30 +89,30 @@ When complete, Ralph should:
 
 ---
 
-### Phase 2: Multiple Lists with Categories
+### Phase 2: Multiple Lists with Categories [COMPLETED]
 
-#### 2.1 [IN PROGRESS] Schema Changes
-- Add `categories` table to Convex schema
-- Add `categoryId` field to lists table
-- Create indices
+#### 2.1 [COMPLETED] Schema Changes
+- ✅ Added `categories` table to Convex schema
+- ✅ Added `categoryId` field to lists table
+- ✅ Created indices (by_owner, by_owner_name, by_category)
 
-#### 2.2 Convex Functions
-- Create `convex/categories.ts` with CRUD operations
-- Update `convex/lists.ts` to support category assignment
+#### 2.2 [COMPLETED] Convex Functions
+- ✅ Created `convex/categories.ts` with CRUD operations
+- ✅ Updated `convex/lists.ts:createList` to accept categoryId
 
-#### 2.3 UI Components
-- Create `src/components/lists/CategorySelector.tsx`
-- Create `src/components/lists/CategoryHeader.tsx`
-- Update `CreateListModal.tsx` to include category selection
+#### 2.3 [COMPLETED] UI Components
+- ✅ Created `src/components/lists/CategorySelector.tsx`
+- ✅ Created `src/components/lists/CategoryHeader.tsx`
+- ✅ Added CategorySelector to `CreateListModal.tsx`
 
-#### 2.4 Home Page Update
-- Group lists by category on Home page
-- Add collapsible category sections
-- Handle empty categories
+#### 2.4 [COMPLETED] Home Page Update
+- ✅ Group lists by category on Home page
+- ✅ Add collapsible category sections
+- ✅ Handle empty categories (hidden)
 
-#### 2.5 Category Management
-- Create category manager UI (add/rename/delete)
-- Handle list reassignment when category deleted
+#### 2.5 [COMPLETED] Category Management
+- ✅ Created `CategoryManager.tsx` (add/rename/delete UI)
+- ✅ Handle list reassignment when category deleted (in convex/categories.ts)
 
 ---
 
@@ -285,6 +257,7 @@ When complete, Ralph should:
 
 ## Recently Completed
 
+- ✓ Phase 2: Multiple Lists with Categories — schema, CRUD operations, UI components, Home page grouping, CategoryManager
 - ✓ Phase 1.7: Replace Identity System — Turnkey-only auth, deprecated localStorage identity
 - ✓ Phase 1.6: Migration path — legacyDid schema field, MigrationPrompt, useCurrentUser hook, dual-DID queries
 - ✓ Phase 1.3: Full OTP flow integration in useAuth with Turnkey API calls

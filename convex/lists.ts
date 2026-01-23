@@ -11,6 +11,7 @@ export const createList = mutation({
     assetDid: v.string(),
     name: v.string(),
     ownerDid: v.string(),
+    categoryId: v.optional(v.id("categories")),
     createdAt: v.number(),
   },
   handler: async (ctx, args) => {
@@ -19,6 +20,7 @@ export const createList = mutation({
       name: args.name,
       ownerDid: args.ownerDid,
       collaboratorDid: undefined,
+      categoryId: args.categoryId,
       createdAt: args.createdAt,
     });
   },

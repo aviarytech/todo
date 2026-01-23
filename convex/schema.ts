@@ -20,17 +20,29 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_legacy_did", ["legacyDid"]),
 
+  // Categories table - user-specific list organization (Phase 2)
+  categories: defineTable({
+    ownerDid: v.string(), // User who owns this category
+    name: v.string(),
+    order: v.number(), // Sort order (lower = first)
+    createdAt: v.number(),
+  })
+    .index("by_owner", ["ownerDid"])
+    .index("by_owner_name", ["ownerDid", "name"]),
+
   // Lists table - each list is an Originals asset
   lists: defineTable({
     assetDid: v.string(), // Originals asset DID (did:peer or did:webvh)
     name: v.string(),
     ownerDid: v.string(), // Creator's DID
     collaboratorDid: v.optional(v.string()), // Partner's DID (max 1 for v1)
+    categoryId: v.optional(v.id("categories")), // User's category for this list (Phase 2)
     createdAt: v.number(),
   })
     .index("by_owner", ["ownerDid"])
     .index("by_collaborator", ["collaboratorDid"])
-    .index("by_asset_did", ["assetDid"]),
+    .index("by_asset_did", ["assetDid"])
+    .index("by_category", ["categoryId"]),
 
   // Items table - items within a list
   items: defineTable({
