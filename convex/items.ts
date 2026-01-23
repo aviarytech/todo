@@ -1,14 +1,62 @@
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
 /**
+ * Helper to check if a user can edit a list (owner or editor).
+ * Checks collaborators table first, then falls back to legacy fields.
+ */
+async function canUserEditList(
+  ctx: MutationCtx | QueryCtx,
+  listId: Id<"lists">,
+  userDid: string,
+  legacyDid?: string
+): Promise<boolean> {
+  const didsToCheck = [userDid];
+  if (legacyDid) {
+    didsToCheck.push(legacyDid);
+  }
+
+  // Check collaborators table (Phase 3)
+  for (const did of didsToCheck) {
+    const collab = await ctx.db
+      .query("collaborators")
+      .withIndex("by_list_user", (q) =>
+        q.eq("listId", listId).eq("userDid", did)
+      )
+      .first();
+
+    if (collab && (collab.role === "owner" || collab.role === "editor")) {
+      return true;
+    }
+  }
+
+  // Fallback: Check legacy fields for unmigrated lists
+  const list = await ctx.db.get(listId);
+  if (!list) {
+    return false;
+  }
+
+  for (const did of didsToCheck) {
+    if (list.ownerDid === did || list.collaboratorDid === did) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Add an item to a list.
+ * Supports legacy DID for migrated users.
  */
 export const addItem = mutation({
   args: {
     listId: v.id("lists"),
     name: v.string(),
     createdByDid: v.string(),
+    legacyDid: v.optional(v.string()),
     createdAt: v.number(),
   },
   handler: async (ctx, args) => {
@@ -18,8 +66,14 @@ export const addItem = mutation({
       throw new Error("List not found");
     }
 
-    // Verify user is authorized (owner or collaborator)
-    if (list.ownerDid !== args.createdByDid && list.collaboratorDid !== args.createdByDid) {
+    // Verify user is authorized (owner or editor)
+    const canEdit = await canUserEditList(
+      ctx,
+      args.listId,
+      args.createdByDid,
+      args.legacyDid
+    );
+    if (!canEdit) {
       throw new Error("Not authorized to add items to this list");
     }
 
@@ -28,7 +82,10 @@ export const addItem = mutation({
       .query("items")
       .withIndex("by_list", (q) => q.eq("listId", args.listId))
       .collect();
-    const maxOrder = existingItems.reduce((max, item) => Math.max(max, item.order ?? 0), 0);
+    const maxOrder = existingItems.reduce(
+      (max, item) => Math.max(max, item.order ?? 0),
+      0
+    );
 
     return await ctx.db.insert("items", {
       listId: args.listId,
@@ -45,11 +102,13 @@ export const addItem = mutation({
 
 /**
  * Check (mark as complete) an item.
+ * Supports legacy DID for migrated users.
  */
 export const checkItem = mutation({
   args: {
     itemId: v.id("items"),
     checkedByDid: v.string(),
+    legacyDid: v.optional(v.string()),
     checkedAt: v.number(),
   },
   handler: async (ctx, args) => {
@@ -58,13 +117,14 @@ export const checkItem = mutation({
       throw new Error("Item not found");
     }
 
-    // Verify user is authorized
-    const list = await ctx.db.get(item.listId);
-    if (!list) {
-      throw new Error("List not found");
-    }
-
-    if (list.ownerDid !== args.checkedByDid && list.collaboratorDid !== args.checkedByDid) {
+    // Verify user is authorized (owner or editor)
+    const canEdit = await canUserEditList(
+      ctx,
+      item.listId,
+      args.checkedByDid,
+      args.legacyDid
+    );
+    if (!canEdit) {
       throw new Error("Not authorized to check items in this list");
     }
 
@@ -78,11 +138,13 @@ export const checkItem = mutation({
 
 /**
  * Uncheck an item.
+ * Supports legacy DID for migrated users.
  */
 export const uncheckItem = mutation({
   args: {
     itemId: v.id("items"),
     userDid: v.string(),
+    legacyDid: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const item = await ctx.db.get(args.itemId);
@@ -90,13 +152,14 @@ export const uncheckItem = mutation({
       throw new Error("Item not found");
     }
 
-    // Verify user is authorized
-    const list = await ctx.db.get(item.listId);
-    if (!list) {
-      throw new Error("List not found");
-    }
-
-    if (list.ownerDid !== args.userDid && list.collaboratorDid !== args.userDid) {
+    // Verify user is authorized (owner or editor)
+    const canEdit = await canUserEditList(
+      ctx,
+      item.listId,
+      args.userDid,
+      args.legacyDid
+    );
+    if (!canEdit) {
       throw new Error("Not authorized to uncheck items in this list");
     }
 
@@ -110,11 +173,13 @@ export const uncheckItem = mutation({
 
 /**
  * Remove an item from a list.
+ * Supports legacy DID for migrated users.
  */
 export const removeItem = mutation({
   args: {
     itemId: v.id("items"),
     userDid: v.string(),
+    legacyDid: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const item = await ctx.db.get(args.itemId);
@@ -122,13 +187,14 @@ export const removeItem = mutation({
       throw new Error("Item not found");
     }
 
-    // Verify user is authorized
-    const list = await ctx.db.get(item.listId);
-    if (!list) {
-      throw new Error("List not found");
-    }
-
-    if (list.ownerDid !== args.userDid && list.collaboratorDid !== args.userDid) {
+    // Verify user is authorized (owner or editor)
+    const canEdit = await canUserEditList(
+      ctx,
+      item.listId,
+      args.userDid,
+      args.legacyDid
+    );
+    if (!canEdit) {
       throw new Error("Not authorized to remove items from this list");
     }
 
@@ -159,12 +225,14 @@ export const getListItems = query({
 /**
  * Reorder items in a list.
  * Takes the full ordered list of item IDs and updates their order values.
+ * Supports legacy DID for migrated users.
  */
 export const reorderItems = mutation({
   args: {
     listId: v.id("lists"),
     itemIds: v.array(v.id("items")),
     userDid: v.string(),
+    legacyDid: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Verify the list exists
@@ -173,8 +241,14 @@ export const reorderItems = mutation({
       throw new Error("List not found");
     }
 
-    // Verify user is authorized
-    if (list.ownerDid !== args.userDid && list.collaboratorDid !== args.userDid) {
+    // Verify user is authorized (owner or editor)
+    const canEdit = await canUserEditList(
+      ctx,
+      args.listId,
+      args.userDid,
+      args.legacyDid
+    );
+    if (!canEdit) {
       throw new Error("Not authorized to reorder items in this list");
     }
 

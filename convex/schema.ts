@@ -1,6 +1,13 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// Collaborator roles
+export const roleValidator = v.union(
+  v.literal("owner"),
+  v.literal("editor"),
+  v.literal("viewer")
+);
+
 export default defineSchema({
   // Users table - for display name lookup by DID
   users: defineTable({
@@ -29,6 +36,18 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerDid"])
     .index("by_owner_name", ["ownerDid", "name"]),
+
+  // Collaborators junction table - unlimited collaborators per list (Phase 3)
+  collaborators: defineTable({
+    listId: v.id("lists"),
+    userDid: v.string(),
+    role: v.union(v.literal("owner"), v.literal("editor"), v.literal("viewer")),
+    joinedAt: v.number(),
+    invitedByDid: v.optional(v.string()), // Who sent the invite
+  })
+    .index("by_list", ["listId"])
+    .index("by_user", ["userDid"])
+    .index("by_list_user", ["listId", "userDid"]),
 
   // Lists table - each list is an Originals asset
   lists: defineTable({
@@ -60,6 +79,7 @@ export default defineSchema({
   invites: defineTable({
     listId: v.id("lists"),
     token: v.string(), // Random unique string (uuid v4)
+    role: v.optional(v.union(v.literal("editor"), v.literal("viewer"))), // Role granted on accept (Phase 3, optional for backwards compat)
     createdAt: v.number(),
     expiresAt: v.number(), // createdAt + 24 hours
     usedAt: v.optional(v.number()),

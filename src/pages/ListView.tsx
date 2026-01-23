@@ -2,6 +2,7 @@
  * List view page showing items in a single list.
  *
  * Displays list header with actions, items, and add item input.
+ * Updated for Phase 3: unlimited collaborators with roles.
  */
 
 import { useState, useCallback } from "react";
@@ -10,11 +11,13 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useCollaborators } from "../hooks/useCollaborators";
+import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
 import { DeleteListDialog } from "../components/DeleteListDialog";
 import { ShareModal } from "../components/ShareModal";
-import { CollaboratorBadge } from "../components/CollaboratorBadge";
+import { CollaboratorList } from "../components/sharing/CollaboratorList";
 
 export function ListView() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +26,7 @@ export function ListView() {
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [showCollaborators, setShowCollaborators] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
 
@@ -31,16 +35,22 @@ export function ListView() {
   const items = useQuery(api.items.getListItems, { listId });
   const reorderItems = useMutation(api.items.reorderItems);
 
+  // Get user's role and collaborators (Phase 3)
+  const { userRole, collaborators, isLoading: collabLoading } = useCollaborators(listId);
+
   const handleDragStart = useCallback((itemId: Id<"items">) => {
     setDraggedItemId(itemId);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent, itemId: Id<"items">) => {
-    e.preventDefault();
-    if (draggedItemId && draggedItemId !== itemId) {
-      setDragOverItemId(itemId);
-    }
-  }, [draggedItemId]);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, itemId: Id<"items">) => {
+      e.preventDefault();
+      if (draggedItemId && draggedItemId !== itemId) {
+        setDragOverItemId(itemId);
+      }
+    },
+    [draggedItemId]
+  );
 
   const handleDragEnd = useCallback(async () => {
     if (!draggedItemId || !dragOverItemId || !items || !did) {
@@ -54,7 +64,11 @@ export function ListView() {
     const draggedIndex = itemIds.indexOf(draggedItemId);
     const targetIndex = itemIds.indexOf(dragOverItemId);
 
-    if (draggedIndex !== -1 && targetIndex !== -1 && draggedIndex !== targetIndex) {
+    if (
+      draggedIndex !== -1 &&
+      targetIndex !== -1 &&
+      draggedIndex !== targetIndex
+    ) {
       // Remove from old position and insert at new position
       const newItemIds = [...itemIds];
       newItemIds.splice(draggedIndex, 1);
@@ -65,15 +79,22 @@ export function ListView() {
         listId,
         itemIds: newItemIds,
         userDid: did,
+        legacyDid: legacyDid ?? undefined,
       });
     }
 
     setDraggedItemId(null);
     setDragOverItemId(null);
-  }, [draggedItemId, dragOverItemId, items, did, listId, reorderItems]);
+  }, [draggedItemId, dragOverItemId, items, did, legacyDid, listId, reorderItems]);
 
   // Loading state (user or data)
-  if (userLoading || !did || list === undefined || items === undefined) {
+  if (
+    userLoading ||
+    !did ||
+    list === undefined ||
+    items === undefined ||
+    collabLoading
+  ) {
     return (
       <div className="animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
@@ -89,7 +110,9 @@ export function ListView() {
   if (list === null) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">List not found</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          List not found
+        </h2>
         <p className="text-gray-500 mb-4">This list may have been deleted.</p>
         <Link to="/" className="text-blue-600 hover:text-blue-700">
           Back to lists
@@ -98,16 +121,22 @@ export function ListView() {
     );
   }
 
-  // Check ownership against current DID or legacy DID (for migrated users)
-  const userDids = [did, legacyDid].filter(Boolean) as string[];
-  const isOwner = userDids.includes(list.ownerDid);
-  const isCollaborator = list.collaboratorDid ? userDids.includes(list.collaboratorDid) : false;
-  const isAuthorized = isOwner || isCollaborator;
+  // Check authorization using collaborators table (Phase 3)
+  // userRole will be null if not a collaborator
+  const isAuthorized = userRole !== null;
 
-  if (!isAuthorized) {
+  // Fallback: Also check legacy fields for unmigrated lists
+  const userDids = [did, legacyDid].filter(Boolean) as string[];
+  const legacyAuthorized =
+    userDids.includes(list.ownerDid) ||
+    (list.collaboratorDid && userDids.includes(list.collaboratorDid));
+
+  if (!isAuthorized && !legacyAuthorized) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Access denied</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          Access denied
+        </h2>
         <p className="text-gray-500 mb-4">You don't have access to this list.</p>
         <Link to="/" className="text-blue-600 hover:text-blue-700">
           Back to lists
@@ -116,8 +145,18 @@ export function ListView() {
     );
   }
 
+  // Determine effective role (from collaborators table or inferred from legacy fields)
+  const effectiveRole =
+    userRole ?? (userDids.includes(list.ownerDid) ? "owner" : "editor");
+  const canUserEdit = canEdit(effectiveRole);
+  const canUserInvite = canInvite(effectiveRole);
+  const canUserDelete = canDeleteList(effectiveRole);
+
   // Get the signer for credential signing
   const signer = getSigner();
+
+  // Count collaborators for display
+  const collaboratorCount = collaborators?.length ?? 0;
 
   return (
     <div>
@@ -129,19 +168,67 @@ export function ListView() {
           className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
           aria-label="Back to lists"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </Link>
 
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{list.name}</h2>
-          <CollaboratorBadge collaboratorDid={list.collaboratorDid} />
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+            {list.name}
+          </h2>
+          {/* Collaborators toggle button */}
+          {collaboratorCount > 0 && (
+            <button
+              onClick={() => setShowCollaborators(!showCollaborators)}
+              className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              {collaboratorCount} collaborator{collaboratorCount !== 1 ? "s" : ""}
+              <svg
+                className={`w-3 h-3 transition-transform ${
+                  showCollaborators ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Action buttons - min 44px height for touch targets */}
         <div className="flex items-center gap-2">
-          {isOwner && !list.collaboratorDid && (
+          {canUserInvite && (
             <button
               onClick={() => setIsShareModalOpen(true)}
               className="px-4 py-2.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -149,7 +236,7 @@ export function ListView() {
               Share
             </button>
           )}
-          {isOwner && (
+          {canUserDelete && (
             <button
               onClick={() => setIsDeleteDialogOpen(true)}
               className="px-4 py-2.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
@@ -159,6 +246,16 @@ export function ListView() {
           )}
         </div>
       </div>
+
+      {/* Collaborators panel (collapsible) */}
+      {showCollaborators && (
+        <div className="mb-6 bg-white rounded-lg shadow p-4">
+          <h3 className="text-sm font-medium text-gray-900 mb-3">
+            Collaborators
+          </h3>
+          <CollaboratorList listId={listId} onLeave={() => navigate("/")} />
+        </div>
+      )}
 
       {/* Items */}
       <div className="bg-white rounded-lg shadow divide-y divide-gray-100">
@@ -173,7 +270,9 @@ export function ListView() {
               item={item}
               list={list}
               userDid={did}
+              legacyDid={legacyDid ?? undefined}
               signer={signer}
+              canEdit={canUserEdit}
               isDragging={draggedItemId === item._id}
               isDragOver={dragOverItemId === item._id}
               onDragStart={() => handleDragStart(item._id)}
@@ -184,10 +283,19 @@ export function ListView() {
         )}
       </div>
 
-      {/* Add Item Input */}
-      <div className="mt-4">
-        <AddItemInput listId={listId} assetDid={list.assetDid} />
-      </div>
+      {/* Add Item Input - only show if user can edit */}
+      {canUserEdit && (
+        <div className="mt-4">
+          <AddItemInput listId={listId} assetDid={list.assetDid} />
+        </div>
+      )}
+
+      {/* Viewer notice */}
+      {!canUserEdit && (
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg text-center text-gray-500 text-sm">
+          You have view-only access to this list.
+        </div>
+      )}
 
       {/* Modals */}
       {isDeleteDialogOpen && (
@@ -199,10 +307,7 @@ export function ListView() {
       )}
 
       {isShareModalOpen && (
-        <ShareModal
-          list={list}
-          onClose={() => setIsShareModalOpen(false)}
-        />
+        <ShareModal list={list} onClose={() => setIsShareModalOpen(false)} />
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import type { Doc } from "./_generated/dataModel";
 /**
  * Create a new list.
  * The list is created as an Originals asset (assetDid) by the frontend.
+ * Also adds the owner to the collaborators table with "owner" role.
  */
 export const createList = mutation({
   args: {
@@ -15,14 +16,26 @@ export const createList = mutation({
     createdAt: v.number(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("lists", {
+    // Create the list
+    const listId = await ctx.db.insert("lists", {
       assetDid: args.assetDid,
       name: args.name,
       ownerDid: args.ownerDid,
-      collaboratorDid: undefined,
+      collaboratorDid: undefined, // Deprecated field, kept for backwards compat
       categoryId: args.categoryId,
       createdAt: args.createdAt,
     });
+
+    // Add owner to collaborators table (Phase 3)
+    await ctx.db.insert("collaborators", {
+      listId,
+      userDid: args.ownerDid,
+      role: "owner",
+      joinedAt: args.createdAt,
+      invitedByDid: undefined,
+    });
+
+    return listId;
   },
 });
 
@@ -38,7 +51,8 @@ export const getList = query({
 });
 
 /**
- * Get all lists where user is owner OR collaborator.
+ * Get all lists where user is a collaborator (owner, editor, or viewer).
+ * Uses the collaborators table (Phase 3) with fallback to legacy fields.
  * Supports migrated users by checking both current DID and legacy DID.
  */
 export const getUserLists = query({
@@ -54,17 +68,34 @@ export const getUserLists = query({
       didsToCheck.push(args.legacyDid);
     }
 
-    const allLists: Doc<"lists">[] = [];
+    const listMap = new Map<string, Doc<"lists">>();
 
-    // Query for each DID
+    // Primary: Query from collaborators table (Phase 3)
     for (const did of didsToCheck) {
-      // Get lists where user is owner
+      const collabs = await ctx.db
+        .query("collaborators")
+        .withIndex("by_user", (q) => q.eq("userDid", did))
+        .collect();
+
+      for (const collab of collabs) {
+        if (!listMap.has(collab.listId.toString())) {
+          const list = await ctx.db.get(collab.listId);
+          if (list) {
+            listMap.set(collab.listId.toString(), list);
+          }
+        }
+      }
+    }
+
+    // Fallback: Also check legacy fields for unmigrated lists
+    for (const did of didsToCheck) {
+      // Get lists where user is owner (legacy field)
       const ownedLists = await ctx.db
         .query("lists")
         .withIndex("by_owner", (q) => q.eq("ownerDid", did))
         .collect();
 
-      // Get lists where user is collaborator
+      // Get lists where user is collaborator (legacy field)
       const collaboratorLists = await ctx.db
         .query("lists")
         .withIndex("by_collaborator", (q) => q.eq("collaboratorDid", did))
@@ -72,19 +103,21 @@ export const getUserLists = query({
 
       // Add to results, avoiding duplicates
       for (const list of [...ownedLists, ...collaboratorLists]) {
-        if (!allLists.find((l) => l._id === list._id)) {
-          allLists.push(list);
+        if (!listMap.has(list._id.toString())) {
+          listMap.set(list._id.toString(), list);
         }
       }
     }
 
-    // Sort by createdAt descending (newest first)
-    return allLists.sort((a, b) => b.createdAt - a.createdAt);
+    // Convert to array and sort by createdAt descending (newest first)
+    return Array.from(listMap.values()).sort(
+      (a, b) => b.createdAt - a.createdAt
+    );
   },
 });
 
 /**
- * Delete a list and all its items and pending invites.
+ * Delete a list and all its items, invites, and collaborators.
  * Only the owner can delete a list.
  * Supports migrated users by checking both current DID and legacy DID.
  */
@@ -101,10 +134,35 @@ export const deleteList = mutation({
       throw new Error("List not found");
     }
 
-    // Check ownership against current DID or legacy DID
-    const isOwner =
-      list.ownerDid === args.userDid ||
-      (args.legacyDid && list.ownerDid === args.legacyDid);
+    // Check ownership via collaborators table first (Phase 3)
+    const didsToCheck = [args.userDid];
+    if (args.legacyDid) {
+      didsToCheck.push(args.legacyDid);
+    }
+
+    let isOwner = false;
+
+    // Check collaborators table
+    for (const did of didsToCheck) {
+      const collab = await ctx.db
+        .query("collaborators")
+        .withIndex("by_list_user", (q) =>
+          q.eq("listId", args.listId).eq("userDid", did)
+        )
+        .first();
+
+      if (collab?.role === "owner") {
+        isOwner = true;
+        break;
+      }
+    }
+
+    // Fallback: Check legacy ownerDid field
+    if (!isOwner) {
+      isOwner =
+        list.ownerDid === args.userDid ||
+        (args.legacyDid !== undefined && list.ownerDid === args.legacyDid);
+    }
 
     if (!isOwner) {
       throw new Error("Only the list owner can delete this list");
@@ -130,19 +188,33 @@ export const deleteList = mutation({
       await ctx.db.delete(invite._id);
     }
 
+    // Delete all collaborators for this list (Phase 3)
+    const collaborators = await ctx.db
+      .query("collaborators")
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
+      .collect();
+
+    for (const collab of collaborators) {
+      await ctx.db.delete(collab._id);
+    }
+
     // Delete the list itself
     await ctx.db.delete(args.listId);
   },
 });
 
 /**
- * Add a collaborator to a list.
- * Used when accepting an invite.
+ * @deprecated Use collaborators.addCollaborator instead (Phase 3).
+ * This function is kept for backwards compatibility with existing invites flow.
+ * Adds collaborator to both legacy field and collaborators table.
  */
 export const addCollaborator = mutation({
   args: {
     listId: v.id("lists"),
     collaboratorDid: v.string(),
+    role: v.optional(v.union(v.literal("editor"), v.literal("viewer"))),
+    invitedByDid: v.optional(v.string()),
+    joinedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const list = await ctx.db.get(args.listId);
@@ -150,18 +222,41 @@ export const addCollaborator = mutation({
       throw new Error("List not found");
     }
 
-    // Check if list already has a collaborator (max 2 users for v1)
-    if (list.collaboratorDid) {
-      throw new Error("This list already has a collaborator");
-    }
-
     // Check if the collaborator is the owner (can't collaborate with yourself)
     if (list.ownerDid === args.collaboratorDid) {
       throw new Error("Cannot add yourself as a collaborator");
     }
 
-    await ctx.db.patch(args.listId, {
-      collaboratorDid: args.collaboratorDid,
+    // Check if already exists in collaborators table
+    const existingCollab = await ctx.db
+      .query("collaborators")
+      .withIndex("by_list_user", (q) =>
+        q.eq("listId", args.listId).eq("userDid", args.collaboratorDid)
+      )
+      .first();
+
+    if (existingCollab) {
+      throw new Error("User is already a collaborator on this list");
+    }
+
+    const role = args.role ?? "editor";
+    const joinedAt = args.joinedAt ?? Date.now();
+
+    // Add to collaborators table (Phase 3)
+    await ctx.db.insert("collaborators", {
+      listId: args.listId,
+      userDid: args.collaboratorDid,
+      role,
+      joinedAt,
+      invitedByDid: args.invitedByDid ?? list.ownerDid,
     });
+
+    // Also update legacy field for backwards compatibility (only if no existing collaborator)
+    // Note: This maintains backwards compat but will be removed when collaboratorDid is dropped
+    if (!list.collaboratorDid) {
+      await ctx.db.patch(args.listId, {
+        collaboratorDid: args.collaboratorDid,
+      });
+    }
   },
 });

@@ -15,7 +15,7 @@ interface AddItemInputProps {
 }
 
 export function AddItemInput({ listId, assetDid }: AddItemInputProps) {
-  const { did, getSigner } = useCurrentUser();
+  const { did, legacyDid, getSigner } = useCurrentUser();
   const addItem = useMutation(api.items.addItem);
 
   const [name, setName] = useState("");
@@ -51,6 +51,7 @@ export function AddItemInput({ listId, assetDid }: AddItemInputProps) {
         listId,
         name: trimmedName,
         createdByDid: did,
+        legacyDid: legacyDid ?? undefined,
         createdAt: Date.now(),
       });
 
