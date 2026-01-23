@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 5.6 next (UI Feedback) — Phase 5.5 completed
+**Current Status:** Phase 5 completed (Offline Support) — All phases done!
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,132 +12,16 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**Phase 5.6: UI Feedback**
+**All planned phases are complete!**
 
-Build offline status indicators and user feedback components. The offline system is functional but users can't see sync status.
+The v2 implementation is finished. All five phases have been completed:
+- Phase 1: Turnkey Authentication
+- Phase 2: Multiple Lists with Categories
+- Phase 3: Unlimited Collaborators
+- Phase 4: did:webvh Publication
+- Phase 5: Offline Support (5.1-5.6)
 
-### Files to Create
-- `src/components/offline/OfflineIndicator.tsx` — Banner when offline
-- `src/components/offline/SyncStatus.tsx` — Sync progress/status display
-
-### Files to Modify
-- `src/App.tsx` or layout wrapper — Mount OfflineIndicator globally
-
-### Implementation Details
-
-**1. OfflineIndicator.tsx**
-A banner that appears when offline:
-
-```typescript
-import { useOffline } from "../../hooks/useOffline";
-
-export function OfflineIndicator() {
-  const { isOnline, pendingCount } = useOffline();
-
-  if (isOnline && pendingCount === 0) return null;
-
-  return (
-    <div className={`fixed top-0 left-0 right-0 z-50 px-4 py-2 text-center text-sm font-medium ${
-      isOnline ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"
-    }`}>
-      {!isOnline ? (
-        <>You are offline. Changes will sync when you reconnect.</>
-      ) : (
-        <>Syncing {pendingCount} pending change{pendingCount !== 1 ? "s" : ""}...</>
-      )}
-    </div>
-  );
-}
-```
-
-**2. SyncStatus.tsx**
-A more detailed sync status for settings or debug (optional):
-
-```typescript
-import { useOffline } from "../../hooks/useOffline";
-
-export function SyncStatus() {
-  const { isOnline, syncStatus, pendingCount, manualSync } = useOffline();
-
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-500" : "bg-red-500"}`} />
-      <span>{isOnline ? "Online" : "Offline"}</span>
-      {pendingCount > 0 && (
-        <>
-          <span className="text-gray-400">|</span>
-          <span>{pendingCount} pending</span>
-          {isOnline && (
-            <button
-              onClick={manualSync}
-              disabled={syncStatus.status === "syncing"}
-              className="text-blue-600 hover:underline disabled:opacity-50"
-            >
-              {syncStatus.status === "syncing" ? "Syncing..." : "Sync now"}
-            </button>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-```
-
-**NOTE:** `syncStatus` is an object with shape `{ status: "idle" | "syncing" | "synced" | "error", message?: string }`. Use `syncStatus.status` to check the current state.
-
-**3. Toast notifications (optional enhancement)**
-Show toast on "offline" and "back online" transitions. If using a toast library, add:
-
-```typescript
-// In a component or hook that watches online status
-const { isOnline } = useOffline();
-const prevOnline = useRef(isOnline);
-
-useEffect(() => {
-  if (prevOnline.current !== isOnline) {
-    if (isOnline) {
-      toast.success("Back online!");
-    } else {
-      toast.error("You are offline");
-    }
-    prevOnline.current = isOnline;
-  }
-}, [isOnline]);
-```
-
-**4. Mount in App.tsx**
-Add `<OfflineIndicator />` at the top of the app:
-
-```typescript
-// In App.tsx or main layout
-<>
-  <OfflineIndicator />
-  {/* rest of app */}
-</>
-```
-
-### Acceptance Criteria
-- [ ] `OfflineIndicator.tsx` shows banner when offline
-- [ ] Banner shows "Syncing X pending changes..." when online but syncing
-- [ ] `SyncStatus.tsx` shows connection status with visual indicator
-- [ ] SyncStatus shows pending count with manual sync button
-- [ ] OfflineIndicator is mounted in app layout
-- [ ] Build passes (`bun run build`)
-- [ ] Lint passes (`bun run lint`)
-
-### Key Context
-- `useOffline` hook exports: `isOnline`, `syncStatus`, `pendingCount`, `manualSync`
-- **IMPORTANT:** `syncStatus` is an OBJECT: `{ status: "idle" | "syncing" | "synced" | "error", message?: string }`
-- Check status via `syncStatus.status`, e.g. `syncStatus.status === "syncing"`
-- Keep components simple — fancy animations not required for v1
-- Consider accessibility: use appropriate ARIA live regions for status changes
-- App.tsx structure: OfflineIndicator goes inside `<div className="min-h-screen bg-gray-50">` wrapper (line 37)
-
-### Definition of Done
-When complete, Ralph should:
-1. All acceptance criteria checked
-2. Commit with message: `feat(offline): add UI feedback for offline status (Phase 5.6)`
-3. Update this section with completion status
+Next steps for Lisa to define or backlog items to address.
 
 ---
 
@@ -321,11 +205,11 @@ When complete, Ralph should:
 - ✅ Fixed unused variable: removed `listId` from AddItemInput props
 - ✅ Wired up `useOptimisticItems` in `ListView.tsx`
 
-#### 5.6 UI Feedback
-- Create `src/components/offline/OfflineIndicator.tsx` — banner when offline
-- Create `src/components/offline/SyncStatus.tsx` — sync progress/status
-- Show pending sync count badge
-- Toast for "offline" and "back online" transitions
+#### 5.6 [COMPLETED] UI Feedback
+- ✅ Created `src/components/offline/OfflineIndicator.tsx` — fixed banner when offline
+- ✅ Created `src/components/offline/SyncStatus.tsx` — detailed sync status with indicator and manual sync button
+- ✅ Mounted `OfflineIndicator` in `App.tsx` for both authenticated and unauthenticated views
+- ✅ Added ARIA live regions for accessibility
 
 ---
 
@@ -383,6 +267,7 @@ When complete, Ralph should:
 
 ## Recently Completed
 
+- ✓ Phase 5.6: UI Feedback — `OfflineIndicator.tsx` banner and `SyncStatus.tsx` detailed status component with ARIA accessibility; mounted in App.tsx
 - ✓ Phase 5.5: Optimistic Updates — `src/hooks/useOptimisticItems.tsx` hook with addItem, checkItem, uncheckItem, reorderItems; ListView, AddItemInput, ListItem updated to use callbacks; build and lint pass
 - ✓ Phase 5.4: useOffline Hook — `src/hooks/useOffline.tsx` with online/offline tracking, sync-on-reconnect, pending count polling
 - ✓ Phase 5.3: Sync Manager — `src/lib/sync.ts` with SyncManager class, exponential backoff retries, subscribe pattern for status updates

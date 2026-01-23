@@ -2,6 +2,7 @@ import { Routes, Route, Link, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProfileBadge } from './components/ProfileBadge'
+import { OfflineIndicator } from './components/offline/OfflineIndicator'
 import { Home } from './pages/Home'
 import { ListView } from './pages/ListView'
 import { JoinList } from './pages/JoinList'
@@ -23,19 +24,24 @@ function App() {
   // Unauthenticated users see the login page (but public lists are accessible)
   if (!isAuthenticated) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/join/:listId/:token" element={<JoinList />} />
-        <Route path="/public/:did" element={<PublicList />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <>
+        <OfflineIndicator />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/join/:listId/:token" element={<JoinList />} />
+          <Route path="/public/:did" element={<PublicList />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </>
     )
   }
 
   // Authenticated users see the main app
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm p-4">
+    <>
+      <OfflineIndicator />
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white shadow-sm p-4">
         <div className="container mx-auto flex items-center justify-between">
           <Link to="/" className="text-xl font-bold hover:text-gray-700">
             Lisa
@@ -55,7 +61,8 @@ function App() {
           </Routes>
         </ErrorBoundary>
       </main>
-    </div>
+      </div>
+    </>
   )
 }
 
