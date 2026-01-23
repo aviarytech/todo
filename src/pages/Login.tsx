@@ -77,6 +77,17 @@ export function Login() {
     setError(null);
   };
 
+  const handleResendOtp = async () => {
+    setError(null);
+    const trimmedEmail = email.trim().toLowerCase();
+    try {
+      await startOtp(trimmedEmail);
+    } catch (err) {
+      console.error("Failed to resend OTP:", err);
+      setError("Failed to resend verification code. Please try again.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -125,6 +136,7 @@ export function Login() {
               onComplete={handleOtpComplete}
               isLoading={isLoading}
               error={error}
+              onResend={handleResendOtp}
             />
 
             <button
