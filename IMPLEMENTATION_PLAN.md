@@ -22,59 +22,322 @@ Existing users have localStorage identities (DID + private key). When they open 
 3. If they migrate: link their existing DID/data to new Turnkey auth
 4. Support both auth methods during the transition period
 
-### Files to Read First
-- `src/hooks/useIdentity.tsx` — Current localStorage identity system
-- `src/hooks/useAuth.tsx` — New Turnkey auth system (already implemented)
-- `src/lib/identity.ts` — localStorage storage helpers (`STORAGE_KEY = "lisa-identity"`)
-- `src/App.tsx` — Entry point, uses `useIdentity` to show `IdentitySetup` if no identity
-- `src/components/IdentitySetup.tsx` — Current new-user flow (name entry + DID creation)
-- `convex/auth.ts:39-53` — Already handles DID linking during upsertUser (migration-ready)
-- `specs/features/auth.md:38-43` — Migration acceptance criteria
+### Implementation Order (Do These Steps Sequentially)
 
-### Files to Create
-- `src/components/auth/MigrationPrompt.tsx` — Modal prompting user to upgrade to Turnkey
-  - Shows benefits: "Secure your account with email login"
-  - Two buttons: "Upgrade Now" (→ Login flow) and "Later" (→ continue with localStorage)
-  - Remember "Later" choice in sessionStorage so we don't spam
+#### Step 1: Schema Update
+Add `legacyDid` field to users table.
 
-### Files to Modify
-- `src/App.tsx` — Add migration detection logic
-  - Check for legacy identity: `localStorage.getItem("lisa-identity")`
-  - Check if already using Turnkey auth: `useAuth().isAuthenticated`
-  - If legacy exists AND not Turnkey-authed → show `MigrationPrompt`
-- `src/hooks/useAuth.tsx` — Add `migrateLegacyIdentity(legacyDid: string)` helper
-  - After OTP completes, pass the legacy DID to `upsertUser` so Convex can link accounts
-  - The `convex/auth.ts:39-53` code already handles this linking
-- `src/pages/Login.tsx` — Accept optional `legacyDid` prop for migration flow
-  - Pass to `verifyOtp` which will include it in the Convex upsert
+**File:** `convex/schema.ts`
+```typescript
+// In users table, add after line 14 (legacyIdentity field):
+legacyDid: v.optional(v.string()), // Original localStorage DID (for migration)
+
+// Add new index after line 18 (by_email index):
+.index("by_legacy_did", ["legacyDid"])
+```
+
+Then run: `bunx convex dev` to push schema changes.
+
+#### Step 2: Update upsertUser to Store legacyDid
+**File:** `convex/auth.ts`
+
+Modify the `upsertUser` mutation args to accept optional `legacyDid`:
+```typescript
+args: {
+  turnkeySubOrgId: v.string(),
+  email: v.string(),
+  did: v.string(),
+  displayName: v.optional(v.string()),
+  legacyDid: v.optional(v.string()), // ADD THIS
+},
+```
+
+In the handler, when creating a new user or when a legacy DID is provided, store it:
+```typescript
+// When legacyDid is provided during migration, check if user exists by that legacy DID
+if (args.legacyDid) {
+  const existingByLegacyDid = await ctx.db
+    .query("users")
+    .withIndex("by_legacy_did", (q) => q.eq("legacyDid", args.legacyDid))
+    .first();
+
+  // Also check by regular DID in case legacyDid matches an existing record's did
+  const existingByDid = await ctx.db
+    .query("users")
+    .withIndex("by_did", (q) => q.eq("did", args.legacyDid))
+    .first();
+
+  const existingUser = existingByLegacyDid || existingByDid;
+  if (existingUser) {
+    // Link Turnkey to existing user
+    await ctx.db.patch(existingUser._id, {
+      turnkeySubOrgId: args.turnkeySubOrgId,
+      email: args.email,
+      did: args.did, // Update to new Turnkey DID
+      legacyDid: args.legacyDid, // Keep legacy DID for list lookups
+      lastLoginAt: Date.now(),
+      legacyIdentity: false,
+    });
+    return existingUser._id;
+  }
+}
+```
+
+#### Step 3: Update List Queries to Check legacyDid
+**File:** `convex/lists.ts`
+
+Modify `getUserLists` (around line 40-65) to also check by legacyDid:
+```typescript
+export const getUserLists = query({
+  args: { userDid: v.string() },
+  handler: async (ctx, args) => {
+    // First, check if this user has a legacyDid
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_did", (q) => q.eq("did", args.userDid))
+      .first();
+
+    const didsToCheck = [args.userDid];
+    if (user?.legacyDid) {
+      didsToCheck.push(user.legacyDid);
+    }
+
+    // Get lists where user is owner (check both DIDs)
+    const ownedLists: typeof allLists = [];
+    for (const did of didsToCheck) {
+      const lists = await ctx.db
+        .query("lists")
+        .withIndex("by_owner", (q) => q.eq("ownerDid", did))
+        .collect();
+      ownedLists.push(...lists);
+    }
+
+    // Get lists where user is collaborator (check both DIDs)
+    const collaboratorLists: typeof allLists = [];
+    for (const did of didsToCheck) {
+      const lists = await ctx.db
+        .query("lists")
+        .withIndex("by_collaborator", (q) => q.eq("collaboratorDid", did))
+        .collect();
+      collaboratorLists.push(...lists);
+    }
+
+    // Combine and deduplicate
+    const allLists = [...ownedLists];
+    for (const list of collaboratorLists) {
+      if (!allLists.find((l) => l._id === list._id)) {
+        allLists.push(list);
+      }
+    }
+
+    return allLists.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+```
+
+#### Step 4: Create MigrationPrompt Component
+**File:** `src/components/auth/MigrationPrompt.tsx` (NEW FILE)
+
+```typescript
+/**
+ * Modal prompting localStorage users to upgrade to Turnkey auth.
+ */
+import { useNavigate } from "react-router-dom";
+
+interface MigrationPromptProps {
+  legacyDid: string;
+  displayName: string;
+  onDismiss: () => void;
+}
+
+const DISMISS_KEY = "lisa-migration-dismissed";
+
+export function MigrationPrompt({ legacyDid, displayName, onDismiss }: MigrationPromptProps) {
+  const navigate = useNavigate();
+
+  const handleUpgrade = () => {
+    // Navigate to login with legacy DID in state
+    navigate("/login", { state: { legacyDid, displayName } });
+  };
+
+  const handleLater = () => {
+    // Remember dismissal for this session
+    sessionStorage.setItem(DISMISS_KEY, "true");
+    onDismiss();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          Secure Your Account
+        </h2>
+        <p className="text-gray-600 mb-4">
+          Hi {displayName}! Upgrade to email login for better security:
+        </p>
+        <ul className="text-sm text-gray-600 mb-6 space-y-2">
+          <li className="flex items-start gap-2">
+            <span className="text-green-600">✓</span>
+            <span>Access your lists from any device</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-green-600">✓</span>
+            <span>Keys secured by Turnkey (never exposed)</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-green-600">✓</span>
+            <span>Keep all your existing lists</span>
+          </li>
+        </ul>
+
+        <div className="flex gap-3">
+          <button
+            onClick={handleUpgrade}
+            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700"
+          >
+            Upgrade Now
+          </button>
+          <button
+            onClick={handleLater}
+            className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-md font-medium hover:bg-gray-200"
+          >
+            Later
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function isMigrationDismissed(): boolean {
+  return sessionStorage.getItem(DISMISS_KEY) === "true";
+}
+```
+
+#### Step 5: Update useAuth to Accept legacyDid
+**File:** `src/hooks/useAuth.tsx`
+
+Modify `verifyOtp` to accept optional `legacyDid`:
+```typescript
+// Change verifyOtp signature (around line 64):
+verifyOtp: (code: string, legacyDid?: string) => Promise<void>;
+
+// In verifyOtp implementation (around line 290), accept legacyDid param:
+const verifyOtp = useCallback(
+  async (code: string, legacyDid?: string) => {
+    // ... existing code ...
+
+    // When calling upsertUserMutation (around line 338), include legacyDid:
+    await upsertUserMutation({
+      turnkeySubOrgId: authUser.turnkeySubOrgId,
+      email: authUser.email,
+      did: authUser.did,
+      displayName: authUser.displayName,
+      legacyDid, // ADD THIS
+    });
+
+    // After successful auth, clear legacy identity if migrating:
+    if (legacyDid) {
+      localStorage.removeItem("lisa-identity");
+    }
+    // ... rest of function ...
+  },
+  [/* existing deps */]
+);
+```
+
+#### Step 6: Update Login Page to Handle Migration
+**File:** `src/pages/Login.tsx`
+
+Read legacyDid from navigation state and pass to verifyOtp:
+```typescript
+import { useLocation } from "react-router-dom";
+
+// Inside Login component:
+const location = useLocation();
+const migrationState = location.state as { legacyDid?: string; displayName?: string } | null;
+
+// Show migration message if coming from MigrationPrompt:
+{migrationState?.legacyDid && (
+  <p className="text-sm text-blue-600 mb-4 text-center">
+    Upgrading account for {migrationState.displayName}
+  </p>
+)}
+
+// In handleOtpComplete, pass legacyDid:
+const handleOtpComplete = async (code: string) => {
+  // ...
+  await verifyOtp(code, migrationState?.legacyDid);
+  // ...
+};
+```
+
+#### Step 7: Add Login Route
+**File:** `src/App.tsx`
+
+Add the Login route (currently missing):
+```typescript
+import { Login } from "./pages/Login";
+
+// In Routes section, add:
+<Route path="/login" element={<Login />} />
+```
+
+#### Step 8: Update App.tsx to Show MigrationPrompt
+**File:** `src/App.tsx`
+
+```typescript
+import { useState, useEffect } from "react";
+import { useAuth } from "./hooks/useAuth";
+import { MigrationPrompt, isMigrationDismissed } from "./components/auth/MigrationPrompt";
+import { getIdentity } from "./lib/identity";
+
+function App() {
+  const { hasIdentity, isLoading } = useIdentity();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [showMigration, setShowMigration] = useState(false);
+  const [legacyIdentity, setLegacyIdentity] = useState<{ did: string; displayName: string } | null>(null);
+
+  // Check for legacy identity that needs migration
+  useEffect(() => {
+    if (authLoading) return;
+
+    const legacy = getIdentity();
+    if (legacy && !isAuthenticated && !isMigrationDismissed()) {
+      setLegacyIdentity({ did: legacy.did, displayName: legacy.displayName });
+      setShowMigration(true);
+    }
+  }, [isAuthenticated, authLoading]);
+
+  // Show migration prompt modal
+  {showMigration && legacyIdentity && (
+    <MigrationPrompt
+      legacyDid={legacyIdentity.did}
+      displayName={legacyIdentity.displayName}
+      onDismiss={() => setShowMigration(false)}
+    />
+  )}
+
+  // Rest of existing App render...
+}
+```
 
 ### Key Storage Keys
 - `"lisa-identity"` — Legacy localStorage identity (has `did`, `privateKey`, `publicKey`, `displayName`)
 - `"lisa-auth-state"` — Turnkey auth state (has `user`, `walletAccount`, `publicKeyMultibase`)
+- `"lisa-migration-dismissed"` — sessionStorage flag to not spam migration prompt
 
 ### Acceptance Criteria
+- [ ] Schema updated with `legacyDid` field and index
 - [ ] When user has localStorage identity but NOT Turnkey auth, show MigrationPrompt
 - [ ] MigrationPrompt explains benefits and has "Upgrade" and "Later" buttons
-- [ ] "Later" dismisses prompt for the session (use sessionStorage flag)
+- [ ] "Later" dismisses prompt for the session (uses sessionStorage flag)
 - [ ] "Upgrade" takes user to Login flow with their legacy DID preserved
-- [ ] After successful Turnkey OTP, the new Turnkey account is linked to existing user data
-- [ ] Users who migrated can continue to see their existing lists (DID preserved or mapped)
+- [ ] After successful Turnkey OTP, the new Turnkey account stores legacyDid
+- [ ] Users who migrated can continue to see their existing lists (queried by legacyDid)
 - [ ] Users who choose "Later" can continue using the app with localStorage identity
 - [ ] Build passes (`bun run build`)
 - [ ] Lint passes (`bun run lint`)
-
-### Key Implementation Notes
-
-1. **DID Handling Strategy**: The simplest approach is to preserve access to existing data by linking Turnkey to existing user record by DID. The `convex/auth.ts:39-53` already does this — it checks if a user exists by DID and links the Turnkey ID.
-
-2. **The Challenge**: Turnkey generates a NEW did:peer from its Ed25519 key, which differs from the legacy localStorage DID. To preserve data access:
-   - Option A: Store `legacyDid` field on user record and query by either DID
-   - Option B: After migration, update all `ownerDid`/`collaboratorDid` references to new DID
-   - **Recommended**: Option A is simpler and non-destructive. Add `legacyDid` field to users table.
-
-3. **Schema Addition Needed**: Add `legacyDid: v.optional(v.string())` to users table with index `by_legacy_did`
-
-4. **Query Updates Needed**: Update `convex/lists.ts:getUserLists` to check both `did` and `legacyDid`
 
 ### Migration Flow Sequence
 ```
@@ -84,23 +347,23 @@ Check localStorage("lisa-identity") → found?
   ↓ yes
 Check useAuth().isAuthenticated → true?
   ↓ no (legacy user not yet migrated)
-Check sessionStorage("migration-dismissed") → true?
+Check sessionStorage("lisa-migration-dismissed") → true?
   ↓ no
 Show MigrationPrompt
   ↓
 User clicks "Upgrade Now"
   ↓
-Navigate to /login with state { legacyDid: identity.did }
+Navigate to /login with state { legacyDid: identity.did, displayName }
   ↓
 User completes OTP flow
   ↓
-verifyOtp() includes legacyDid in upsertUser call
+verifyOtp(code, legacyDid) includes legacyDid in upsertUser call
   ↓
-Convex links Turnkey account to existing user or stores legacyDid
+Convex stores legacyDid on user record, links to existing data
   ↓
 Clear localStorage("lisa-identity") after successful migration
   ↓
-User continues with Turnkey auth, data preserved
+User continues with Turnkey auth, data preserved via legacyDid queries
 ```
 
 ### Definition of Done
