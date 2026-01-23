@@ -455,6 +455,7 @@ These were discovered during comprehensive code review. All are optional improve
 
 ## Recently Completed
 
+- ✓ Phase 7.2: Replace window.confirm() — Created reusable `ConfirmDialog` component with `useFocusTrap`, `role="alertdialog"`, `aria-modal`, ARIA labels; replaced 3 `window.confirm()` calls in `CollaboratorList.tsx` (remove/leave) and `CategoryManager.tsx` (delete); build and lint pass
 - ✓ Phase 7.1: Modal Accessibility — Created `useFocusTrap` hook with focus trap, ESC key handling, and focus restoration; added `role="dialog/alertdialog"`, `aria-modal`, `aria-labelledby/describedby` to all 5 modals (DeleteListDialog, ShareModal, PublishModal, CategoryManager, CreateListModal); build and lint pass
 - ✓ Phase 7.1 (earlier): AuthGuard refactoring — Refactored to use AuthGuard for protected routes; created AuthenticatedLayout and ProtectedRoute wrappers; public routes remain accessible
 - ✓ Phase 6.3: Protect "Uncategorized" category name — Added validation to `createCategory` and `renameCategory` in `convex/categories.ts`; rejects "Uncategorized" (case-insensitive); build and lint pass
