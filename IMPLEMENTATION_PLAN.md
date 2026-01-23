@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 5.5 ready for implementation (Optimistic Updates)
+**Current Status:** Phase 5.6 next (UI Feedback) — Phase 5.5 completed
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,331 +12,127 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[IN PROGRESS]** Phase 5.5: Optimistic Updates
+**Phase 5.6: UI Feedback**
 
-Continuing Phase 5: Offline Support. useOffline hook is complete (Phase 5.4). Now implement optimistic updates for item mutations so users see immediate feedback even when offline.
-
-### Current Task: 5.5 Optimistic Updates
-
-Create a hook and wrapper logic that enables optimistic UI updates for item mutations, queuing mutations when offline and merging with server state when back online.
-
-### Files to Read First
-- `specs/features/offline.md` — Full specification (see "Optimistic Updates" section)
-- `src/hooks/useOffline.tsx` — `useOffline` hook providing `isOnline` state
-- `src/lib/offline.ts` — `queueMutation` to queue offline mutations
-- `src/components/AddItemInput.tsx` — Current add item implementation (uses `useMutation`)
-- `src/components/ListItem.tsx` — Current check/uncheck implementation
-- `src/pages/ListView.tsx` — Where items are displayed and reordered
-- `convex/items.ts` — Convex mutation signatures (`addItem`, `checkItem`, `uncheckItem`, `reorderItems`)
+Build offline status indicators and user feedback components. The offline system is functional but users can't see sync status.
 
 ### Files to Create
-- `src/hooks/useOptimisticItems.tsx` — Hook for optimistic item management
+- `src/components/offline/OfflineIndicator.tsx` — Banner when offline
+- `src/components/offline/SyncStatus.tsx` — Sync progress/status display
 
 ### Files to Modify
-- `src/components/AddItemInput.tsx` — Use optimistic add from hook
-- `src/components/ListItem.tsx` — Use optimistic check/uncheck from hook
-- `src/pages/ListView.tsx` — Use `useOptimisticItems` for item display and mutations
+- `src/App.tsx` or layout wrapper — Mount OfflineIndicator globally
 
-### Implementation Guidance
+### Implementation Details
 
-The spec at `specs/features/offline.md` provides the pattern. Below is the complete hook architecture with all methods implemented:
+**1. OfflineIndicator.tsx**
+A banner that appears when offline:
 
 ```typescript
-// src/hooks/useOptimisticItems.tsx
+import { useOffline } from "../../hooks/useOffline";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Doc, Id } from "../../convex/_generated/dataModel";
-import { useOffline } from "./useOffline";
-import { queueMutation } from "../lib/offline";
+export function OfflineIndicator() {
+  const { isOnline, pendingCount } = useOffline();
 
-export interface OptimisticItem extends Doc<"items"> {
-  _isOptimistic?: boolean; // Flag for UI styling (e.g., dimmed)
-}
+  if (isOnline && pendingCount === 0) return null;
 
-export function useOptimisticItems(listId: Id<"lists">) {
-  const { isOnline } = useOffline();
-  const serverItems = useQuery(api.items.getListItems, { listId });
-  const [optimisticItems, setOptimisticItems] = useState<OptimisticItem[]>([]);
-
-  const addItemMutation = useMutation(api.items.addItem);
-  const checkItemMutation = useMutation(api.items.checkItem);
-  const uncheckItemMutation = useMutation(api.items.uncheckItem);
-  const reorderItemsMutation = useMutation(api.items.reorderItems);
-
-  // Add item with optimistic update
-  const addItem = useCallback(async (args: {
-    name: string;
-    createdByDid: string;
-    legacyDid?: string;
-    createdAt: number;
-  }) => {
-    const tempId = `temp-${Date.now()}` as Id<"items">;
-    const optimistic: OptimisticItem = {
-      _id: tempId,
-      _creationTime: Date.now(),
-      listId,
-      name: args.name,
-      checked: false,
-      createdByDid: args.createdByDid,
-      createdAt: args.createdAt,
-      _isOptimistic: true,
-    };
-
-    setOptimisticItems(prev => [...prev, optimistic]);
-
-    if (isOnline) {
-      try {
-        await addItemMutation({ listId, ...args });
-      } catch (err) {
-        setOptimisticItems(prev => prev.filter(i => i._id !== tempId));
-        throw err;
-      }
-    } else {
-      await queueMutation({
-        type: "addItem",
-        payload: { listId, ...args },
-        timestamp: Date.now(),
-        retryCount: 0,
-      });
-    }
-  }, [isOnline, listId, addItemMutation]);
-
-  // Check item with optimistic update
-  const checkItem = useCallback(async (
-    itemId: Id<"items">,
-    checkedByDid: string,
-    legacyDid?: string
-  ) => {
-    const checkedAt = Date.now();
-
-    // Find original state for potential rollback
-    const originalItem = [...(serverItems ?? []), ...optimisticItems].find(i => i._id === itemId);
-
-    setOptimisticItems(prev => {
-      // If item exists in optimistic list, update it
-      const exists = prev.some(i => i._id === itemId);
-      if (exists) {
-        return prev.map(i => i._id === itemId
-          ? { ...i, checked: true, checkedByDid, checkedAt, _isOptimistic: true }
-          : i
-        );
-      }
-      // If not in optimistic list, add the server item with optimistic update
-      if (originalItem) {
-        return [...prev, { ...originalItem, checked: true, checkedByDid, checkedAt, _isOptimistic: true }];
-      }
-      return prev;
-    });
-
-    if (isOnline) {
-      try {
-        await checkItemMutation({ itemId, checkedByDid, legacyDid, checkedAt });
-      } catch (err) {
-        // Rollback
-        setOptimisticItems(prev => prev.filter(i => i._id !== itemId));
-        throw err;
-      }
-    } else {
-      await queueMutation({
-        type: "checkItem",
-        payload: { itemId, checkedByDid, legacyDid, checkedAt },
-        timestamp: Date.now(),
-        retryCount: 0,
-      });
-    }
-  }, [isOnline, checkItemMutation, serverItems, optimisticItems]);
-
-  // Uncheck item with optimistic update
-  const uncheckItem = useCallback(async (
-    itemId: Id<"items">,
-    userDid: string,
-    legacyDid?: string
-  ) => {
-    const originalItem = [...(serverItems ?? []), ...optimisticItems].find(i => i._id === itemId);
-
-    setOptimisticItems(prev => {
-      const exists = prev.some(i => i._id === itemId);
-      if (exists) {
-        return prev.map(i => i._id === itemId
-          ? { ...i, checked: false, checkedByDid: undefined, checkedAt: undefined, _isOptimistic: true }
-          : i
-        );
-      }
-      if (originalItem) {
-        return [...prev, { ...originalItem, checked: false, checkedByDid: undefined, checkedAt: undefined, _isOptimistic: true }];
-      }
-      return prev;
-    });
-
-    if (isOnline) {
-      try {
-        await uncheckItemMutation({ itemId, userDid, legacyDid });
-      } catch (err) {
-        setOptimisticItems(prev => prev.filter(i => i._id !== itemId));
-        throw err;
-      }
-    } else {
-      await queueMutation({
-        type: "uncheckItem",
-        payload: { itemId, userDid, legacyDid },
-        timestamp: Date.now(),
-        retryCount: 0,
-      });
-    }
-  }, [isOnline, uncheckItemMutation, serverItems, optimisticItems]);
-
-  // Reorder items with optimistic update (lower priority - can be simplified)
-  const reorderItems = useCallback(async (
-    itemIds: Id<"items">[],
-    userDid: string,
-    legacyDid?: string
-  ) => {
-    // For reorder, we don't need optimistic UI since drag-drop already shows the result
-    // Just queue if offline, execute if online
-    if (isOnline) {
-      await reorderItemsMutation({ listId, itemIds, userDid, legacyDid });
-    } else {
-      await queueMutation({
-        type: "reorderItem",
-        payload: { listId, itemIds, userDid, legacyDid },
-        timestamp: Date.now(),
-        retryCount: 0,
-      });
-    }
-  }, [isOnline, listId, reorderItemsMutation]);
-
-  // Merge server items with optimistic items
-  const items = useMemo((): OptimisticItem[] => {
-    if (!serverItems) return optimisticItems;
-
-    const serverIds = new Set(serverItems.map(i => i._id));
-
-    // Apply optimistic updates to server items
-    const merged = serverItems.map(serverItem => {
-      const optimistic = optimisticItems.find(o => o._id === serverItem._id);
-      return optimistic ?? serverItem;
-    });
-
-    // Add optimistic items that don't exist on server yet (temp IDs)
-    const newOptimistic = optimisticItems.filter(o =>
-      (o._id as string).startsWith("temp-") || !serverIds.has(o._id)
-    );
-
-    return [...merged, ...newOptimistic];
-  }, [serverItems, optimisticItems]);
-
-  // Clear stale optimistic items when server data changes
-  useEffect(() => {
-    if (!serverItems) return;
-
-    setOptimisticItems(prev => prev.filter(o => {
-      // Keep check/uncheck optimistic updates until server confirms
-      if (!(o._id as string).startsWith("temp-")) {
-        // For existing items, clear optimistic state once server matches
-        const serverItem = serverItems.find(s => s._id === o._id);
-        if (serverItem && serverItem.checked === o.checked) {
-          return false; // Server caught up, remove optimistic
-        }
-        return true; // Keep until server confirms
-      }
-      // For new items, check if server now has matching item
-      const existsOnServer = serverItems.some(s =>
-        s.name === o.name &&
-        s.createdByDid === o.createdByDid &&
-        Math.abs(s.createdAt - o.createdAt) < 5000
-      );
-      return !existsOnServer;
-    }));
-  }, [serverItems]);
-
-  return {
-    items,
-    addItem,
-    checkItem,
-    uncheckItem,
-    reorderItems,
-    isLoading: serverItems === undefined,
-  };
+  return (
+    <div className={`fixed top-0 left-0 right-0 z-50 px-4 py-2 text-center text-sm font-medium ${
+      isOnline ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"
+    }`}>
+      {!isOnline ? (
+        <>You are offline. Changes will sync when you reconnect.</>
+      ) : (
+        <>Syncing {pendingCount} pending change{pendingCount !== 1 ? "s" : ""}...</>
+      )}
+    </div>
+  );
 }
 ```
 
-### Integration Pattern
-
-**1. ListView.tsx Changes:**
-Replace direct `useQuery` and `useMutation` calls with `useOptimisticItems`:
+**2. SyncStatus.tsx**
+A more detailed sync status for settings or debug (optional):
 
 ```typescript
-// Before:
-const items = useQuery(api.items.getListItems, { listId });
-const reorderItems = useMutation(api.items.reorderItems);
+import { useOffline } from "../../hooks/useOffline";
 
-// After:
-const { items, addItem, checkItem, uncheckItem, reorderItems, isLoading } = useOptimisticItems(listId);
-```
+export function SyncStatus() {
+  const { isOnline, syncStatus, pendingCount, manualSync } = useOffline();
 
-Pass the mutation functions to children, and use `isLoading` for loading state.
-
-**2. AddItemInput.tsx Changes:**
-Accept `onAddItem` callback prop instead of using `useMutation` directly:
-
-```typescript
-interface AddItemInputProps {
-  listId: Id<"lists">;
-  assetDid: string;
-  onAddItem: (args: { name: string; createdByDid: string; legacyDid?: string; createdAt: number }) => Promise<void>;
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <span className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-500" : "bg-red-500"}`} />
+      <span>{isOnline ? "Online" : "Offline"}</span>
+      {pendingCount > 0 && (
+        <>
+          <span className="text-gray-400">|</span>
+          <span>{pendingCount} pending</span>
+          {isOnline && (
+            <button
+              onClick={manualSync}
+              disabled={syncStatus === "syncing"}
+              className="text-blue-600 hover:underline disabled:opacity-50"
+            >
+              {syncStatus === "syncing" ? "Syncing..." : "Sync now"}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 ```
 
-**3. ListItem.tsx Changes:**
-Accept `onCheck` and `onUncheck` callbacks instead of using `useMutation` directly:
+**3. Toast notifications (optional enhancement)**
+Show toast on "offline" and "back online" transitions. If using a toast library, add:
 
 ```typescript
-interface ListItemProps {
-  // ... existing props ...
-  onCheck: (itemId: Id<"items">, checkedByDid: string, legacyDid?: string) => Promise<void>;
-  onUncheck: (itemId: Id<"items">, userDid: string, legacyDid?: string) => Promise<void>;
-}
+// In a component or hook that watches online status
+const { isOnline } = useOffline();
+const prevOnline = useRef(isOnline);
+
+useEffect(() => {
+  if (prevOnline.current !== isOnline) {
+    if (isOnline) {
+      toast.success("Back online!");
+    } else {
+      toast.error("You are offline");
+    }
+    prevOnline.current = isOnline;
+  }
+}, [isOnline]);
 ```
 
-**4. Visual Feedback for Optimistic Items:**
-Items with `_isOptimistic: true` should render slightly dimmed:
+**4. Mount in App.tsx**
+Add `<OfflineIndicator />` at the top of the app:
 
 ```typescript
-<div className={`... ${item._isOptimistic ? "opacity-60" : ""}`}>
+// In App.tsx or main layout
+<>
+  <OfflineIndicator />
+  {/* rest of app */}
+</>
 ```
 
 ### Acceptance Criteria
-- [ ] `src/hooks/useOptimisticItems.tsx` created with `useOptimisticItems` hook
-- [ ] Hook exports `OptimisticItem` interface with `_isOptimistic?: boolean` flag
-- [ ] `addItem`: new items appear immediately with temp ID and `_isOptimistic: true`
-- [ ] `checkItem`: toggle state appears immediately with `_isOptimistic: true`
-- [ ] `uncheckItem`: toggle state appears immediately with `_isOptimistic: true`
-- [ ] `reorderItems`: queues mutation when offline (optimistic UI already handled by drag-drop)
-- [ ] Offline queueing: all mutations queued via `queueMutation` when `!isOnline`
-- [ ] Rollback on failure: optimistic state reverted if online mutation throws
-- [ ] Server merge: optimistic items cleaned up when server data arrives
-- [ ] `AddItemInput.tsx` accepts `onAddItem` callback prop (passed from ListView)
-- [ ] `ListItem.tsx` accepts `onCheck`/`onUncheck` callbacks (passed from ListView)
-- [ ] `ListView.tsx` uses `useOptimisticItems` hook and passes callbacks to children
-- [ ] Visual feedback: items with `_isOptimistic: true` render with `opacity-60`
+- [ ] `OfflineIndicator.tsx` shows banner when offline
+- [ ] Banner shows "Syncing X pending changes..." when online but syncing
+- [ ] `SyncStatus.tsx` shows connection status with visual indicator
+- [ ] SyncStatus shows pending count with manual sync button
+- [ ] OfflineIndicator is mounted in app layout
 - [ ] Build passes (`bun run build`)
 - [ ] Lint passes (`bun run lint`)
 
 ### Key Context
-- **Temp IDs**: Use `temp-${Date.now()}` pattern cast as `Id<"items">` — TypeScript will complain but it works at runtime
-- **Visual feedback**: Items with `_isOptimistic: true` should have `opacity-60` class for dimmed appearance
-- **Matching new items**: Match by `name + createdByDid + timestamp proximity (within 5s)` — not by ID since server generates new ID
-- **Reorder simplification**: The drag-drop UI already shows the new order, so `reorderItems` just needs offline queueing, not optimistic state management
-- **Credential signing**: Keep `signItemActionWithSigner` calls in `AddItemInput` and `ListItem` — they're best-effort and don't need to move
-- **Type assertion**: Cast `o._id as string` before calling `.startsWith("temp-")` to satisfy TypeScript
-- **Callback pattern**: ListView owns `useOptimisticItems` hook and passes mutation callbacks down to children
+- `useOffline` hook exports: `isOnline`, `syncStatus`, `pendingCount`, `manualSync`
+- `syncStatus` can be: `"idle"`, `"syncing"`, `"synced"`, `"error"`
+- Keep components simple — fancy animations not required for v1
+- Consider accessibility: use appropriate ARIA live regions for status changes
 
 ### Definition of Done
 When complete, Ralph should:
 1. All acceptance criteria checked
-2. Commit with message: `feat(offline): add optimistic updates for items (Phase 5.5)`
+2. Commit with message: `feat(offline): add UI feedback for offline status (Phase 5.6)`
 3. Update this section with completion status
 
 ---
@@ -513,12 +309,13 @@ When complete, Ralph should:
 - ✅ Polls pending mutation count (every 5s + on sync status change)
 - ✅ Exports: `isOnline`, `syncStatus`, `pendingCount`, `manualSync`
 
-#### 5.5 Optimistic Updates
-- Wrap item mutations for optimistic UI
-- Show optimistic items immediately with temp IDs
-- Queue mutation if offline
-- Merge server data with optimistic items
-- Rollback on failure
+#### 5.5 [COMPLETED] Optimistic Updates
+- ✅ Created `useOptimisticItems` hook with addItem, checkItem, uncheckItem, reorderItems
+- ✅ Updated `AddItemInput.tsx` to accept `onAddItem` callback
+- ✅ Updated `ListItem.tsx` to accept `onCheck`/`onUncheck` callbacks and show optimistic styling
+- ✅ Fixed lint error: refactored to use `useMemo` filtering instead of `useEffect` setState
+- ✅ Fixed unused variable: removed `listId` from AddItemInput props
+- ✅ Wired up `useOptimisticItems` in `ListView.tsx`
 
 #### 5.6 UI Feedback
 - Create `src/components/offline/OfflineIndicator.tsx` — banner when offline
@@ -582,6 +379,7 @@ When complete, Ralph should:
 
 ## Recently Completed
 
+- ✓ Phase 5.5: Optimistic Updates — `src/hooks/useOptimisticItems.tsx` hook with addItem, checkItem, uncheckItem, reorderItems; ListView, AddItemInput, ListItem updated to use callbacks; build and lint pass
 - ✓ Phase 5.4: useOffline Hook — `src/hooks/useOffline.tsx` with online/offline tracking, sync-on-reconnect, pending count polling
 - ✓ Phase 5.3: Sync Manager — `src/lib/sync.ts` with SyncManager class, exponential backoff retries, subscribe pattern for status updates
 - ✓ Phase 5.2: IndexedDB Setup — `src/lib/offline.ts` with lists/items/mutations stores, CRUD helpers for mutation queue, cache helpers for lists/items
