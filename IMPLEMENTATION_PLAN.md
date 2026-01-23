@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 5 completed (Offline Support) — All phases done!
+**Current Status:** Gap analysis complete — Critical offline gaps identified
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,20 +12,121 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**All planned phases are complete!**
+### Current Task
+[CRITICAL] Phase 5.7: Offline Cache Fallback — Display cached lists/items when offline
 
-The v2 implementation is finished. All five phases have been completed:
-- Phase 1: Turnkey Authentication
-- Phase 2: Multiple Lists with Categories
-- Phase 3: Unlimited Collaborators
-- Phase 4: did:webvh Publication
-- Phase 5: Offline Support (5.1-5.6)
+### Problem Statement
+Users currently see a blank/loading screen when offline. The IndexedDB cache exists (`src/lib/offline.ts`) with `cacheList`, `getAllCachedLists`, `cacheItems`, `getCachedItemsByList` helpers, but **these are never called**. The app needs to:
+1. Cache lists and items when online
+2. Fall back to cached data when offline
 
-Next steps for Lisa to define or backlog items to address.
+### Files to Read First
+- `src/lib/offline.ts` — Contains cache helpers (already implemented, unused)
+- `src/hooks/useOffline.tsx` — Hook for offline state
+- `src/pages/Home.tsx` — Needs to fall back to cached lists
+- `src/pages/ListView.tsx` — Needs to fall back to cached items
+
+### Files to Modify
+- `src/pages/Home.tsx` — Add caching when online, fallback when offline
+- `src/pages/ListView.tsx` — Add caching when online, fallback when offline
+- `src/hooks/useOffline.tsx` — May need additional exports
+
+### Implementation Approach
+
+**Option A (Recommended): Cache-through pattern at page level**
+```typescript
+// In Home.tsx
+const serverLists = useQuery(api.lists.getUserLists, ...);
+const { isOnline } = useOffline();
+const [cachedLists, setCachedLists] = useState<List[]>([]);
+
+// Cache when online and data available
+useEffect(() => {
+  if (serverLists && isOnline) {
+    cacheAllLists(serverLists); // New batch helper needed
+  }
+}, [serverLists, isOnline]);
+
+// Load cache when offline
+useEffect(() => {
+  if (!isOnline) {
+    getAllCachedLists().then(setCachedLists);
+  }
+}, [isOnline]);
+
+// Use server data when available, cache when offline
+const lists = serverLists ?? (isOnline ? undefined : cachedLists);
+```
+
+**For ListView.tsx (similar pattern):**
+```typescript
+const serverItems = useQuery(api.items.getItems, { listId });
+const { isOnline } = useOffline();
+const [cachedItems, setCachedItems] = useState<Item[]>([]);
+
+useEffect(() => {
+  if (serverItems && isOnline) {
+    cacheItems(listId, serverItems);
+  }
+}, [serverItems, isOnline, listId]);
+
+useEffect(() => {
+  if (!isOnline) {
+    getCachedItemsByList(listId).then(setCachedItems);
+  }
+}, [isOnline, listId]);
+
+const items = serverItems ?? (isOnline ? undefined : cachedItems);
+```
+
+### Acceptance Criteria
+- [ ] When online: Lists and items are cached to IndexedDB after loading
+- [ ] When offline: Cached lists display on Home page (not blank)
+- [ ] When offline: Cached items display on ListView page (not blank)
+- [ ] Visual indicator that data is from cache (e.g., subtle "Cached" badge or dimmed state)
+- [ ] Build passes (`bun run build`)
+- [ ] Lint passes (`bun run lint`)
+
+### Key Context
+- `offline.ts` already has `cacheList`, `getAllCachedLists`, `cacheItems`, `getCachedItemsByList`
+- May need a batch `cacheAllLists` helper for efficiency
+- The `_cachedAt` field exists for TTL checks (7-day TTL per spec)
+- Don't over-engineer — simple fallback is fine for now
+
+### Definition of Done
+When complete, Ralph should:
+1. Test by going offline in DevTools Network tab
+2. Verify lists and items still display from cache
+3. All acceptance criteria checked
+4. Commit with message: `feat(offline): add cache fallback for offline viewing (Phase 5.7)`
+5. Update this section with completion status
 
 ---
 
 ## Next Up (Priority Order)
+
+### Phase 5.7: Offline Cache Fallback [IN PROGRESS]
+- Display cached lists/items when offline instead of blank screen
+- See Working Context above for implementation details
+
+### Phase 5.8: Conflict Resolution
+- Add server timestamp comparison in SyncManager
+- If `serverItem.updatedAt > localMutation.timestamp`, discard local change
+- Notify user of conflicts via toast/notification
+- Handle edge cases: item deleted remotely, list deleted remotely
+
+### Phase 5.9: Offline Operation Restrictions
+- Prevent list deletion when offline (too destructive)
+- Prevent publish/unpublish when offline
+- Show disabled state with "Available when online" tooltip
+
+### Phase 1.8: Resend OTP
+- Wire up `onResend` callback in Login.tsx → OtpInput
+- OtpInput already has UI and cooldown logic ready
+
+---
+
+## Completed Phases
 
 ### Phase 1: Turnkey Authentication [COMPLETED]
 
@@ -249,9 +350,15 @@ Next steps for Lisa to define or backlog items to address.
 
 ### Offline
 
+- [CRITICAL] **Cache fallback not wired up** — IndexedDB cache helpers exist but are never called. Users see blank screen offline. Phase 5.7 addresses this.
+
+- [CRITICAL] **No conflict resolution** — SyncManager doesn't check server timestamps. Multiple offline edits won't reconcile properly. Phase 5.8 addresses this.
+
 - [CRITICAL] **Service Worker updates** — SW caching can cause users to see stale app. Implement update notification with skipWaiting/claim flow.
 
 - [CRITICAL] **Never cache Convex API** — Any URL containing `convex.cloud` must be excluded from SW fetch handling. Caching these breaks real-time sync.
+
+- [WARNING] **Destructive ops allowed offline** — List delete and publish/unpublish should be blocked when offline. Phase 5.9 addresses this.
 
 - [WARNING] **Conflict resolution is lossy** — Server wins conflicts. User may lose offline changes if collaborator edited same item.
 
@@ -292,8 +399,18 @@ Next steps for Lisa to define or backlog items to address.
 ### Technical Debt
 - [TECH-DEBT] Remove deprecated localStorage identity code after migration period (useIdentity.tsx, IdentitySetup.tsx, MigrationPrompt.tsx, identity.ts, migration.ts)
 - [TECH-DEBT] Remove `collaboratorDid` field from lists table after running migration
+- [TECH-DEBT] Remove deprecated CollaboratorBadge component (replaced by CollaboratorList)
 - [TECH-DEBT] Add comprehensive E2E tests for new features
 - [TECH-DEBT] Performance audit after all features implemented
+
+### Minor Gaps (Low Priority)
+- Auth: Add `signCredential` convenience method to useAuth (workaround: use `getSigner().sign()`)
+- Auth: Use AuthGuard component instead of inline check in App.tsx
+- Categories: Protect "Uncategorized" name from being created as a real category
+- Categories: Add UI for category reordering (backend ready via `reorderCategory`)
+- Publication: Item-level credential verification (VerifyButton component per spec)
+- Publication: RequestAccessButton for "Join this list" flow from public view
+- Publication: Rate limiting on public list queries
 
 ### Future Features
 - Bitcoin inscription for lists (did:btco layer)
