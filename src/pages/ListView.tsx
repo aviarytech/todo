@@ -4,9 +4,9 @@
  * Displays list header with actions, items, and add item input.
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
 import { useIdentity } from "../hooks/useIdentity";
@@ -23,10 +23,54 @@ export function ListView() {
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
 
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
   const items = useQuery(api.items.getListItems, { listId });
+  const reorderItems = useMutation(api.items.reorderItems);
+
+  const handleDragStart = useCallback((itemId: Id<"items">) => {
+    setDraggedItemId(itemId);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, itemId: Id<"items">) => {
+    e.preventDefault();
+    if (draggedItemId && draggedItemId !== itemId) {
+      setDragOverItemId(itemId);
+    }
+  }, [draggedItemId]);
+
+  const handleDragEnd = useCallback(async () => {
+    if (!draggedItemId || !dragOverItemId || !items || !did) {
+      setDraggedItemId(null);
+      setDragOverItemId(null);
+      return;
+    }
+
+    // Calculate new order
+    const itemIds = items.map((item) => item._id);
+    const draggedIndex = itemIds.indexOf(draggedItemId);
+    const targetIndex = itemIds.indexOf(dragOverItemId);
+
+    if (draggedIndex !== -1 && targetIndex !== -1 && draggedIndex !== targetIndex) {
+      // Remove from old position and insert at new position
+      const newItemIds = [...itemIds];
+      newItemIds.splice(draggedIndex, 1);
+      newItemIds.splice(targetIndex, 0, draggedItemId);
+
+      // Update the order in the database
+      await reorderItems({
+        listId,
+        itemIds: newItemIds,
+        userDid: did,
+      });
+    }
+
+    setDraggedItemId(null);
+    setDragOverItemId(null);
+  }, [draggedItemId, dragOverItemId, items, did, listId, reorderItems]);
 
   if (!did || !privateKey) {
     return null; // IdentitySetup will show instead
@@ -127,6 +171,11 @@ export function ListView() {
               list={list}
               userDid={did}
               userPrivateKey={privateKey}
+              isDragging={draggedItemId === item._id}
+              isDragOver={dragOverItemId === item._id}
+              onDragStart={() => handleDragStart(item._id)}
+              onDragOver={(e) => handleDragOver(e, item._id)}
+              onDragEnd={handleDragEnd}
             />
           ))
         )}

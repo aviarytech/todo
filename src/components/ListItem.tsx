@@ -16,9 +16,24 @@ interface ListItemProps {
   list: Doc<"lists">;
   userDid: string;
   userPrivateKey: string;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
 }
 
-export function ListItem({ item, list, userDid, userPrivateKey }: ListItemProps) {
+export function ListItem({
+  item,
+  list,
+  userDid,
+  userPrivateKey,
+  isDragging = false,
+  isDragOver = false,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+}: ListItemProps) {
   const checkItem = useMutation(api.items.checkItem);
   const uncheckItem = useMutation(api.items.uncheckItem);
   const removeItem = useMutation(api.items.removeItem);
@@ -82,7 +97,28 @@ export function ListItem({ item, list, userDid, userPrivateKey }: ListItemProps)
   };
 
   return (
-    <div className="flex items-center gap-3 p-4 hover:bg-gray-50">
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart?.();
+      }}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      className={`flex items-center gap-3 p-4 hover:bg-gray-50 transition-all ${
+        isDragging ? "opacity-50 bg-gray-100" : ""
+      } ${isDragOver ? "border-t-2 border-blue-500" : ""}`}
+    >
+      {/* Drag handle */}
+      <div
+        className="flex-shrink-0 w-6 h-11 flex items-center justify-center text-gray-400 cursor-grab active:cursor-grabbing"
+        aria-label="Drag to reorder"
+      >
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z" />
+        </svg>
+      </div>
+
       {/* Checkbox - min 44x44px touch target */}
       <button
         onClick={handleToggleCheck}

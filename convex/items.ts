@@ -23,6 +23,13 @@ export const addItem = mutation({
       throw new Error("Not authorized to add items to this list");
     }
 
+    // Get max order to add new item at the end
+    const existingItems = await ctx.db
+      .query("items")
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
+      .collect();
+    const maxOrder = existingItems.reduce((max, item) => Math.max(max, item.order ?? 0), 0);
+
     return await ctx.db.insert("items", {
       listId: args.listId,
       name: args.name,
@@ -31,6 +38,7 @@ export const addItem = mutation({
       checkedByDid: undefined,
       createdAt: args.createdAt,
       checkedAt: undefined,
+      order: maxOrder + 1,
     });
   },
 });
@@ -129,7 +137,7 @@ export const removeItem = mutation({
 });
 
 /**
- * Get all items for a list, ordered by createdAt.
+ * Get all items for a list, ordered by position.
  */
 export const getListItems = query({
   args: { listId: v.id("lists") },
@@ -139,7 +147,46 @@ export const getListItems = query({
       .withIndex("by_list", (q) => q.eq("listId", args.listId))
       .collect();
 
-    // Sort by createdAt ascending (oldest first, newest at bottom)
-    return items.sort((a, b) => a.createdAt - b.createdAt);
+    // Sort by order (items without order fall back to createdAt)
+    return items.sort((a, b) => {
+      const orderA = a.order ?? a.createdAt;
+      const orderB = b.order ?? b.createdAt;
+      return orderA - orderB;
+    });
+  },
+});
+
+/**
+ * Reorder items in a list.
+ * Takes the full ordered list of item IDs and updates their order values.
+ */
+export const reorderItems = mutation({
+  args: {
+    listId: v.id("lists"),
+    itemIds: v.array(v.id("items")),
+    userDid: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Verify the list exists
+    const list = await ctx.db.get(args.listId);
+    if (!list) {
+      throw new Error("List not found");
+    }
+
+    // Verify user is authorized
+    if (list.ownerDid !== args.userDid && list.collaboratorDid !== args.userDid) {
+      throw new Error("Not authorized to reorder items in this list");
+    }
+
+    // Update order for each item
+    for (let i = 0; i < args.itemIds.length; i++) {
+      const itemId = args.itemIds[i];
+      const item = await ctx.db.get(itemId);
+
+      // Verify item belongs to this list
+      if (item && item.listId === args.listId) {
+        await ctx.db.patch(itemId, { order: i });
+      }
+    }
   },
 });

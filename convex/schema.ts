@@ -30,6 +30,7 @@ export default defineSchema({
     checkedByDid: v.optional(v.string()), // DID of user who checked item
     createdAt: v.number(),
     checkedAt: v.optional(v.number()),
+    order: v.optional(v.number()), // Position in list (lower = higher in list)
   }).index("by_list", ["listId"]),
 
   // Invites table - for sharing lists with partners
