@@ -367,17 +367,17 @@ These were discovered during comprehensive code review. All are optional improve
 
 ### Accessibility (Discovered in Code Review)
 
-- [WARNING] **Modal focus management** — 5 modal components lack focus traps, meaning keyboard users can Tab out of modals into background content. See Phase 7.1 for fix.
+- [RESOLVED] **Modal focus management** — All 5 modal components now have focus traps via `useFocusTrap` hook. (Phase 7.1)
 
-- [WARNING] **window.confirm() usage** — `CollaboratorList.tsx` and `CategoryManager.tsx` use native browser confirm dialogs which are inaccessible and inconsistent with app UI. See Phase 7.2 for fix.
+- [RESOLVED] **window.confirm() usage** — All `window.confirm()` calls replaced with accessible `ConfirmDialog` component. (Phase 7.2)
 
 ### Hook Quality (Discovered in Code Review)
 
-- [WARNING] **useToast memory leak** — setTimeout for auto-dismiss is not cleared when toast is removed early. Can cause orphaned timers. See Phase 7.3.
+- [RESOLVED] **useToast memory leak** — Timeout IDs now stored in a Map and cleared when toast is removed early. (Phase 7.3)
 
-- [WARNING] **useOffline polling race condition** — Polling continues after component unmount, may cause setState on unmounted component. See Phase 7.3.
+- [RESOLVED] **useOffline polling race condition** — Added `isMounted` ref to prevent setState after unmount. (Phase 7.3)
 
-- [WARNING] **useAuth session restoration** — Async session restoration doesn't abort on unmount, may cause setState after unmount. See Phase 7.3.
+- [RESOLVED] **useAuth session restoration** — Added `isMountedRef` ref to prevent setState after unmount. (Phase 7.3)
 
 ---
 
