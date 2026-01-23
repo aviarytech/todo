@@ -4,9 +4,9 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 6.3 — Technical debt cleanup
+**Current Status:** Phase 6 Complete — Technical debt cleanup done
 
-All 5 major phases complete. Now cleaning up technical debt.
+All 5 major phases complete. Technical debt cleanup complete.
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -15,51 +15,10 @@ All 5 major phases complete. Now cleaning up technical debt.
 ## Working Context (For Ralph)
 
 ### Current Task
-Phase 6.3: Protect "Uncategorized" category name
+Phase 6 complete — No active task
 
 ### Overview
-The UI uses "Uncategorized" as a hardcoded label for lists without a category (categoryId is null/undefined). If a user creates a real category named "Uncategorized", it would cause confusion in the UI — two sections named "Uncategorized" would appear, one being the actual category and one being the virtual grouping for uncategorized lists.
-
-### Files to Modify
-
-**`convex/categories.ts`** — Add validation to BOTH mutations:
-
-**1. `createCategory` (line 40-43):**
-After the empty name check, add:
-```typescript
-// Prevent reserved name that conflicts with UI's virtual uncategorized section
-if (trimmedName.toLowerCase() === "uncategorized") {
-  throw new Error("\"Uncategorized\" is a reserved name");
-}
-```
-
-**2. `renameCategory` (line 95-98):**
-After the empty name check, add the same validation:
-```typescript
-// Prevent reserved name that conflicts with UI's virtual uncategorized section
-if (trimmedName.toLowerCase() === "uncategorized") {
-  throw new Error("\"Uncategorized\" is a reserved name");
-}
-```
-
-### Files Using "Uncategorized" (Reference Only — No Changes Needed)
-- `src/pages/Home.tsx:186-189` — Shows "Uncategorized" header for lists without categoryId
-- `src/components/lists/CategorySelector.tsx:123` — Shows "Uncategorized" option in dropdown
-- `src/components/lists/CategoryManager.tsx:105,284-290` — Shows uncategorized count info
-
-### Acceptance Criteria
-- [ ] `createCategory` rejects name "Uncategorized" (case-insensitive)
-- [ ] `renameCategory` rejects name "Uncategorized" (case-insensitive)
-- [ ] Error message is user-friendly: `"Uncategorized" is a reserved name`
-- [ ] `bun run build` passes
-- [ ] `bun run lint` passes
-
-### Definition of Done
-When complete, Ralph should:
-1. Add validation to `createCategory` function
-2. Add validation to `renameCategory` function
-3. Run `bun run build && bun run lint` to verify no errors
-4. Commit with message: `fix: prevent creating category named "Uncategorized" (Phase 6.3)`
+Technical debt cleanup is complete. See Phase 7: Minor Gaps for optional improvements.
 
 ---
 
@@ -80,8 +39,11 @@ When complete, Ralph should:
 - ✅ Updated `convex/migrations/migrateCollaborators.ts` to note migration is complete
 - ✅ Build and lint pass
 
-#### 6.3 [IN PROGRESS] Protect "Uncategorized" category name
-See Working Context above.
+#### 6.3 [COMPLETED] Protect "Uncategorized" category name
+- ✅ Added case-insensitive validation to `createCategory` in `convex/categories.ts`
+- ✅ Added case-insensitive validation to `renameCategory` in `convex/categories.ts`
+- ✅ User-friendly error message: `"Uncategorized" is a reserved name`
+- ✅ Build and lint pass
 
 ### Phase 7: Minor Gaps (Optional)
 
@@ -364,6 +326,7 @@ See Working Context above.
 
 ## Recently Completed
 
+- ✓ Phase 6.3: Protect "Uncategorized" category name — Added validation to `createCategory` and `renameCategory` in `convex/categories.ts`; rejects "Uncategorized" (case-insensitive); build and lint pass
 - ✓ Phase 6.2: Remove collaboratorDid field — Removed field and index from schema; removed all fallback code from backend and frontend; deleted CollaboratorBadge.tsx; build and lint pass
 - ✓ Phase 6.1: Remove deprecated identity files — Deleted useIdentity.tsx, IdentitySetup.tsx, MigrationPrompt.tsx, identity.ts, migration.ts; build and lint pass
 - ✓ Phase 1.8: Resend OTP — Added `handleResendOtp` in Login.tsx and passed to OtpInput; 60-second cooldown UI; build and lint pass

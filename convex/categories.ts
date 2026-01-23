@@ -42,6 +42,11 @@ export const createCategory = mutation({
       throw new Error("Category name cannot be empty");
     }
 
+    // Prevent reserved name that conflicts with UI's virtual uncategorized section
+    if (trimmedName.toLowerCase() === "uncategorized") {
+      throw new Error("\"Uncategorized\" is a reserved name");
+    }
+
     // Check for duplicate name
     const existing = await ctx.db
       .query("categories")
@@ -95,6 +100,11 @@ export const renameCategory = mutation({
     const trimmedName = args.name.trim();
     if (!trimmedName) {
       throw new Error("Category name cannot be empty");
+    }
+
+    // Prevent reserved name that conflicts with UI's virtual uncategorized section
+    if (trimmedName.toLowerCase() === "uncategorized") {
+      throw new Error("\"Uncategorized\" is a reserved name");
     }
 
     // Check for duplicate name (excluding current category)
