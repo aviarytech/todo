@@ -21,8 +21,8 @@ Continuing Phase 5: Offline Support. The service worker is complete (Phase 5.1).
 Create the IndexedDB schema and CRUD helpers for offline data storage.
 
 ### Files to Read First
-- `specs/features/offline.md` — Full specification for offline support (IndexedDB section)
-- `convex/schema.ts` — Current Convex schema (to mirror in IndexedDB)
+- `specs/features/offline.md` — Full specification (see "IndexedDB for Data Cache" and "Mutation Queue" sections)
+- `convex/schema.ts` — Current schema (lists, items tables have the structure to mirror)
 
 ### Files to Create
 - `src/lib/offline.ts` — IndexedDB setup with stores for lists, items, and mutation queue
@@ -30,20 +30,55 @@ Create the IndexedDB schema and CRUD helpers for offline data storage.
 ### Files to Modify
 - None (idb package already added to package.json)
 
+### Implementation Guidance
+
+The spec at `specs/features/offline.md` has the exact code to implement. Key points:
+
+**1. Database Setup**
+```typescript
+import { openDB, IDBPDatabase } from 'idb';
+
+interface OfflineDB {
+  lists: { key: string; value: List };
+  items: { key: string; value: Item; indexes: { byList: string } };
+  mutations: { key: number; value: QueuedMutation };
+}
+
+const DB_NAME = 'lisa-offline';
+const DB_VERSION = 1;
+```
+
+**2. Store Creation (in upgrade callback)**
+- `lists` store: keyPath `_id` (matches Convex document ID)
+- `items` store: keyPath `_id`, with `byList` index on `listId`
+- `mutations` store: keyPath `id`, autoIncrement true
+
+**3. Types Needed**
+- Import `Id` from `convex/values` or define local types for list/item
+- Define `QueuedMutation` interface with: id?, type, payload, timestamp, retryCount
+- Mutation types: `'addItem' | 'checkItem' | 'uncheckItem' | 'reorderItem'`
+
+**4. Functions to Export**
+- `getOfflineDB()` — returns singleton DB connection
+- `queueMutation(mutation)` — add to queue
+- `getQueuedMutations()` — get all pending
+- `clearMutation(id)` — remove completed mutation
+- `updateMutationRetry(id, retryCount)` — update retry count
+
 ### Acceptance Criteria
 - [ ] `src/lib/offline.ts` created with `getOfflineDB()` function
 - [ ] IndexedDB schema includes `lists`, `items`, and `mutations` stores
 - [ ] Items store has `byList` index for efficient queries
 - [ ] CRUD helpers: `queueMutation`, `getQueuedMutations`, `clearMutation`, `updateMutationRetry`
-- [ ] TypeScript types for `QueuedMutation` interface
+- [ ] TypeScript types for `OfflineDB` schema and `QueuedMutation` interface
 - [ ] Build passes (`bun run build`)
 - [ ] Lint passes (`bun run lint`)
 
 ### Key Context
 - Using `idb` package (already installed) for type-safe IndexedDB wrapper
 - DB name: `lisa-offline`, version: 1
-- Stores mirror Convex schema structure
-- Per spec: mutation queue needs id, type, payload, timestamp, retryCount
+- Stores mirror Convex schema structure but use `_id` as keyPath
+- Mutation queue is autoIncrement so IDs are generated automatically
 
 ### Definition of Done
 When complete, Ralph should:
