@@ -1,32 +1,16 @@
-import { useState } from 'react'
-import { Routes, Route, Link } from 'react-router-dom'
-import { useIdentity } from './hooks/useIdentity'
+import { Routes, Route, Link, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { IdentitySetup } from './components/IdentitySetup'
-import { MigrationPrompt } from './components/auth/MigrationPrompt'
-import { hasDismissedMigration } from './lib/migration'
 import { ProfileBadge } from './components/ProfileBadge'
 import { Home } from './pages/Home'
 import { ListView } from './pages/ListView'
 import { JoinList } from './pages/JoinList'
+import { Login } from './pages/Login'
 
 function App() {
-  const { hasIdentity, isLoading: identityLoading } = useIdentity()
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const [migrationDismissed, setMigrationDismissed] = useState(hasDismissedMigration)
+  const { isAuthenticated, isLoading } = useAuth()
 
-  // Combined loading state
-  const isLoading = identityLoading || authLoading
-
-  // Show migration prompt if:
-  // 1. User has legacy localStorage identity
-  // 2. User is NOT authenticated with Turnkey
-  // 3. User hasn't dismissed the prompt this session
-  const shouldShowMigrationPrompt =
-    hasIdentity && !isAuthenticated && !migrationDismissed
-
-  // Show loading state while checking localStorage
+  // Show loading state while checking auth
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -35,16 +19,20 @@ function App() {
     )
   }
 
+  // Unauthenticated users see the login page
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/join/:listId/:token" element={<JoinList />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    )
+  }
+
+  // Authenticated users see the main app
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Show identity setup for new users (no localStorage identity) */}
-      {!hasIdentity && !isAuthenticated && <IdentitySetup />}
-
-      {/* Show migration prompt for existing localStorage users */}
-      {shouldShowMigrationPrompt && (
-        <MigrationPrompt onDismiss={() => setMigrationDismissed(true)} />
-      )}
-
       <header className="bg-white shadow-sm p-4">
         <div className="container mx-auto flex items-center justify-between">
           <Link to="/" className="text-xl font-bold hover:text-gray-700">
@@ -60,6 +48,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/list/:id" element={<ListView />} />
             <Route path="/join/:listId/:token" element={<JoinList />} />
+            <Route path="/login" element={<Navigate to="/" replace />} />
           </Routes>
         </ErrorBoundary>
       </main>

@@ -25,7 +25,7 @@ export function Home() {
   );
 
   if (!did && !userLoading) {
-    return null; // IdentitySetup will show instead
+    return null; // Login page will show instead (handled by App.tsx)
   }
 
   const isLoading = lists === undefined;

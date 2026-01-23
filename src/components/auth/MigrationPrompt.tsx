@@ -1,9 +1,10 @@
 /**
- * Migration prompt that appears for users with localStorage identity
- * who haven't yet migrated to Turnkey authentication.
+ * @deprecated This component is no longer used after Phase 1.7.
+ * Migration is now mandatory - users with localStorage identity are redirected
+ * to the Login page where they must authenticate with Turnkey.
+ * The legacyDid is passed during the OTP flow to link their old identity.
  *
- * Offers a non-blocking prompt to upgrade their account security.
- * Users can dismiss and be reminded later.
+ * TECH-DEBT: Remove this file after confirming all users have migrated.
  */
 
 import { useState, type FormEvent } from "react";
@@ -20,6 +21,9 @@ interface MigrationPromptProps {
 
 type MigrationStep = "prompt" | "email" | "otp";
 
+/**
+ * @deprecated Migration is now mandatory via the Login page.
+ */
 export function MigrationPrompt({ onDismiss }: MigrationPromptProps) {
   const navigate = useNavigate();
   const { did: legacyDid, displayName } = useIdentity();

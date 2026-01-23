@@ -1,13 +1,17 @@
 /**
- * Identity setup modal that appears when no identity exists.
+ * @deprecated This component is no longer used after Phase 1.7.
+ * Users now authenticate via the Login page with Turnkey OTP.
+ * This file is kept temporarily for reference during the transition.
  *
- * Prompts the user for a display name, then creates a new DID identity
- * using the Originals SDK and registers it in Convex.
+ * TECH-DEBT: Remove this file after confirming all users have migrated.
  */
 
 import { useState, type FormEvent } from "react";
 import { useIdentity } from "../hooks/useIdentity";
 
+/**
+ * @deprecated Use Login page instead for new user authentication.
+ */
 export function IdentitySetup() {
   const { createAndSaveIdentity, isLoading } = useIdentity();
   const [displayName, setDisplayName] = useState("");

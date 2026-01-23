@@ -1,9 +1,9 @@
 /**
  * Auth context and hook for Turnkey-based authentication.
  *
- * Provides authentication state and OTP flow methods. This runs alongside
- * useIdentity during the migration period. Eventually, useIdentity will be
- * replaced by useAuth throughout the app.
+ * Provides authentication state and OTP flow methods. This is the primary
+ * authentication mechanism for the app, replacing the legacy localStorage-based
+ * identity system (useIdentity).
  *
  * Session management is handled by Turnkey via the TurnkeyClient which
  * internally manages session state. No manual token storage needed.

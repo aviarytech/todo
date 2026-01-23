@@ -2,6 +2,9 @@
  * Page for accepting a list invite.
  *
  * Route: /join/:listId/:token
+ *
+ * This page is accessible to both authenticated and unauthenticated users.
+ * Unauthenticated users are prompted to log in first.
  */
 
 import { useState } from "react";
@@ -9,13 +12,13 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { useIdentity } from "../hooks/useIdentity";
-import { IdentitySetup } from "../components/IdentitySetup";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import { Login } from "./Login";
 
 export function JoinList() {
   const { listId, token } = useParams<{ listId: string; token: string }>();
   const navigate = useNavigate();
-  const { did, hasIdentity, isLoading: isIdentityLoading } = useIdentity();
+  const { did, isAuthenticated, isLoading: isUserLoading } = useCurrentUser();
 
   const acceptInvite = useMutation(api.invites.acceptInvite);
 
@@ -37,20 +40,20 @@ export function JoinList() {
       : "skip"
   );
 
-  // Show identity setup if no identity exists
-  if (!isIdentityLoading && !hasIdentity) {
+  // Show login if not authenticated
+  if (!isUserLoading && !isAuthenticated) {
     return (
-      <div>
-        <IdentitySetup />
-        <div className="text-center text-gray-500">
-          Create an identity to join this list.
+      <div className="min-h-screen bg-gray-50">
+        <Login />
+        <div className="text-center text-gray-500 -mt-4 pb-8">
+          Sign in to join this list.
         </div>
       </div>
     );
   }
 
   // Loading states
-  if (isIdentityLoading || validation === undefined) {
+  if (isUserLoading || validation === undefined) {
     return (
       <div className="text-center py-12">
         <div className="text-gray-500">Validating invite...</div>
@@ -62,7 +65,7 @@ export function JoinList() {
   if (!validation.valid) {
     return (
       <div className="max-w-md mx-auto text-center py-12 bg-white rounded-lg shadow p-6">
-        <div className="text-red-500 text-5xl mb-4">😕</div>
+        <div className="text-red-500 text-5xl mb-4">:(</div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Invalid Invite</h2>
         <p className="text-gray-500 mb-4">{validation.error}</p>
         <Link to="/" className="text-blue-600 hover:text-blue-700">
@@ -98,7 +101,7 @@ export function JoinList() {
 
   return (
     <div className="max-w-md mx-auto text-center py-12 bg-white rounded-lg shadow p-6">
-      <div className="text-5xl mb-4">🎉</div>
+      <div className="text-5xl mb-4">+</div>
       <h2 className="text-xl font-semibold text-gray-900 mb-2">
         You're invited to join "{validation.listName}"
       </h2>

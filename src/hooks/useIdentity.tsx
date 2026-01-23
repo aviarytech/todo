@@ -1,9 +1,10 @@
 /**
- * Identity context and hook for managing user identity.
+ * @deprecated This hook is no longer used after Phase 1.7.
+ * Users now authenticate via Turnkey (useAuth hook).
+ * This file is kept temporarily for reference and for deprecated
+ * components (IdentitySetup, MigrationPrompt) that still import it.
  *
- * Provides the current user's identity (DID, display name, keys) to all
- * components. The privateKey is exposed because it's needed for signing
- * item actions with verifiable credentials.
+ * TECH-DEBT: Remove this file after confirming all users have migrated.
  */
 
 /* eslint-disable react-refresh/only-export-components */
@@ -30,6 +31,9 @@ interface IdentityProviderProps {
   children: ReactNode;
 }
 
+/**
+ * @deprecated Use AuthProvider instead for authentication.
+ */
 export function IdentityProvider({ children }: IdentityProviderProps) {
   const [identity, setIdentity] = useState<StoredIdentity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,6 +100,9 @@ export function IdentityProvider({ children }: IdentityProviderProps) {
   );
 }
 
+/**
+ * @deprecated Use useAuth or useCurrentUser instead.
+ */
 export function useIdentity(): IdentityContextValue {
   const context = useContext(IdentityContext);
   if (!context) {

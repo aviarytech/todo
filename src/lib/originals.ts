@@ -161,5 +161,70 @@ export async function verifyItemAction(credential: VerifiableCredential): Promis
   }
 }
 
+/**
+ * External signer interface compatible with TurnkeyDIDSigner.
+ * Matches the ExternalSigner interface from @originals/sdk.
+ */
+export interface ExternalSigner {
+  sign(input: {
+    document: Record<string, unknown>;
+    proof: Record<string, unknown>;
+  }): Promise<{ proofValue: string }>;
+  getVerificationMethodId(): string;
+}
+
+/**
+ * Signs an item action using an external signer (e.g., TurnkeyDIDSigner).
+ *
+ * This is the Turnkey-based equivalent of signItemAction, using the
+ * external signer for secure key operations instead of a raw private key.
+ *
+ * @param type - The type of action
+ * @param listDid - The DID of the list asset
+ * @param itemId - The ID of the item
+ * @param actorDid - The DID of the user performing the action
+ * @param signer - The external signer instance (e.g., TurnkeyDIDSigner)
+ * @returns Promise<ItemActionCredential> The signed credential
+ */
+export async function signItemActionWithSigner(
+  type: ItemActionType,
+  listDid: string,
+  itemId: string,
+  actorDid: string,
+  signer: ExternalSigner
+): Promise<ItemActionCredential> {
+  const credentialManager = new CredentialManager(config);
+  const timestamp = new Date().toISOString();
+
+  // Create an unsigned credential
+  const unsignedCredential = await credentialManager.createResourceCredential(
+    type === "ItemAdded" ? "ResourceCreated" : "ResourceUpdated",
+    {
+      id: `${listDid}#item-${itemId}`,
+      actionType: type,
+      listDid,
+      itemId,
+      actor: actorDid,
+      timestamp,
+    },
+    actorDid
+  );
+
+  // Sign the credential using the external signer
+  const signedCredential = await credentialManager.signCredentialWithExternalSigner(
+    unsignedCredential,
+    signer
+  );
+
+  return {
+    type,
+    listDid,
+    itemId,
+    actor: actorDid,
+    timestamp,
+    credential: signedCredential,
+  };
+}
+
 // Re-export types that consumers might need
 export type { DIDDocument, VerifiableCredential, KeyPair };

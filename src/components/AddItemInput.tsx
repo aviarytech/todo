@@ -6,8 +6,8 @@ import { useState, type FormEvent } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { useIdentity } from "../hooks/useIdentity";
-import { signItemAction } from "../lib/originals";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import { signItemActionWithSigner } from "../lib/originals";
 
 interface AddItemInputProps {
   listId: Id<"lists">;
@@ -15,7 +15,7 @@ interface AddItemInputProps {
 }
 
 export function AddItemInput({ listId, assetDid }: AddItemInputProps) {
-  const { did, privateKey } = useIdentity();
+  const { did, getSigner } = useCurrentUser();
   const addItem = useMutation(api.items.addItem);
 
   const [name, setName] = useState("");
@@ -25,7 +25,7 @@ export function AddItemInput({ listId, assetDid }: AddItemInputProps) {
     e.preventDefault();
 
     const trimmedName = name.trim();
-    if (!trimmedName || !did || !privateKey) {
+    if (!trimmedName || !did) {
       return;
     }
 
@@ -36,11 +36,14 @@ export function AddItemInput({ listId, assetDid }: AddItemInputProps) {
       const itemId = crypto.randomUUID();
 
       // Sign the item action credential (best-effort, non-blocking for v1)
-      try {
-        await signItemAction("ItemAdded", assetDid, itemId, did, privateKey);
-      } catch (err) {
-        console.warn("Failed to sign item action credential:", err);
-        // Continue anyway - credential signing is best-effort for v1
+      const signer = getSigner();
+      if (signer) {
+        try {
+          await signItemActionWithSigner("ItemAdded", assetDid, itemId, did, signer);
+        } catch (err) {
+          console.warn("Failed to sign item action credential:", err);
+          // Continue anyway - credential signing is best-effort for v1
+        }
       }
 
       // Add the item to Convex

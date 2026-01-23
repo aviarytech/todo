@@ -8,14 +8,15 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
-import { signItemAction } from "../lib/originals";
+import { signItemActionWithSigner, type ExternalSigner } from "../lib/originals";
 import { ItemAttribution } from "./ItemAttribution";
 
 interface ListItemProps {
   item: Doc<"items">;
   list: Doc<"lists">;
   userDid: string;
-  userPrivateKey: string;
+  /** Turnkey signer for signing credentials (null if not available) */
+  signer: ExternalSigner | null;
   isDragging?: boolean;
   isDragOver?: boolean;
   onDragStart?: () => void;
@@ -27,7 +28,7 @@ export function ListItem({
   item,
   list,
   userDid,
-  userPrivateKey,
+  signer,
   isDragging = false,
   isDragOver = false,
   onDragStart,
@@ -48,19 +49,23 @@ export function ListItem({
     try {
       if (item.checked) {
         // Sign uncheck credential (best-effort)
-        try {
-          await signItemAction("ItemUnchecked", list.assetDid, item._id, userDid, userPrivateKey);
-        } catch (err) {
-          console.warn("Failed to sign uncheck credential:", err);
+        if (signer) {
+          try {
+            await signItemActionWithSigner("ItemUnchecked", list.assetDid, item._id, userDid, signer);
+          } catch (err) {
+            console.warn("Failed to sign uncheck credential:", err);
+          }
         }
 
         await uncheckItem({ itemId: item._id, userDid });
       } else {
         // Sign check credential (best-effort)
-        try {
-          await signItemAction("ItemChecked", list.assetDid, item._id, userDid, userPrivateKey);
-        } catch (err) {
-          console.warn("Failed to sign check credential:", err);
+        if (signer) {
+          try {
+            await signItemActionWithSigner("ItemChecked", list.assetDid, item._id, userDid, signer);
+          } catch (err) {
+            console.warn("Failed to sign check credential:", err);
+          }
         }
 
         await checkItem({
@@ -83,10 +88,12 @@ export function ListItem({
 
     try {
       // Sign remove credential (best-effort)
-      try {
-        await signItemAction("ItemRemoved", list.assetDid, item._id, userDid, userPrivateKey);
-      } catch (err) {
-        console.warn("Failed to sign remove credential:", err);
+      if (signer) {
+        try {
+          await signItemActionWithSigner("ItemRemoved", list.assetDid, item._id, userDid, signer);
+        } catch (err) {
+          console.warn("Failed to sign remove credential:", err);
+        }
       }
 
       await removeItem({ itemId: item._id, userDid });

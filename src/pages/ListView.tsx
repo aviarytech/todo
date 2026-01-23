@@ -9,7 +9,6 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
-import { useIdentity } from "../hooks/useIdentity";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
@@ -20,9 +19,7 @@ import { CollaboratorBadge } from "../components/CollaboratorBadge";
 export function ListView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  // Use both identity systems during migration
-  const { privateKey } = useIdentity(); // Still need privateKey for signing (until Phase 1.7)
-  const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
+  const { did, legacyDid, isLoading: userLoading, getSigner } = useCurrentUser();
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -75,10 +72,6 @@ export function ListView() {
     setDragOverItemId(null);
   }, [draggedItemId, dragOverItemId, items, did, listId, reorderItems]);
 
-  if ((!did && !userLoading) || !privateKey) {
-    return null; // IdentitySetup will show instead
-  }
-
   // Loading state (user or data)
   if (userLoading || !did || list === undefined || items === undefined) {
     return (
@@ -122,6 +115,9 @@ export function ListView() {
       </div>
     );
   }
+
+  // Get the signer for credential signing
+  const signer = getSigner();
 
   return (
     <div>
@@ -177,7 +173,7 @@ export function ListView() {
               item={item}
               list={list}
               userDid={did}
-              userPrivateKey={privateKey}
+              signer={signer}
               isDragging={draggedItemId === item._id}
               isDragOver={dragOverItemId === item._id}
               onDragStart={() => handleDragStart(item._id)}
