@@ -1,5 +1,6 @@
 import { Routes, Route, Link } from 'react-router-dom'
 import { useIdentity } from './hooks/useIdentity'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { IdentitySetup } from './components/IdentitySetup'
 import { ProfileBadge } from './components/ProfileBadge'
 import { Home } from './pages/Home'
@@ -32,11 +33,13 @@ function App() {
       </header>
 
       <main className="container mx-auto p-4">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/list/:id" element={<ListView />} />
-          <Route path="/join/:listId/:token" element={<JoinList />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/list/:id" element={<ListView />} />
+            <Route path="/join/:listId/:token" element={<JoinList />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </div>
   )

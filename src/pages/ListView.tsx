@@ -75,10 +75,11 @@ export function ListView() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-2 sm:gap-4 mb-6">
+        {/* Back button - min 44x44px touch target */}
         <Link
           to="/"
-          className="text-gray-500 hover:text-gray-700"
+          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
           aria-label="Back to lists"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,15 +88,16 @@ export function ListView() {
         </Link>
 
         <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold text-gray-900 truncate">{list.name}</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{list.name}</h2>
           <CollaboratorBadge collaboratorDid={list.collaboratorDid} />
         </div>
 
+        {/* Action buttons - min 44px height for touch targets */}
         <div className="flex items-center gap-2">
           {isOwner && !list.collaboratorDid && (
             <button
               onClick={() => setIsShareModalOpen(true)}
-              className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
+              className="px-4 py-2.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
               Share
             </button>
@@ -103,7 +105,7 @@ export function ListView() {
           {isOwner && (
             <button
               onClick={() => setIsDeleteDialogOpen(true)}
-              className="px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-md hover:bg-red-100"
+              className="px-4 py-2.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
             >
               Delete
             </button>
