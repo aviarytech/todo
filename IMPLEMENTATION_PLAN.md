@@ -12,9 +12,59 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[COMPLETED]** Phase 4: did:webvh Publication
+**[IN PROGRESS]** Phase 5.1: Service Worker Setup
 
-All Phase 4 tasks have been completed. The system now supports publishing lists to did:webvh.
+Starting Phase 5: Offline Support. This phase adds offline capability through service workers, IndexedDB caching, and a mutation queue.
+
+### Current Task: 5.1 Service Worker
+
+Create the service worker to cache static assets and enable offline app loading.
+
+### Files to Read First
+- `vite.config.ts` — Current Vite configuration (need to add PWA plugin or manual SW registration)
+- `src/main.tsx` — Entry point where SW registration will be added
+- `specs/features/offline.md` — Full specification for offline support
+
+### Files to Create
+- `src/workers/service-worker.ts` — Service worker with cache-first strategy for static assets
+- `src/lib/sw-registration.ts` — Helper to register and manage service worker updates
+
+### Files to Modify
+- `vite.config.ts` — May need configuration for SW bundling
+- `src/main.tsx` — Register service worker on app mount
+- `package.json` — No new dependencies needed (using native SW APIs)
+
+### Acceptance Criteria
+- [ ] Service worker is created at `src/workers/service-worker.ts`
+- [ ] SW caches static assets (HTML, JS, CSS) on install
+- [ ] SW serves cached assets when offline (cache-first for assets)
+- [ ] SW skips caching for Convex API calls (`convex.cloud` URLs)
+- [ ] SW is registered in `src/main.tsx` on app load
+- [ ] App shell loads when offline (navigation returns cached index.html)
+- [ ] Build passes (`bun run build`)
+- [ ] Lint passes (`bun run lint`)
+
+### Key Context
+- Using Vite, not CRA — SW needs to be in `public/` or built separately
+- Convex calls go to `*.convex.cloud` — these should NEVER be cached
+- Static assets use content hashing from Vite build
+- Per spec: use cache name `lisa-v1` for versioning
+
+### Service Worker Strategy (from spec)
+```typescript
+// Cache static assets on install
+// For fetch: cache-first for GET requests to same origin
+// Skip Convex API calls entirely
+// Return cached '/' for navigation requests when offline
+```
+
+### Definition of Done
+When complete, Ralph should:
+1. All acceptance criteria checked
+2. Test manually: `bun run build && bun run preview`, then go offline in DevTools
+3. Verify app shell loads offline (even if data doesn't)
+4. Commit with message: `feat(offline): add service worker for static asset caching (Phase 5.1)`
+5. Update this section with completion status
 
 ---
 
@@ -155,40 +205,50 @@ All Phase 4 tasks have been completed. The system now supports publishing lists 
 
 ### Phase 5: Offline Support
 
-#### 5.1 Service Worker
+#### 5.1 [IN PROGRESS] Service Worker
 - Create `src/workers/service-worker.ts`
-- Cache static assets
-- Handle offline navigation
+- Cache static assets on install
+- Serve cached assets offline (cache-first)
+- Skip Convex API calls (`*.convex.cloud`)
+- Return cached index.html for offline navigation
 
 #### 5.2 IndexedDB Setup
-- Create `src/lib/offline.ts`
-- Define stores for lists, items, mutations
-- Create CRUD helpers
+- Add `idb` package dependency (lightweight IndexedDB wrapper)
+- Create `src/lib/offline.ts` with DB schema
+- Define stores: lists, items, mutations
+- Create CRUD helpers for offline data
 
 #### 5.3 Mutation Queue
-- Implement mutation queuing
-- Handle queue persistence
-- Create retry logic
+- Queue mutations when offline (addItem, checkItem, uncheckItem, reorderItems)
+- Persist queue to IndexedDB
+- Track retry count per mutation
 
 #### 5.4 Sync Manager
 - Create `src/lib/sync.ts`
-- Implement sync on reconnect
-- Handle conflicts
+- Sync queued mutations on reconnect
+- Exponential backoff for retries (1s, 2s, 4s, 8s, 16s)
+- Max 5 retries before discarding
+- Notify on sync conflicts
 
 #### 5.5 useOffline Hook
 - Create `src/hooks/useOffline.tsx`
-- Track online/offline state
-- Expose sync status and pending count
+- Track `navigator.onLine` state
+- Subscribe to online/offline events
+- Trigger sync on reconnect
+- Expose: isOnline, syncStatus, pendingCount, manualSync
 
 #### 5.6 Optimistic Updates
-- Update item mutations for optimistic UI
-- Merge server data with local optimistic data
-- Handle failures gracefully
+- Wrap item mutations for optimistic UI
+- Show optimistic items immediately with temp IDs
+- Queue mutation if offline
+- Merge server data with optimistic items
+- Rollback on failure
 
 #### 5.7 UI Feedback
-- Create `OfflineIndicator.tsx`
-- Create `SyncStatus.tsx`
-- Show pending sync count
+- Create `src/components/offline/OfflineIndicator.tsx` — banner when offline
+- Create `src/components/offline/SyncStatus.tsx` — sync progress/status
+- Show pending sync count badge
+- Toast for "offline" and "back online" transitions
 
 ---
 
@@ -228,11 +288,19 @@ All Phase 4 tasks have been completed. The system now supports publishing lists 
 
 ### Offline
 
+- [CRITICAL] **Service Worker updates** — SW caching can cause users to see stale app. Implement update notification with skipWaiting/claim flow.
+
+- [CRITICAL] **Never cache Convex API** — Any URL containing `convex.cloud` must be excluded from SW fetch handling. Caching these breaks real-time sync.
+
 - [WARNING] **Conflict resolution is lossy** — Server wins conflicts. User may lose offline changes if collaborator edited same item.
+
+- [WARNING] **Vite SW bundling** — Service workers need special handling in Vite. Place in `public/` or use a separate build step. Don't use `src/workers/` directly without bundler config.
 
 - [NOTE] **Storage limits** — IndexedDB has browser-enforced limits (~50MB typical). Prune old data.
 
-- [CRITICAL] **Service Worker updates** — SW caching can cause users to see stale app. Implement update notification.
+- [NOTE] **SW scope** — Service worker scope defaults to its directory. Place at root (`/sw.js`) to control entire app.
+
+- [NOTE] **HTTPS required** — Service workers only work over HTTPS (except localhost). Production is on Railway with HTTPS, so this is fine.
 
 ---
 
