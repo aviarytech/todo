@@ -12,15 +12,117 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[COMPLETED]** Phase 1.6: Migration Path
+### Current Task
+Phase 1.7: Replace Identity System — Swap `useIdentity` for `useAuth` throughout app
+
+### Context
+The app currently runs BOTH auth systems in parallel:
+- **Legacy:** `useIdentity` hook + `IdentityProvider` (localStorage-based identity with exposed privateKey)
+- **New:** `useAuth` hook + `AuthProvider` (Turnkey-managed keys via OTP flow)
+- **Unified:** `useCurrentUser` hook (wrapper that prefers Turnkey if authenticated, falls back to legacy)
+
+Phase 1.6 added the migration path so existing users can upgrade. Now we need to make Turnkey auth the PRIMARY and ONLY path for NEW users. Legacy localStorage identity becomes deprecated (but still supported for existing users who haven't migrated yet).
+
+### Files to Read First
+- `src/hooks/useAuth.tsx` — The new auth system with `getSigner()` for signing
+- `src/hooks/useCurrentUser.tsx` — Unified hook that already handles both systems
+- `src/lib/originals.ts` — Contains `signItemAction()` which currently uses privateKey
+- `src/lib/turnkey.ts` — Contains `TurnkeyDIDSigner` class for signing with Turnkey
+
+### Files to Modify
+
+1. **`src/App.tsx`** — Change auth flow for new users:
+   - Remove `IdentitySetup` modal for new users
+   - Instead redirect new users (no identity, no Turnkey auth) to `/login`
+   - Keep `MigrationPrompt` for legacy users who aren't yet on Turnkey
+   - Add `/login` route
+
+2. **`src/components/ProfileBadge.tsx`** — Use `useCurrentUser` instead of `useIdentity`:
+   - Get `displayName` from `useCurrentUser()`
+   - Add logout functionality (show logout button when `isTurnkeyAuth`)
+
+3. **`src/pages/JoinList.tsx`** — Use `useCurrentUser` instead of `useIdentity`:
+   - Replace `useIdentity` with `useCurrentUser`
+   - For new users without identity: redirect to `/login` instead of showing `IdentitySetup`
+
+4. **`src/components/AddItemInput.tsx`** — Use Turnkey signer instead of privateKey:
+   - Replace `useIdentity` with `useCurrentUser` + `useAuth`
+   - Get DID from `useCurrentUser()`
+   - For signing: if Turnkey auth, use `getSigner()` from `useAuth`; otherwise use legacy privateKey from `useIdentity` (migration period)
+   - Update `signItemAction` call or create Turnkey-compatible signing path
+
+5. **`src/lib/originals.ts`** — Add signer-based signing option:
+   - Create `signItemActionWithSigner()` that accepts a `TurnkeyDIDSigner` instead of privateKey
+   - Or update `signItemAction()` to accept either privateKey or signer
+
+6. **`src/components/IdentitySetup.tsx`** — Deprecate or remove:
+   - This component creates localStorage identities
+   - For Phase 1.7: keep it but it should only be used by MigrationPrompt (for users who explicitly choose "continue without Turnkey")
+   - Or remove it entirely and redirect new users to `/login` always
+
+7. **`src/main.tsx`** — Keep both providers for now:
+   - `AuthProvider` (Turnkey) — primary
+   - `IdentityProvider` (legacy) — for migration period only
+   - Can be cleaned up in Phase 1.8 (tech debt)
+
+### Key Decision: Signing Strategy
+
+The critical complexity is `signItemAction()`. Currently it takes a `privateKey` string. With Turnkey, we have a `TurnkeyDIDSigner` that signs via API calls.
+
+**Option A (Recommended):** Dual-path signing
+```typescript
+// In AddItemInput.tsx
+const { did, isTurnkeyAuth } = useCurrentUser();
+const { getSigner } = useAuth();
+const { privateKey } = useIdentity();
+
+// When adding item:
+if (isTurnkeyAuth) {
+  const signer = getSigner();
+  if (signer) {
+    await signItemActionWithSigner(type, assetDid, itemId, did, signer);
+  }
+} else if (privateKey) {
+  await signItemAction(type, assetDid, itemId, did, privateKey);
+}
+```
+
+**Option B:** Make signing optional during transition
+- Signing is already "best-effort" (failures are caught and logged)
+- Could skip signing entirely for Turnkey users until Phase 1.5/4 (did:webvh)
+
+### Acceptance Criteria
+- [ ] New users without any identity are redirected to `/login` (not shown IdentitySetup)
+- [ ] `/login` route works and creates Turnkey identity
+- [ ] Existing localStorage users see MigrationPrompt (unchanged)
+- [ ] Existing localStorage users who dismiss prompt can still use the app
+- [ ] ProfileBadge shows current user (Turnkey or legacy) with logout option
+- [ ] JoinList works for both Turnkey and legacy users
+- [ ] AddItemInput works for both Turnkey and legacy users
+- [ ] Build passes (`bun run build`)
+- [ ] Lint passes (`bun run lint`)
+
+### Warning: DID Mismatch
+Legacy users have a localStorage DID. Turnkey generates a DIFFERENT DID. The migration path (Phase 1.6) handles this via `legacyDid` field. Make sure to use `useCurrentUser()` which provides both `did` (current) and `legacyDid` (for queries).
+
+### Definition of Done
+When complete:
+1. All acceptance criteria checked
+2. New users go through Turnkey auth flow (not localStorage setup)
+3. Commit with message: `feat(auth): make Turnkey primary auth for new users`
+4. Push changes
+
+---
+
+### Previously Completed: Phase 1.6
 
 Created:
 - `convex/schema.ts` — Added `legacyDid` field and `by_legacy_did` index
 - `convex/auth.ts` — `upsertUser` accepts and stores `legacyDid` for migration
 - `convex/lists.ts` — `getUserLists` and `deleteList` check both current DID and legacy DID
-- `src/lib/migration.ts` — NEW: Utility functions for migration state tracking
-- `src/hooks/useCurrentUser.tsx` — NEW: Unified identity hook supporting both auth systems
-- `src/components/auth/MigrationPrompt.tsx` — NEW: Migration UI with full OTP flow
+- `src/lib/migration.ts` — Utility functions for migration state tracking
+- `src/hooks/useCurrentUser.tsx` — Unified identity hook supporting both auth systems
+- `src/components/auth/MigrationPrompt.tsx` — Migration UI with full OTP flow
 - `src/App.tsx` — Shows `MigrationPrompt` for legacy localStorage users
 - `src/hooks/useAuth.tsx` — `startOtp` accepts optional `legacyDid` for migration
 - `src/pages/Home.tsx` — Uses `useCurrentUser` with `legacyDid` support
@@ -68,7 +170,7 @@ Created:
 - ✅ Add `legacyDid` field to schema for DID mapping
 - ✅ Update list queries to check both `did` and `legacyDid`
 
-#### 1.7 Replace Identity System
+#### 1.7 [IN PROGRESS] Replace Identity System
 - Swap `useIdentity` for `useAuth` throughout app
 - Update all signing to use Turnkey signer
 - Remove localStorage identity code (or deprecate)
