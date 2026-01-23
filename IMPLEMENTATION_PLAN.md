@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 5.1 complete — Ready for Phase 5.2 (IndexedDB Setup)
+**Current Status:** Phase 5.2 complete — Ready for Phase 5.3 (Mutation Queue)
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,78 +12,41 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[READY]** Phase 5.2: IndexedDB Setup
+**[READY]** Phase 5.3: Mutation Queue
 
-Continuing Phase 5: Offline Support. The service worker is complete (Phase 5.1). Now implement IndexedDB for caching list/item data offline.
+Continuing Phase 5: Offline Support. IndexedDB is set up (Phase 5.2). Now implement the mutation queue logic that queues offline mutations and integrates with list/item operations.
 
-### Current Task: 5.2 IndexedDB Setup
+### Current Task: 5.3 Mutation Queue
 
-Create the IndexedDB schema and CRUD helpers for offline data storage.
+Integrate mutation queuing into item operations so offline mutations are queued for later sync.
 
 ### Files to Read First
-- `specs/features/offline.md` — Full specification (see "IndexedDB for Data Cache" and "Mutation Queue" sections)
-- `convex/schema.ts` — Current schema (lists, items tables have the structure to mirror)
+- `specs/features/offline.md` — Full specification (see "Mutation Queue" and "Sync Manager" sections)
+- `src/lib/offline.ts` — Already has `queueMutation`, `getQueuedMutations`, `clearMutation`, `updateMutationRetry`
+- `convex/items.ts` — Current item mutations (addItem, checkItem, uncheckItem, etc.)
 
 ### Files to Create
-- `src/lib/offline.ts` — IndexedDB setup with stores for lists, items, and mutation queue
+- None — mutation queue helpers already exist in `src/lib/offline.ts`
 
 ### Files to Modify
-- None (idb package already added to package.json)
-
-### Implementation Guidance
-
-The spec at `specs/features/offline.md` has the exact code to implement. Key points:
-
-**1. Database Setup**
-```typescript
-import { openDB, IDBPDatabase } from 'idb';
-
-interface OfflineDB {
-  lists: { key: string; value: List };
-  items: { key: string; value: Item; indexes: { byList: string } };
-  mutations: { key: number; value: QueuedMutation };
-}
-
-const DB_NAME = 'lisa-offline';
-const DB_VERSION = 1;
-```
-
-**2. Store Creation (in upgrade callback)**
-- `lists` store: keyPath `_id` (matches Convex document ID)
-- `items` store: keyPath `_id`, with `byList` index on `listId`
-- `mutations` store: keyPath `id`, autoIncrement true
-
-**3. Types Needed**
-- Import `Id` from `convex/values` or define local types for list/item
-- Define `QueuedMutation` interface with: id?, type, payload, timestamp, retryCount
-- Mutation types: `'addItem' | 'checkItem' | 'uncheckItem' | 'reorderItem'`
-
-**4. Functions to Export**
-- `getOfflineDB()` — returns singleton DB connection
-- `queueMutation(mutation)` — add to queue
-- `getQueuedMutations()` — get all pending
-- `clearMutation(id)` — remove completed mutation
-- `updateMutationRetry(id, retryCount)` — update retry count
+- Potentially update `src/lib/offline.ts` if additional queue helpers needed
 
 ### Acceptance Criteria
-- [ ] `src/lib/offline.ts` created with `getOfflineDB()` function
-- [ ] IndexedDB schema includes `lists`, `items`, and `mutations` stores
-- [ ] Items store has `byList` index for efficient queries
-- [ ] CRUD helpers: `queueMutation`, `getQueuedMutations`, `clearMutation`, `updateMutationRetry`
-- [ ] TypeScript types for `OfflineDB` schema and `QueuedMutation` interface
+- [ ] Verify mutation queue functions work correctly (queueMutation stores to IndexedDB)
+- [ ] Mutation queue persists across browser restarts
+- [ ] Track retry count per mutation
 - [ ] Build passes (`bun run build`)
 - [ ] Lint passes (`bun run lint`)
 
 ### Key Context
-- Using `idb` package (already installed) for type-safe IndexedDB wrapper
-- DB name: `lisa-offline`, version: 1
-- Stores mirror Convex schema structure but use `_id` as keyPath
-- Mutation queue is autoIncrement so IDs are generated automatically
+- Phase 5.2 already created the mutation queue infrastructure in `src/lib/offline.ts`
+- This phase focuses on ensuring queue works and preparing for sync (Phase 5.4)
+- Integration with React hooks happens in Phase 5.5 (useOffline hook)
 
 ### Definition of Done
 When complete, Ralph should:
 1. All acceptance criteria checked
-2. Commit with message: `feat(offline): add IndexedDB setup for offline data (Phase 5.2)`
+2. Commit with message: `feat(offline): verify mutation queue persistence (Phase 5.3)`
 3. Update this section with completion status
 
 ---
@@ -235,11 +198,12 @@ When complete, Ralph should:
 - ✅ `src/lib/sw-registration.ts` for registration and update handling
 - ✅ SW registered in `src/main.tsx` on app load
 
-#### 5.2 [READY] IndexedDB Setup
-- Add `idb` package dependency (lightweight IndexedDB wrapper)
-- Create `src/lib/offline.ts` with DB schema
-- Define stores: lists, items, mutations
-- Create CRUD helpers for offline data
+#### 5.2 [COMPLETED] IndexedDB Setup
+- ✅ Using `idb` package (already installed) for type-safe IndexedDB wrapper
+- ✅ Created `src/lib/offline.ts` with DB schema (OfflineDBSchema)
+- ✅ Stores: `lists` (keyPath `_id`), `items` (keyPath `_id`, `byList` index), `mutations` (autoIncrement)
+- ✅ CRUD helpers: `queueMutation`, `getQueuedMutations`, `clearMutation`, `updateMutationRetry`
+- ✅ Cache helpers for lists and items (for future phases)
 
 #### 5.3 Mutation Queue
 - Queue mutations when offline (addItem, checkItem, uncheckItem, reorderItems)
@@ -329,6 +293,7 @@ When complete, Ralph should:
 
 ## Recently Completed
 
+- ✓ Phase 5.2: IndexedDB Setup — `src/lib/offline.ts` with lists/items/mutations stores, CRUD helpers for mutation queue, cache helpers for lists/items
 - ✓ Phase 5.1: Service Worker — TypeScript SW with custom Vite plugin, cache-first strategy, Convex API exclusion, offline navigation fallback
 - ✓ Phase 4: did:webvh Publication — schema, Convex functions, publication UI, public list view, verification badge, publish/unpublish flow
 - ✓ Phase 3: Unlimited Collaborators — collaborators table, role-based invites, UI for managing collaborators, role change/remove/leave functionality
