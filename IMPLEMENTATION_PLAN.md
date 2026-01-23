@@ -429,9 +429,20 @@ These were discovered during comprehensive code review. All are optional improve
 
 ## Backlog (Post v2)
 
+### Constraint Enforcement (From Specs Gap Analysis)
+These items are specified in `specs/constraints.md` but not enforced in code:
+
+- **Storage limits**: Enforce max 50MB IndexedDB cache, max 100 pending mutations in `src/lib/offline.ts`
+- **Scalability limits**: Add validation in Convex mutations for max 1000 items/list, max 100 lists/user, max 20 categories/user
+- **Stale data warning**: Show warning after 24 hours offline in `useOffline` hook
+- **Touch target audit**: Verify all interactive elements meet 44x44px minimum
+
 ### Technical Debt
 - [TECH-DEBT] Add comprehensive E2E tests for new features
-- [TECH-DEBT] Performance audit after all features implemented
+- [TECH-DEBT] Performance audit — measure against specs/constraints.md targets (initial load <3s on 3G, item sync <1s)
+- [TECH-DEBT] WCAG 2.1 AA accessibility audit with automated tools (axe-core, Lighthouse)
+- [TECH-DEBT] Add rate limiting for auth endpoints (10 attempts/minute per specs)
+- [TECH-DEBT] Remove/gate remaining console.log statements in `src/lib/publication.ts` and `src/lib/sw-registration.ts`
 
 ### Minor Gaps (Low Priority)
 - Auth: Add `signCredential` convenience method to useAuth (workaround: use `getSigner().sign()`)
