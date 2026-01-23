@@ -70,10 +70,10 @@ export function SyncStatus() {
           {isOnline && (
             <button
               onClick={manualSync}
-              disabled={syncStatus === "syncing"}
+              disabled={syncStatus.status === "syncing"}
               className="text-blue-600 hover:underline disabled:opacity-50"
             >
-              {syncStatus === "syncing" ? "Syncing..." : "Sync now"}
+              {syncStatus.status === "syncing" ? "Syncing..." : "Sync now"}
             </button>
           )}
         </>
@@ -82,6 +82,8 @@ export function SyncStatus() {
   );
 }
 ```
+
+**NOTE:** `syncStatus` is an object with shape `{ status: "idle" | "syncing" | "synced" | "error", message?: string }`. Use `syncStatus.status` to check the current state.
 
 **3. Toast notifications (optional enhancement)**
 Show toast on "offline" and "back online" transitions. If using a toast library, add:
@@ -125,9 +127,11 @@ Add `<OfflineIndicator />` at the top of the app:
 
 ### Key Context
 - `useOffline` hook exports: `isOnline`, `syncStatus`, `pendingCount`, `manualSync`
-- `syncStatus` can be: `"idle"`, `"syncing"`, `"synced"`, `"error"`
+- **IMPORTANT:** `syncStatus` is an OBJECT: `{ status: "idle" | "syncing" | "synced" | "error", message?: string }`
+- Check status via `syncStatus.status`, e.g. `syncStatus.status === "syncing"`
 - Keep components simple — fancy animations not required for v1
 - Consider accessibility: use appropriate ARIA live regions for status changes
+- App.tsx structure: OfflineIndicator goes inside `<div className="min-h-screen bg-gray-50">` wrapper (line 37)
 
 ### Definition of Done
 When complete, Ralph should:
