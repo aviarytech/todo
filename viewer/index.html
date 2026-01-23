@@ -716,6 +716,21 @@
       scrollBtn.textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
     }
     
+    function setAutoScroll(enabled) {
+      autoScroll = enabled;
+      scrollBtn.textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+    }
+    
+    // Disable autoscroll when user scrolls up, re-enable when they scroll to bottom
+    output.addEventListener('scroll', () => {
+      const atBottom = output.scrollHeight - output.scrollTop - output.clientHeight < 50;
+      if (!atBottom && autoScroll) {
+        setAutoScroll(false);
+      } else if (atBottom && !autoScroll) {
+        setAutoScroll(true);
+      }
+    });
+    
     function formatTokens(n) {
       if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
       if (n >= 1000) return Math.round(n / 1000) + 'k';
