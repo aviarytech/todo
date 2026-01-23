@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 5.9 completed — Offline operation restrictions
+**Current Status:** Phase 1.8 in progress — Resend OTP functionality
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,15 +12,74 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**Phase 5.9 completed.** Lisa to prepare next task context.
+### Current Task
+Phase 1.8: Resend OTP — Wire up the resend callback in Login.tsx
+
+### Overview
+The OtpInput component already has complete resend functionality built in:
+- "Resend code" button (shown only when `onResend` prop is provided)
+- 60-second cooldown timer
+- Auto-clears digits and focuses first input on resend
+
+All that's needed is passing the callback from Login.tsx.
+
+### Files to Modify
+
+**1. `src/pages/Login.tsx`** — Pass `onResend` to OtpInput
+- Create a `handleResend` function that calls `startOtp(email)` again
+- Pass it as `onResend` prop to OtpInput component
+- The email is already in component state from step 1
+
+### Implementation Notes
+
+The change is minimal — just add a callback and pass it:
+
+```tsx
+// In Login.tsx, add this function (inside the component, before the return):
+const handleResend = async () => {
+  setError(null);
+  try {
+    await startOtp(email.trim().toLowerCase());
+  } catch (err) {
+    console.error("Failed to resend OTP:", err);
+    setError("Failed to resend code. Please try again.");
+  }
+};
+
+// In the JSX, update OtpInput:
+<OtpInput
+  onComplete={handleOtpComplete}
+  isLoading={isLoading}
+  error={error}
+  onResend={handleResend}
+/>
+```
+
+### Acceptance Criteria
+- [ ] `onResend` prop is passed to OtpInput component
+- [ ] Clicking "Resend code" sends a new OTP to the email
+- [ ] 60-second cooldown displays correctly after resend
+- [ ] Error handling works (displays error if resend fails)
+- [ ] Lint passes (`bun run lint`)
+- [ ] Build passes (`bun run build`)
+
+### Definition of Done
+When complete, Ralph should:
+1. All acceptance criteria checked
+2. Test the flow manually:
+   - Enter email, get to OTP step
+   - Wait for "Resend code" button (or check it appears)
+   - Click resend, verify new code is sent
+   - Verify cooldown timer shows
+3. Commit with message: `feat(auth): add resend OTP functionality (Phase 1.8)`
+4. Update this section with completion status
 
 ---
 
 ## Next Up (Priority Order)
 
-### Phase 1.8: Resend OTP
-- Wire up `onResend` callback in Login.tsx → OtpInput
-- OtpInput already has UI and cooldown logic ready
+### Phase 1.8: Resend OTP [IN PROGRESS]
+See Working Context above.
 
 ---
 
