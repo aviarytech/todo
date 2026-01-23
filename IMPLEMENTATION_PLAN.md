@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 5.2 complete — Ready for Phase 5.3 (Sync Manager)
+**Current Status:** Phase 5.3 complete — Ready for Phase 5.4 (useOffline Hook)
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,21 +12,21 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[READY]** Phase 5.3: Sync Manager
+**[READY]** Phase 5.4: useOffline Hook
 
-Continuing Phase 5: Offline Support. IndexedDB and mutation queue helpers are complete (Phase 5.2). Now implement the Sync Manager that processes queued mutations when the user comes back online.
+Continuing Phase 5: Offline Support. SyncManager is complete (Phase 5.3). Now implement the useOffline hook that tracks online/offline state and triggers sync on reconnect.
 
-### Current Task: 5.3 Sync Manager
+### Current Task: 5.4 useOffline Hook
 
-Create the SyncManager class that processes queued mutations with exponential backoff and conflict handling.
+Create the useOffline React hook that tracks connectivity and integrates with SyncManager.
 
 ### Files to Read First
-- `specs/features/offline.md` — Full specification (see "Sync Manager" section for the class design)
-- `src/lib/offline.ts` — Has `queueMutation`, `getQueuedMutations`, `clearMutation`, `updateMutationRetry`
-- `convex/items.ts` — Item mutations: `addItem`, `checkItem`, `uncheckItem`, `reorderItems`
+- `specs/features/offline.md` — Full specification (see "useOffline Hook" section)
+- `src/lib/sync.ts` — SyncManager with `sync(convex)` and `subscribe(listener)` methods
+- `src/lib/offline.ts` — `getQueuedMutations` to count pending mutations
 
 ### Files to Create
-- `src/lib/sync.ts` — SyncManager class and singleton instance
+- `src/hooks/useOffline.tsx` — useOffline hook
 
 ### Files to Modify
 - None
@@ -35,74 +35,76 @@ Create the SyncManager class that processes queued mutations with exponential ba
 
 Follow the spec at `specs/features/offline.md`. Key points:
 
-**1. SyncManager Class**
 ```typescript
-import { getQueuedMutations, clearMutation, updateMutationRetry } from './offline';
-import type { ConvexReactClient } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { useState, useEffect } from 'react';
+import { useConvex } from 'convex/react';
+import { syncManager, type SyncStatus } from '../lib/sync';
+import { getQueuedMutations } from '../lib/offline';
 
-const MAX_RETRIES = 5;
-const RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000]; // Exponential backoff
+export function useOffline() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ status: 'idle' });
+  const [pendingCount, setPendingCount] = useState(0);
+  const convex = useConvex();
 
-export type SyncStatusType = 'idle' | 'syncing' | 'synced' | 'error';
+  // Track online/offline events
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncManager.sync(convex);
+    };
+    const handleOffline = () => setIsOnline(false);
 
-export interface SyncStatus {
-  status: SyncStatusType;
-  message?: string;
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => { ... };
+  }, [convex]);
+
+  // Subscribe to sync status
+  useEffect(() => {
+    return syncManager.subscribe(setSyncStatus);
+  }, []);
+
+  // Poll pending count (or update on sync status change)
+  useEffect(() => {
+    const updateCount = async () => {
+      const mutations = await getQueuedMutations();
+      setPendingCount(mutations.length);
+    };
+    updateCount();
+    const interval = setInterval(updateCount, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return {
+    isOnline,
+    syncStatus,
+    pendingCount,
+    manualSync: () => syncManager.sync(convex),
+  };
 }
-
-export class SyncManager {
-  private isSyncing = false;
-  private listeners: Set<(status: SyncStatus) => void> = new Set();
-
-  async sync(convex: ConvexReactClient): Promise<void> { ... }
-  private async executeMutation(convex: ConvexReactClient, mutation: QueuedMutation): Promise<void> { ... }
-  private delay(ms: number): Promise<void> { ... }
-  subscribe(listener: (status: SyncStatus) => void): () => void { ... }
-  private notify(status: SyncStatus): void { ... }
-}
-
-export const syncManager = new SyncManager();
 ```
 
-**2. Mutation Execution**
-Map `QueuedMutation.type` to Convex mutations:
-- `'addItem'` → `api.items.addItem`
-- `'checkItem'` → `api.items.checkItem`
-- `'uncheckItem'` → `api.items.uncheckItem`
-- `'reorderItem'` → `api.items.reorderItems`
-
-**3. Error Handling**
-- On failure: increment retry count via `updateMutationRetry`
-- If `retryCount >= MAX_RETRIES`: discard mutation via `clearMutation`, notify error
-- Wait between retries using `RETRY_DELAYS[retryCount]`
-
-**4. Listener Pattern**
-- `subscribe()` returns an unsubscribe function
-- Used by `useOffline` hook (Phase 5.5) to update UI
-
 ### Acceptance Criteria
-- [ ] `src/lib/sync.ts` created with `SyncManager` class
-- [ ] `syncManager` singleton exported
-- [ ] `sync(convex)` method processes all queued mutations in order
-- [ ] Exponential backoff: 1s, 2s, 4s, 8s, 16s delays between retries
-- [ ] Max 5 retries before discarding failed mutation
-- [ ] `subscribe(listener)` for status updates returns unsubscribe function
-- [ ] Status notifications: `idle` → `syncing` → `synced` (or `error`)
-- [ ] TypeScript types: `SyncStatus`, `SyncStatusType`
+- [ ] `src/hooks/useOffline.tsx` created with `useOffline` hook
+- [ ] Tracks `navigator.onLine` state reactively
+- [ ] Subscribes to `online`/`offline` window events
+- [ ] Triggers `syncManager.sync(convex)` on reconnect
+- [ ] Subscribes to `syncManager` for status updates
+- [ ] Tracks pending mutation count (poll every 5s or on status change)
+- [ ] Exports: `isOnline`, `syncStatus`, `pendingCount`, `manualSync`
 - [ ] Build passes (`bun run build`)
 - [ ] Lint passes (`bun run lint`)
 
 ### Key Context
-- Convex client is passed to `sync()` — don't import it globally
-- Mutations are processed sequentially to preserve order
-- The `QueuedMutation.payload` contains the exact args for the Convex mutation
-- `isSyncing` flag prevents concurrent sync attempts
+- `useConvex()` from `convex/react` provides the client for sync
+- Cleanup is critical: remove event listeners and unsubscribe on unmount
+- The hook will be used by UI components in Phase 5.6
 
 ### Definition of Done
 When complete, Ralph should:
 1. All acceptance criteria checked
-2. Commit with message: `feat(offline): add SyncManager for mutation sync (Phase 5.3)`
+2. Commit with message: `feat(offline): add useOffline hook (Phase 5.4)`
 3. Update this section with completion status
 
 ---
@@ -261,12 +263,14 @@ When complete, Ralph should:
 - ✅ CRUD helpers: `queueMutation`, `getQueuedMutations`, `clearMutation`, `updateMutationRetry`
 - ✅ Cache helpers for lists and items (for future phases)
 
-#### 5.3 Sync Manager
-- Create `src/lib/sync.ts`
-- Sync queued mutations on reconnect
-- Exponential backoff for retries (1s, 2s, 4s, 8s, 16s)
-- Max 5 retries before discarding
-- Notify on sync conflicts
+#### 5.3 [COMPLETED] Sync Manager
+- ✅ Created `src/lib/sync.ts` with SyncManager class
+- ✅ `syncManager` singleton exported
+- ✅ `sync(convex)` method processes all queued mutations in order
+- ✅ Exponential backoff: 1s, 2s, 4s, 8s, 16s delays between retries
+- ✅ Max 5 retries before discarding failed mutation
+- ✅ `subscribe(listener)` for status updates returns unsubscribe function
+- ✅ Status notifications: `idle` → `syncing` → `synced` (or `error`)
 
 #### 5.4 useOffline Hook
 - Create `src/hooks/useOffline.tsx`
@@ -344,6 +348,7 @@ When complete, Ralph should:
 
 ## Recently Completed
 
+- ✓ Phase 5.3: Sync Manager — `src/lib/sync.ts` with SyncManager class, exponential backoff retries, subscribe pattern for status updates
 - ✓ Phase 5.2: IndexedDB Setup — `src/lib/offline.ts` with lists/items/mutations stores, CRUD helpers for mutation queue, cache helpers for lists/items
 - ✓ Phase 5.1: Service Worker — TypeScript SW with custom Vite plugin, cache-first strategy, Convex API exclusion, offline navigation fallback
 - ✓ Phase 4: did:webvh Publication — schema, Convex functions, publication UI, public list view, verification badge, publish/unpublish flow
