@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 5.8 completed — Conflict resolution for offline sync
+**Current Status:** Phase 5.9 completed — Offline operation restrictions
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,109 +12,11 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-### Current Task
-Phase 5.9: Offline Operation Restrictions — Block destructive operations when offline
-
-### Overview
-Certain operations are too dangerous to allow offline because they can't be reliably synced or rolled back:
-- **List deletion** — Deletes list and all items permanently
-- **Publish/Unpublish** — Requires server-side DID creation and verification
-
-When offline, these buttons should be disabled with a tooltip explaining why.
-
-### Files to Modify
-
-**1. `src/pages/ListView.tsx`** — Main entry point for restrictions
-- Import `useOffline` hook
-- Pass `isOnline` to `DeleteListDialog` and `PublishModal` or disable the buttons directly
-
-**2. `src/components/DeleteListDialog.tsx`** — Disable delete when offline
-- Add `isOnline` prop (or use `useOffline` hook directly)
-- Disable the "Delete" button when offline
-- Show tooltip: "Available when online"
-
-**3. `src/components/publish/PublishModal.tsx`** — Disable publish/unpublish when offline
-- Use `useOffline` hook to get `isOnline` state
-- Disable "Publish List" and "Unpublish" buttons when offline
-- Show tooltip/message: "Publishing requires an internet connection"
-
-### Implementation Notes
-
-**Approach A (Recommended): Disable at button level in ListView**
-- Simpler — add `disabled` and `title` attributes to the buttons in ListView.tsx
-- Don't need to modify child components
-- User gets feedback before opening modals
-
-**Approach B: Disable inside modals**
-- More contextual — user can still open modal but sees disabled action
-- Requires changes to both DeleteListDialog and PublishModal
-
-**Recommended: Use Approach A**
-- Add `useOffline` to ListView.tsx
-- Disable Delete button with tooltip when `!isOnline`
-- Disable Publish button with tooltip when `!isOnline`
-
-### Example Changes
-
-```tsx
-// In ListView.tsx:
-import { useOffline } from "../hooks/useOffline";
-
-// Inside component:
-const { isOnline } = useOffline();
-
-// Delete button:
-<button
-  onClick={() => setIsDeleteDialogOpen(true)}
-  disabled={!isOnline}
-  title={!isOnline ? "Available when online" : undefined}
-  className={`px-4 py-2.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 ${
-    !isOnline ? "opacity-50 cursor-not-allowed" : ""
-  }`}
->
-  Delete
-</button>
-
-// Publish button:
-<button
-  onClick={() => setIsPublishModalOpen(true)}
-  disabled={!isOnline}
-  title={!isOnline ? "Available when online" : undefined}
-  className={`px-4 py-2.5 text-sm rounded-lg ${
-    !isOnline ? "opacity-50 cursor-not-allowed" : ""
-  } ${
-    publicationStatus?.status === "active"
-      ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
-      : "bg-purple-600 text-white hover:bg-purple-700"
-  }`}
->
-  {publicationStatus?.status === "active" ? "Published" : "Publish"}
-</button>
-```
-
-### Acceptance Criteria
-- [ ] Delete button is disabled when offline
-- [ ] Delete button shows "Available when online" tooltip when offline
-- [ ] Publish button is disabled when offline
-- [ ] Publish button shows "Available when online" tooltip when offline
-- [ ] Visual styling shows buttons are disabled (opacity, cursor)
-- [ ] Lint passes (`bun run lint`)
-- [ ] Build passes (`bun run build`)
-
-### Definition of Done
-When complete, Ralph should:
-1. All acceptance criteria checked
-2. Test by going offline (DevTools → Network → Offline)
-3. Verify Delete and Publish buttons are disabled with tooltip
-4. Commit with message: `feat(offline): block destructive operations when offline (Phase 5.9)`
-5. Update this section with completion status
+**Phase 5.9 completed.** Lisa to prepare next task context.
 
 ---
 
 ## Next Up (Priority Order)
-
-### Phase 5.9: Offline Operation Restrictions [IN PROGRESS]
-See Working Context above.
 
 ### Phase 1.8: Resend OTP
 - Wire up `onResend` callback in Login.tsx → OtpInput
@@ -325,6 +227,12 @@ See Working Context above.
 - ✅ Handles item deleted remotely — shows "Item was deleted by another user" toast
 - ✅ ToastProvider mounted in `main.tsx`, ToastContainer in `App.tsx`
 
+#### 5.9 [COMPLETED] Offline Operation Restrictions
+- ✅ Import `useOffline` hook in `ListView.tsx`
+- ✅ Delete button disabled when offline with "Available when online" tooltip
+- ✅ Publish button disabled when offline with "Available when online" tooltip
+- ✅ Visual feedback: `opacity-50 cursor-not-allowed` styling when disabled
+
 ---
 
 ## Warnings & Pitfalls
@@ -369,7 +277,7 @@ See Working Context above.
 
 - [CRITICAL] **Never cache Convex API** — Any URL containing `convex.cloud` must be excluded from SW fetch handling. Caching these breaks real-time sync.
 
-- [WARNING] **Destructive ops allowed offline** — List delete and publish/unpublish should be blocked when offline. Phase 5.9 addresses this.
+- [RESOLVED] **Destructive ops blocked offline** — List delete and publish/unpublish buttons are disabled when offline with tooltip "Available when online". (Phase 5.9)
 
 - [WARNING] **Conflict resolution is lossy** — Server wins conflicts. User may lose offline changes if collaborator edited same item.
 
@@ -385,6 +293,7 @@ See Working Context above.
 
 ## Recently Completed
 
+- ✓ Phase 5.9: Offline Operation Restrictions — Delete and Publish buttons disabled when offline in `ListView.tsx`; `useOffline` hook provides `isOnline` state; build and lint pass
 - ✓ Phase 5.8: Conflict Resolution — `updatedAt` field on items table; `getItemForSync` query; `checkForConflict` in SyncManager; toast notification system (`useToast`, `ToastContainer`, `src/lib/toast.ts`); build and lint pass
 - ✓ Phase 5.7: Offline Cache Fallback — `cacheAllLists` helper in offline.ts; cache-through pattern in Home.tsx and useOptimisticItems.tsx; amber warning banner when showing cached data; build and lint pass
 - ✓ Phase 5.6: UI Feedback — `OfflineIndicator.tsx` banner and `SyncStatus.tsx` detailed status component with ARIA accessibility; mounted in App.tsx
