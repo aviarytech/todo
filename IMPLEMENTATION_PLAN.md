@@ -20,31 +20,82 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 - `src/hooks/useIdentity.tsx` — Current identity system to eventually replace
 - `src/lib/identity.ts` — Current localStorage identity storage
 - `package.json` — Current dependencies
+- `specs/features/auth.md` — Full auth specification with code examples
 
 ### Files to Create/Modify
-- `package.json` — Add `@originals/auth` dependency
+- `package.json` — Add `@originals/auth` dependency (version `^1.5.0`)
 - `src/lib/turnkey.ts` — NEW: Turnkey client wrapper
 - `src/hooks/useAuth.tsx` — NEW: Auth context and hook (will eventually replace useIdentity)
 
 ### Acceptance Criteria
 - [ ] `@originals/auth` installed and builds successfully
-- [ ] `src/lib/turnkey.ts` exports `initializeTurnkeyClient`, `initOtp`, `completeOtp`, `fetchWallets`
-- [ ] `src/hooks/useAuth.tsx` provides auth state (but doesn't replace useIdentity yet)
+- [ ] `src/lib/turnkey.ts` exports re-wrapped functions from `@originals/auth/client`:
+  - `initializeTurnkeyClient` — Creates the Turnkey client instance
+  - `initOtp` — Starts OTP flow
+  - `completeOtp` — Verifies OTP code
+  - `fetchWallets` — Gets user's Turnkey wallets
+  - `TurnkeyDIDSigner` — For signing without exposing private keys
+  - `createDIDWithTurnkey` — Creates DID backed by Turnkey key
+- [ ] `src/hooks/useAuth.tsx` provides auth state context:
+  - `isAuthenticated: boolean`
+  - `isLoading: boolean`
+  - `user: AuthUser | null`
+  - `startOtp: (email: string) => Promise<void>`
+  - `verifyOtp: (code: string) => Promise<void>`
+  - `logout: () => void`
+  - `getSigner: () => TurnkeyDIDSigner | null`
 - [ ] Build passes (`bun run build`)
 - [ ] Lint passes (`bun run lint`)
 - [ ] No changes to existing functionality (additive only)
 
 ### Key Context
-- @originals/auth client exports: `initializeTurnkeyClient`, `initOtp`, `completeOtp`, `fetchWallets`, `TurnkeyDIDSigner`, `createDIDWithTurnkey`
-- The auth system needs to work alongside existing localStorage identity during migration
-- See `specs/features/auth.md` for full specification
+- **Parallel systems**: `useAuth` runs alongside `useIdentity` for now. Don't modify `useIdentity.tsx` or any components that use it
+- **Import path**: `@originals/auth/client` (not just `@originals/auth`)
+- **Session tokens**: Turnkey uses httpOnly cookies. The client just calls the methods; session management happens automatically
+- **No Convex changes yet**: Schema updates happen in Phase 1.4. This phase is frontend-only
+- **Pattern to follow**: See `src/lib/originals.ts` for wrapper style conventions
+
+### Implementation Notes
+
+**src/lib/turnkey.ts** should:
+```typescript
+// Re-export and wrap @originals/auth/client
+import {
+  initializeTurnkeyClient,
+  initOtp,
+  completeOtp,
+  fetchWallets,
+  TurnkeyDIDSigner,
+  createDIDWithTurnkey
+} from '@originals/auth/client';
+
+// Re-export for consumers
+export {
+  initializeTurnkeyClient,
+  initOtp,
+  completeOtp,
+  fetchWallets,
+  TurnkeyDIDSigner,
+  createDIDWithTurnkey
+};
+
+// Types consumers will need
+export type { TurnkeyDIDSigner };
+```
+
+**src/hooks/useAuth.tsx** should:
+- Create `AuthContext` with `AuthContextValue` interface
+- Create `AuthProvider` component (similar pattern to `IdentityProvider`)
+- Export `useAuth` hook
+- Store auth state in component state (not localStorage — Turnkey handles sessions)
+- Stub out the OTP methods (actual implementation in Phase 1.3)
 
 ### Definition of Done
 When complete, Ralph should:
 1. All acceptance criteria checked
-2. Commit with descriptive message
+2. Commit with message: `feat(auth): add Turnkey client setup and useAuth hook shell`
 3. Push changes
-4. Update this section with completion status
+4. Update this section: Replace "Current Task" content with `[COMPLETED]`
 
 ---
 
@@ -52,7 +103,7 @@ When complete, Ralph should:
 
 ### Phase 1: Turnkey Authentication
 
-#### 1.1 [NEXT] Setup and Dependencies
+#### 1.1 [IN PROGRESS] Setup and Dependencies
 - Add `@originals/auth` to package.json
 - Create `src/lib/turnkey.ts` wrapper
 - Create `src/hooks/useAuth.tsx` shell (parallel to useIdentity)
