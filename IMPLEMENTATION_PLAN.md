@@ -4,9 +4,9 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 6 Complete — Technical debt cleanup done
+**Current Status:** Phase 6 Complete — All major phases done
 
-All 5 major phases complete. Technical debt cleanup complete.
+All 6 major phases complete. v2 feature development done. Optional quality improvements available.
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -15,16 +15,82 @@ All 5 major phases complete. Technical debt cleanup complete.
 ## Working Context (For Ralph)
 
 ### Current Task
-Phase 6 complete — No active task
+No active task — All major phases complete
 
 ### Overview
-Technical debt cleanup is complete. See Phase 7: Minor Gaps for optional improvements.
+v2 development is complete. See Phase 7: Quality Improvements for optional enhancements discovered during code review.
 
 ---
 
 ## Next Up (Priority Order)
 
-### Phase 6: Technical Debt Cleanup
+### Phase 7: Quality Improvements (Optional)
+
+These were discovered during comprehensive code review. All are optional improvements, not blockers.
+
+#### 7.1 Modal Accessibility (HIGH - Affects keyboard/screen reader users)
+**Problem:** 5 modal components lack focus trap, aria-modal, and proper dialog roles
+**Files:**
+- `src/components/DeleteListDialog.tsx` — needs `role="alertdialog"`, focus trap
+- `src/components/ShareModal.tsx` — needs `role="dialog"`, focus trap
+- `src/components/publish/PublishModal.tsx` — needs `role="dialog"`, focus trap
+- `src/components/lists/CategoryManager.tsx` — needs `role="dialog"`, focus trap
+- `src/components/CreateListModal.tsx` — needs `role="dialog"`, focus trap (has autoFocus, which is good)
+
+**Acceptance Criteria:**
+- [ ] Add `role="dialog"` or `role="alertdialog"` to each modal
+- [ ] Add `aria-modal="true"` to each modal
+- [ ] Implement focus trap (trap Tab key within modal)
+- [ ] Add ESC key handler to close modals
+- [ ] Return focus to trigger element on close
+
+#### 7.2 Replace window.confirm() with Accessible Modals (MEDIUM)
+**Problem:** Native `window.confirm()` is inaccessible and inconsistent with UI
+**Files:**
+- `src/components/sharing/CollaboratorList.tsx` (lines 46, 64) — remove/leave confirmations
+- `src/components/lists/CategoryManager.tsx` (line 108) — delete category confirmation
+
+**Acceptance Criteria:**
+- [ ] Create reusable `ConfirmDialog` component (or reuse DeleteListDialog pattern)
+- [ ] Replace `window.confirm()` calls with accessible modal dialogs
+
+#### 7.3 Hook Memory Leak Fixes (MEDIUM)
+**Problem:** Several hooks have potential memory leaks or race conditions
+
+**useToast.tsx (line 70-81):** setTimeout not cleared when toast removed early
+- [ ] Store timeout IDs and clear on early removal
+
+**useOffline.tsx (lines 91-106):** Polling can cause setState after unmount
+- [ ] Add mounted flag to prevent setState after unmount
+
+**useAuth.tsx (lines 236-285):** Session restoration can cause setState after unmount
+- [ ] Add cleanup/abort mechanism for async restoration
+
+#### 7.4 Remove Debug Console Logs (LOW)
+**Problem:** Debug logs in production code
+**File:** `src/components/publish/PublishModal.tsx` (lines 54, 61, 72, 97)
+- [ ] Remove or wrap in `if (import.meta.env.DEV)` check
+
+#### 7.5 Bundle Size Optimization (LOW)
+**Problem:** Build shows chunks >500KB warning
+- `originals-sdk`: 612KB (gzipped: 182KB)
+- `base`: 535KB (gzipped: 171KB)
+- `index`: 802KB (gzipped: 207KB)
+
+**Options:**
+- [ ] Add dynamic imports for heavy routes (PublicList, PublishModal)
+- [ ] Configure `build.rollupOptions.output.manualChunks` for better splitting
+
+### Phase 7 (Existing): Minor Feature Gaps
+
+#### Publication Features (Optional)
+- VerifyButton component for per-item credential verification
+- RequestAccessButton for "Join this list" flow
+- Rate limiting on public list queries
+
+---
+
+### Completed Technical Debt (Phase 6)
 
 #### 6.1 [COMPLETED] Remove deprecated identity files
 - ✅ Deleted `src/hooks/useIdentity.tsx`, `src/components/IdentitySetup.tsx`, `src/components/auth/MigrationPrompt.tsx`, `src/lib/identity.ts`, `src/lib/migration.ts`
@@ -44,20 +110,6 @@ Technical debt cleanup is complete. See Phase 7: Minor Gaps for optional improve
 - ✅ Added case-insensitive validation to `renameCategory` in `convex/categories.ts`
 - ✅ User-friendly error message: `"Uncategorized" is a reserved name`
 - ✅ Build and lint pass
-
-### Phase 7: Minor Gaps (Optional)
-
-#### 7.1 [COMPLETED] Use AuthGuard component in App.tsx
-- ✅ Refactored App.tsx to use AuthGuard for protected routes
-- ✅ Created `AuthenticatedLayout` component for header/main layout
-- ✅ Created `ProtectedRoute` wrapper combining AuthGuard with layout
-- ✅ Public routes (/login, /join, /public) remain accessible without auth
-- ✅ Build and lint pass
-
-#### Remaining Optional Items
-- Publication: VerifyButton component for per-item credential verification
-- Publication: RequestAccessButton for "Join this list" flow
-- Publication: Rate limiting on public list queries
 
 ---
 
@@ -328,6 +380,20 @@ Technical debt cleanup is complete. See Phase 7: Minor Gaps for optional improve
 - [NOTE] **SW scope** — Service worker scope defaults to its directory. Place at root (`/sw.js`) to control entire app.
 
 - [NOTE] **HTTPS required** — Service workers only work over HTTPS (except localhost). Production is on Railway with HTTPS, so this is fine.
+
+### Accessibility (Discovered in Code Review)
+
+- [WARNING] **Modal focus management** — 5 modal components lack focus traps, meaning keyboard users can Tab out of modals into background content. See Phase 7.1 for fix.
+
+- [WARNING] **window.confirm() usage** — `CollaboratorList.tsx` and `CategoryManager.tsx` use native browser confirm dialogs which are inaccessible and inconsistent with app UI. See Phase 7.2 for fix.
+
+### Hook Quality (Discovered in Code Review)
+
+- [WARNING] **useToast memory leak** — setTimeout for auto-dismiss is not cleared when toast is removed early. Can cause orphaned timers. See Phase 7.3.
+
+- [WARNING] **useOffline polling race condition** — Polling continues after component unmount, may cause setState on unmounted component. See Phase 7.3.
+
+- [WARNING] **useAuth session restoration** — Async session restoration doesn't abort on unmount, may cause setState after unmount. See Phase 7.3.
 
 ---
 
