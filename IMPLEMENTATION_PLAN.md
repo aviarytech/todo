@@ -12,17 +12,104 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[COMPLETED]** Phase 1.3: Auth Flow Integration
+### Current Task
+[IN PROGRESS] Phase 1.6: Migration Path — Support existing localStorage users migrating to Turnkey auth
 
-Created:
-- Full OTP flow in `src/hooks/useAuth.tsx` — `startOtp`/`verifyOtp` with real Turnkey API calls
-- Session restoration from localStorage with Turnkey validation on mount
-- DID generation using did:peer:2 format from Ed25519 wallet key
-- `TurnkeyDIDSigner` creation for future signing operations
-- `convex/auth.ts` — User upsert mutation with Turnkey ID support
-- Updated `convex/schema.ts` — Added `turnkeySubOrgId`, `email`, `lastLoginAt`, `legacyIdentity` fields with indices
-- Added `AuthProvider` to `src/main.tsx` (wraps `IdentityProvider` for migration period)
-- Updated `.env.example` with `VITE_TURNKEY_AUTH_PROXY_CONFIG_ID` and `VITE_TURNKEY_ORGANIZATION_ID`
+### Overview
+Existing users have localStorage identities (DID + private key). When they open the app, we need to:
+1. Detect the legacy identity
+2. Present a migration prompt (with option to skip for now)
+3. If they migrate: link their existing DID/data to new Turnkey auth
+4. Support both auth methods during the transition period
+
+### Files to Read First
+- `src/hooks/useIdentity.tsx` — Current localStorage identity system
+- `src/hooks/useAuth.tsx` — New Turnkey auth system (already implemented)
+- `src/lib/identity.ts` — localStorage storage helpers (`STORAGE_KEY = "lisa-identity"`)
+- `src/App.tsx` — Entry point, uses `useIdentity` to show `IdentitySetup` if no identity
+- `src/components/IdentitySetup.tsx` — Current new-user flow (name entry + DID creation)
+- `convex/auth.ts:39-53` — Already handles DID linking during upsertUser (migration-ready)
+- `specs/features/auth.md:38-43` — Migration acceptance criteria
+
+### Files to Create
+- `src/components/auth/MigrationPrompt.tsx` — Modal prompting user to upgrade to Turnkey
+  - Shows benefits: "Secure your account with email login"
+  - Two buttons: "Upgrade Now" (→ Login flow) and "Later" (→ continue with localStorage)
+  - Remember "Later" choice in sessionStorage so we don't spam
+
+### Files to Modify
+- `src/App.tsx` — Add migration detection logic
+  - Check for legacy identity: `localStorage.getItem("lisa-identity")`
+  - Check if already using Turnkey auth: `useAuth().isAuthenticated`
+  - If legacy exists AND not Turnkey-authed → show `MigrationPrompt`
+- `src/hooks/useAuth.tsx` — Add `migrateLegacyIdentity(legacyDid: string)` helper
+  - After OTP completes, pass the legacy DID to `upsertUser` so Convex can link accounts
+  - The `convex/auth.ts:39-53` code already handles this linking
+- `src/pages/Login.tsx` — Accept optional `legacyDid` prop for migration flow
+  - Pass to `verifyOtp` which will include it in the Convex upsert
+
+### Key Storage Keys
+- `"lisa-identity"` — Legacy localStorage identity (has `did`, `privateKey`, `publicKey`, `displayName`)
+- `"lisa-auth-state"` — Turnkey auth state (has `user`, `walletAccount`, `publicKeyMultibase`)
+
+### Acceptance Criteria
+- [ ] When user has localStorage identity but NOT Turnkey auth, show MigrationPrompt
+- [ ] MigrationPrompt explains benefits and has "Upgrade" and "Later" buttons
+- [ ] "Later" dismisses prompt for the session (use sessionStorage flag)
+- [ ] "Upgrade" takes user to Login flow with their legacy DID preserved
+- [ ] After successful Turnkey OTP, the new Turnkey account is linked to existing user data
+- [ ] Users who migrated can continue to see their existing lists (DID preserved or mapped)
+- [ ] Users who choose "Later" can continue using the app with localStorage identity
+- [ ] Build passes (`bun run build`)
+- [ ] Lint passes (`bun run lint`)
+
+### Key Implementation Notes
+
+1. **DID Handling Strategy**: The simplest approach is to preserve access to existing data by linking Turnkey to existing user record by DID. The `convex/auth.ts:39-53` already does this — it checks if a user exists by DID and links the Turnkey ID.
+
+2. **The Challenge**: Turnkey generates a NEW did:peer from its Ed25519 key, which differs from the legacy localStorage DID. To preserve data access:
+   - Option A: Store `legacyDid` field on user record and query by either DID
+   - Option B: After migration, update all `ownerDid`/`collaboratorDid` references to new DID
+   - **Recommended**: Option A is simpler and non-destructive. Add `legacyDid` field to users table.
+
+3. **Schema Addition Needed**: Add `legacyDid: v.optional(v.string())` to users table with index `by_legacy_did`
+
+4. **Query Updates Needed**: Update `convex/lists.ts:getUserLists` to check both `did` and `legacyDid`
+
+### Migration Flow Sequence
+```
+App loads
+  ↓
+Check localStorage("lisa-identity") → found?
+  ↓ yes
+Check useAuth().isAuthenticated → true?
+  ↓ no (legacy user not yet migrated)
+Check sessionStorage("migration-dismissed") → true?
+  ↓ no
+Show MigrationPrompt
+  ↓
+User clicks "Upgrade Now"
+  ↓
+Navigate to /login with state { legacyDid: identity.did }
+  ↓
+User completes OTP flow
+  ↓
+verifyOtp() includes legacyDid in upsertUser call
+  ↓
+Convex links Turnkey account to existing user or stores legacyDid
+  ↓
+Clear localStorage("lisa-identity") after successful migration
+  ↓
+User continues with Turnkey auth, data preserved
+```
+
+### Definition of Done
+When complete:
+1. All acceptance criteria checked
+2. Tested manually with existing localStorage identity
+3. Commit with descriptive message
+4. Push changes
+5. Mark Phase 1.6 as completed in this file
 
 ---
 
@@ -57,10 +144,12 @@ Created:
 - Future: Upgrade to `createDIDWithTurnkey` for did:webvh if needed
 - TurnkeyDIDSigner is already available for signing
 
-#### 1.6 Migration Path
+#### 1.6 [IN PROGRESS] Migration Path
 - Detect localStorage identity on app load
 - Prompt migration to Turnkey
 - Support both auth methods during transition
+- Add `legacyDid` field to schema for DID mapping
+- Update list queries to check both `did` and `legacyDid`
 
 #### 1.7 Replace Identity System
 - Swap `useIdentity` for `useAuth` throughout app
@@ -208,6 +297,8 @@ Created:
 - [NOTE] **Migration complexity** — Existing users have DIDs from localStorage. Migration should preserve their DID or create mapping.
 
 - [NOTE] **DID implementation uses did:peer** — Phase 1.3 uses simple did:peer:2 format from Ed25519 key instead of `createDIDWithTurnkey`. The `createDIDWithTurnkey` function was imported but is unused. Phase 1.5 can upgrade to did:webvh if needed.
+
+- [WARNING] **DID mismatch on migration** — Legacy users have a localStorage DID, but Turnkey generates a NEW DID from its wallet key. These DIDs will NOT match. Must store `legacyDid` and update queries to check both, or user loses access to their lists.
 
 ### Categories
 
