@@ -12,6 +12,7 @@ import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { useCategories } from "../../hooks/useCategories";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 interface CategoryManagerProps {
   onClose: () => void;
@@ -27,6 +28,8 @@ export function CategoryManager({ onClose }: CategoryManagerProps) {
   const [editingName, setEditingName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  // Confirmation dialog state for category deletion
+  const [confirmDeleteId, setConfirmDeleteId] = useState<Id<"categories"> | null>(null);
 
   // Get lists to count per category
   const lists = useQuery(
@@ -100,23 +103,31 @@ export function CategoryManager({ onClose }: CategoryManagerProps) {
     setError(null);
   };
 
-  const handleDeleteCategory = async (categoryId: Id<"categories">) => {
-    const listCount = getListCountForCategory(categoryId);
-    const confirmMessage =
-      listCount > 0
-        ? `This category contains ${listCount} list${listCount === 1 ? "" : "s"}. They will be moved to Uncategorized. Delete anyway?`
-        : "Delete this category?";
+  const handleDeleteCategory = (categoryId: Id<"categories">) => {
+    setConfirmDeleteId(categoryId);
+  };
 
-    if (!confirm(confirmMessage)) return;
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteId) return;
 
     try {
-      await deleteCategory(categoryId);
+      await deleteCategory(confirmDeleteId);
+      setConfirmDeleteId(null);
       setError(null);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to delete category"
       );
+      throw err; // Re-throw so ConfirmDialog shows error
     }
+  };
+
+  const getDeleteConfirmMessage = () => {
+    if (!confirmDeleteId) return "";
+    const listCount = getListCountForCategory(confirmDeleteId);
+    return listCount > 0
+      ? `This category contains ${listCount} list${listCount === 1 ? "" : "s"}. They will be moved to Uncategorized. Delete anyway?`
+      : "Delete this category?";
   };
 
   return (
@@ -301,6 +312,18 @@ export function CategoryManager({ onClose }: CategoryManagerProps) {
           </div>
         </div>
       </div>
+
+      {/* Delete category confirmation dialog */}
+      {confirmDeleteId && (
+        <ConfirmDialog
+          title="Delete Category"
+          message={getDeleteConfirmMessage()}
+          confirmLabel="Delete"
+          confirmVariant="danger"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
+      )}
     </div>
   );
 }

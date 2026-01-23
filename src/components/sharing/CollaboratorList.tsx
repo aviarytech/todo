@@ -12,6 +12,7 @@ import {
   type Role,
 } from "../../lib/permissions";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 interface CollaboratorListProps {
   listId: Id<"lists">;
@@ -26,6 +27,9 @@ export function CollaboratorList({ listId, onLeave }: CollaboratorListProps) {
   const [changingRole, setChangingRole] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Confirmation dialog state
+  const [confirmRemove, setConfirmRemove] = useState<Collaborator | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
   const canManage = canManageCollaborators(userRole);
 
@@ -42,35 +46,41 @@ export function CollaboratorList({ listId, onLeave }: CollaboratorListProps) {
     }
   };
 
-  const handleRemove = async (collaborator: Collaborator) => {
-    const isConfirmed = window.confirm(
-      `Remove ${collaborator.displayName} from this list?`
-    );
-    if (!isConfirmed) return;
+  const handleRemove = (collaborator: Collaborator) => {
+    setConfirmRemove(collaborator);
+  };
 
-    setRemoving(collaborator.userDid);
+  const handleConfirmRemove = async () => {
+    if (!confirmRemove) return;
+
+    setRemoving(confirmRemove.userDid);
     setError(null);
     try {
-      await removeCollaborator(collaborator.userDid);
+      await removeCollaborator(confirmRemove.userDid);
+      setConfirmRemove(null);
     } catch (err) {
       console.error("Failed to remove collaborator:", err);
       setError("Failed to remove collaborator");
+      throw err; // Re-throw so ConfirmDialog shows error
     } finally {
       setRemoving(null);
     }
   };
 
-  const handleLeave = async () => {
-    const isConfirmed = window.confirm("Are you sure you want to leave this list?");
-    if (!isConfirmed) return;
+  const handleLeave = () => {
+    setConfirmLeave(true);
+  };
 
+  const handleConfirmLeave = async () => {
     setError(null);
     try {
       await leaveList();
+      setConfirmLeave(false);
       onLeave?.();
     } catch (err) {
       console.error("Failed to leave list:", err);
       setError("Failed to leave list");
+      throw err; // Re-throw so ConfirmDialog shows error
     }
   };
 
@@ -90,12 +100,13 @@ export function CollaboratorList({ listId, onLeave }: CollaboratorListProps) {
     collab.userDid === did || collab.userDid === legacyDid;
 
   return (
-    <div className="space-y-2">
-      {error && (
-        <div className="p-2 bg-red-50 text-red-600 text-sm rounded-md mb-2">
-          {error}
-        </div>
-      )}
+    <>
+      <div className="space-y-2">
+        {error && (
+          <div className="p-2 bg-red-50 text-red-600 text-sm rounded-md mb-2">
+            {error}
+          </div>
+        )}
 
       {collaborators.map((collab) => (
         <div
@@ -175,7 +186,32 @@ export function CollaboratorList({ listId, onLeave }: CollaboratorListProps) {
           </div>
         </div>
       ))}
-    </div>
+      </div>
+
+      {/* Remove collaborator confirmation dialog */}
+      {confirmRemove && (
+        <ConfirmDialog
+          title="Remove Collaborator"
+          message={`Remove ${confirmRemove.displayName} from this list? They will no longer have access.`}
+          confirmLabel={removing ? "Removing..." : "Remove"}
+          confirmVariant="danger"
+          onConfirm={handleConfirmRemove}
+          onCancel={() => setConfirmRemove(null)}
+        />
+      )}
+
+      {/* Leave list confirmation dialog */}
+      {confirmLeave && (
+        <ConfirmDialog
+          title="Leave List"
+          message="Are you sure you want to leave this list? You will no longer have access unless invited again."
+          confirmLabel="Leave"
+          confirmVariant="danger"
+          onConfirm={handleConfirmLeave}
+          onCancel={() => setConfirmLeave(false)}
+        />
+      )}
+    </>
   );
 }
 
