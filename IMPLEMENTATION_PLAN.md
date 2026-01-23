@@ -359,6 +359,13 @@ See Working Context above for implementation details.
 - ✅ Mounted `OfflineIndicator` in `App.tsx` for both authenticated and unauthenticated views
 - ✅ Added ARIA live regions for accessibility
 
+#### 5.7 [COMPLETED] Offline Cache Fallback
+- ✅ Added `cacheAllLists` batch helper in `src/lib/offline.ts`
+- ✅ Cache-through pattern in `Home.tsx` — caches lists when online, falls back when offline
+- ✅ Cache-through pattern in `useOptimisticItems.tsx` — caches items, exports `usingCache` flag
+- ✅ Amber warning banner in `Home.tsx` and `ListView.tsx` when showing cached data
+- ✅ Derived `usingCache` state (not setState in effects) to avoid lint errors
+
 ---
 
 ## Warnings & Pitfalls
