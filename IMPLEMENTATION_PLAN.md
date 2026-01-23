@@ -18,20 +18,48 @@ All 5 major phases complete. Now cleaning up technical debt.
 Phase 6.3: Protect "Uncategorized" category name
 
 ### Overview
-The "Uncategorized" category name is used as a hardcoded label in `Home.tsx` and `CategoryManager.tsx` for lists that don't have a category. Users should not be able to create a real category with that name, as it would be confusing.
+The UI uses "Uncategorized" as a hardcoded label for lists without a category (categoryId is null/undefined). If a user creates a real category named "Uncategorized", it would cause confusion in the UI — two sections named "Uncategorized" would appear, one being the actual category and one being the virtual grouping for uncategorized lists.
 
 ### Files to Modify
-1. **`convex/categories.ts`** — Add validation in `createCategory` mutation to reject "Uncategorized" name
+
+**`convex/categories.ts`** — Add validation to BOTH mutations:
+
+**1. `createCategory` (line 40-43):**
+After the empty name check, add:
+```typescript
+// Prevent reserved name that conflicts with UI's virtual uncategorized section
+if (trimmedName.toLowerCase() === "uncategorized") {
+  throw new Error("\"Uncategorized\" is a reserved name");
+}
+```
+
+**2. `renameCategory` (line 95-98):**
+After the empty name check, add the same validation:
+```typescript
+// Prevent reserved name that conflicts with UI's virtual uncategorized section
+if (trimmedName.toLowerCase() === "uncategorized") {
+  throw new Error("\"Uncategorized\" is a reserved name");
+}
+```
+
+### Files Using "Uncategorized" (Reference Only — No Changes Needed)
+- `src/pages/Home.tsx:186-189` — Shows "Uncategorized" header for lists without categoryId
+- `src/components/lists/CategorySelector.tsx:123` — Shows "Uncategorized" option in dropdown
+- `src/components/lists/CategoryManager.tsx:105,284-290` — Shows uncategorized count info
 
 ### Acceptance Criteria
-- [ ] `convex/categories.ts` rejects creating a category named "Uncategorized" (case-insensitive)
+- [ ] `createCategory` rejects name "Uncategorized" (case-insensitive)
+- [ ] `renameCategory` rejects name "Uncategorized" (case-insensitive)
+- [ ] Error message is user-friendly: `"Uncategorized" is a reserved name`
 - [ ] `bun run build` passes
 - [ ] `bun run lint` passes
 
 ### Definition of Done
-1. Add validation to `createCategory` mutation
-2. Build and lint pass
-3. Commit with message: `feat: prevent creating category named "Uncategorized" (Phase 6.3)`
+When complete, Ralph should:
+1. Add validation to `createCategory` function
+2. Add validation to `renameCategory` function
+3. Run `bun run build && bun run lint` to verify no errors
+4. Commit with message: `fix: prevent creating category named "Uncategorized" (Phase 6.3)`
 
 ---
 
