@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { createListAsset } from "../lib/originals";
 import { CategorySelector } from "./lists/CategorySelector";
 
@@ -22,6 +23,7 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
   const { did } = useCurrentUser();
   const navigate = useNavigate();
   const createList = useMutation(api.lists.createList);
+  const dialogRef = useFocusTrap<HTMLDivElement>({ onEscape: onClose });
 
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState<Id<"categories"> | undefined>(
@@ -71,8 +73,14 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Create New List</h2>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-list-dialog-title"
+        className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+      >
+        <h2 id="create-list-dialog-title" className="text-xl font-bold text-gray-900 mb-4">Create New List</h2>
 
         <form onSubmit={handleSubmit}>
           <label htmlFor="listName" className="block text-sm font-medium text-gray-700 mb-1">

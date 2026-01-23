@@ -10,6 +10,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { getPublicListUrl } from "../../lib/publication";
 
 interface PublishModalProps {
@@ -26,6 +27,7 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
   const publicationStatus = useQuery(api.publication.getPublicationStatus, {
     listId: list._id,
   });
+  const dialogRef = useFocusTrap<HTMLDivElement>({ onEscape: onClose });
 
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
@@ -121,7 +123,13 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
   if (publicationStatus === undefined) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Loading publication status"
+          className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+        >
           <div className="text-center text-gray-500">Loading...</div>
         </div>
       </div>
@@ -130,8 +138,14 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="publish-dialog-title"
+        className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+      >
+        <h2 id="publish-dialog-title" className="text-xl font-bold text-gray-900 mb-2">
           {isPublished ? "Published List" : "Publish List"}
         </h2>
 

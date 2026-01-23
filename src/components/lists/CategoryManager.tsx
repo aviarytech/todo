@@ -11,6 +11,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { useCategories } from "../../hooks/useCategories";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 interface CategoryManagerProps {
   onClose: () => void;
@@ -20,6 +21,7 @@ export function CategoryManager({ onClose }: CategoryManagerProps) {
   const { did, legacyDid } = useCurrentUser();
   const { categories, createCategory, renameCategory, deleteCategory } =
     useCategories();
+  const dialogRef = useFocusTrap<HTMLDivElement>({ onEscape: onClose });
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editingId, setEditingId] = useState<Id<"categories"> | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -119,9 +121,15 @@ export function CategoryManager({ onClose }: CategoryManagerProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[80vh] overflow-y-auto">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="category-dialog-title"
+        className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[80vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Manage Categories</h2>
+          <h2 id="category-dialog-title" className="text-xl font-bold text-gray-900">Manage Categories</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"

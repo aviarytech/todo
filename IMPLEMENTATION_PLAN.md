@@ -15,10 +15,10 @@ All 6 major phases complete. v2 feature development done. Optional quality impro
 ## Working Context (For Ralph)
 
 ### Current Task
-No active task — All major phases complete
+No active task — Phase 7.1 complete
 
 ### Overview
-v2 development is complete. See Phase 7: Quality Improvements for optional enhancements discovered during code review.
+Phase 7.1 Modal Accessibility is complete. All 5 modals now have focus trap, ARIA roles, and keyboard navigation.
 
 ---
 
@@ -28,21 +28,14 @@ v2 development is complete. See Phase 7: Quality Improvements for optional enhan
 
 These were discovered during comprehensive code review. All are optional improvements, not blockers.
 
-#### 7.1 Modal Accessibility (HIGH - Affects keyboard/screen reader users)
-**Problem:** 5 modal components lack focus trap, aria-modal, and proper dialog roles
-**Files:**
-- `src/components/DeleteListDialog.tsx` — needs `role="alertdialog"`, focus trap
-- `src/components/ShareModal.tsx` — needs `role="dialog"`, focus trap
-- `src/components/publish/PublishModal.tsx` — needs `role="dialog"`, focus trap
-- `src/components/lists/CategoryManager.tsx` — needs `role="dialog"`, focus trap
-- `src/components/CreateListModal.tsx` — needs `role="dialog"`, focus trap (has autoFocus, which is good)
-
-**Acceptance Criteria:**
-- [ ] Add `role="dialog"` or `role="alertdialog"` to each modal
-- [ ] Add `aria-modal="true"` to each modal
-- [ ] Implement focus trap (trap Tab key within modal)
-- [ ] Add ESC key handler to close modals
-- [ ] Return focus to trigger element on close
+#### 7.1 [COMPLETED] Modal Accessibility
+- ✅ Created `src/hooks/useFocusTrap.tsx` — reusable focus trap hook with ESC handler and focus restoration
+- ✅ `src/components/DeleteListDialog.tsx` — `role="alertdialog"`, `aria-modal`, `aria-labelledby/describedby`
+- ✅ `src/components/ShareModal.tsx` — `role="dialog"`, `aria-modal`, `aria-labelledby/describedby`
+- ✅ `src/components/publish/PublishModal.tsx` — `role="dialog"`, `aria-modal` (both loading and main states)
+- ✅ `src/components/lists/CategoryManager.tsx` — `role="dialog"`, `aria-modal`, `aria-labelledby`
+- ✅ `src/components/CreateListModal.tsx` — `role="dialog"`, `aria-modal`, `aria-labelledby`
+- ✅ Build and lint pass
 
 #### 7.2 Replace window.confirm() with Accessible Modals (MEDIUM)
 **Problem:** Native `window.confirm()` is inaccessible and inconsistent with UI
@@ -399,7 +392,8 @@ These were discovered during comprehensive code review. All are optional improve
 
 ## Recently Completed
 
-- ✓ Phase 7.1: Use AuthGuard component in App.tsx — Refactored to use AuthGuard for protected routes; created AuthenticatedLayout and ProtectedRoute wrappers; public routes remain accessible; build and lint pass
+- ✓ Phase 7.1: Modal Accessibility — Created `useFocusTrap` hook with focus trap, ESC key handling, and focus restoration; added `role="dialog/alertdialog"`, `aria-modal`, `aria-labelledby/describedby` to all 5 modals (DeleteListDialog, ShareModal, PublishModal, CategoryManager, CreateListModal); build and lint pass
+- ✓ Phase 7.1 (earlier): AuthGuard refactoring — Refactored to use AuthGuard for protected routes; created AuthenticatedLayout and ProtectedRoute wrappers; public routes remain accessible
 - ✓ Phase 6.3: Protect "Uncategorized" category name — Added validation to `createCategory` and `renameCategory` in `convex/categories.ts`; rejects "Uncategorized" (case-insensitive); build and lint pass
 - ✓ Phase 6.2: Remove collaboratorDid field — Removed field and index from schema; removed all fallback code from backend and frontend; deleted CollaboratorBadge.tsx; build and lint pass
 - ✓ Phase 6.1: Remove deprecated identity files — Deleted useIdentity.tsx, IdentitySetup.tsx, MigrationPrompt.tsx, identity.ts, migration.ts; build and lint pass

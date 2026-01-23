@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import type { Doc } from "../../convex/_generated/dataModel";
 
 interface DeleteListDialogProps {
@@ -19,6 +20,7 @@ export function DeleteListDialog({ list, onClose, onDeleted }: DeleteListDialogP
   const deleteList = useMutation(api.lists.deleteList);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useFocusTrap<HTMLDivElement>({ onEscape: onClose });
 
   const handleDelete = async () => {
     if (!did) return;
@@ -43,9 +45,16 @@ export function DeleteListDialog({ list, onClose, onDeleted }: DeleteListDialogP
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Delete List</h2>
-        <p className="text-gray-600 mb-4">
+      <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+        className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+      >
+        <h2 id="delete-dialog-title" className="text-xl font-bold text-gray-900 mb-2">Delete List</h2>
+        <p id="delete-dialog-description" className="text-gray-600 mb-4">
           Are you sure you want to delete "{list.name}"? This will permanently delete the list and all its items. This action cannot be undone.
         </p>
 

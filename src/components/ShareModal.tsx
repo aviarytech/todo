@@ -8,6 +8,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { getRoleDescription } from "../lib/permissions";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface ShareModalProps {
   list: Doc<"lists">;
@@ -18,6 +19,7 @@ type InviteRole = "editor" | "viewer";
 
 export function ShareModal({ list, onClose }: ShareModalProps) {
   const createInvite = useMutation(api.invites.createInvite);
+  const dialogRef = useFocusTrap<HTMLDivElement>({ onEscape: onClose });
 
   const [selectedRole, setSelectedRole] = useState<InviteRole>("editor");
   const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -75,11 +77,18 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-dialog-title"
+        aria-describedby="share-dialog-description"
+        className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+      >
+        <h2 id="share-dialog-title" className="text-xl font-bold text-gray-900 mb-2">
           Share "{list.name}"
         </h2>
-        <p className="text-gray-600 mb-4">
+        <p id="share-dialog-description" className="text-gray-600 mb-4">
           Send this link to invite someone to the list.
         </p>
 
