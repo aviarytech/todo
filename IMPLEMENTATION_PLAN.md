@@ -4,14 +4,9 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** v2 Feature Development Complete ✓
+**Current Status:** Phase 6.1 — Technical debt cleanup
 
-All 5 major phases complete:
-- ✓ Phase 1: Turnkey Authentication (1.1–1.8)
-- ✓ Phase 2: Multiple Lists with Categories (2.1–2.5)
-- ✓ Phase 3: Unlimited Collaborators (3.1–3.6)
-- ✓ Phase 4: did:webvh Publication (4.1–4.5)
-- ✓ Phase 5: Offline Support (5.1–5.9)
+All 5 major phases complete. Now cleaning up technical debt.
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -19,13 +14,73 @@ All 5 major phases complete:
 
 ## Working Context (For Ralph)
 
-**v2 feature development complete.** All planned phases implemented. Remaining work is technical debt cleanup and minor gaps from the backlog below.
+### Current Task
+Phase 6.1: Remove deprecated localStorage identity files
+
+### Overview
+Now that Turnkey authentication is fully implemented and working (Phases 1.1-1.8 complete), the legacy localStorage-based identity system can be removed. These files are marked `@deprecated` and only kept for reference during transition.
+
+### Files to Delete
+All these files contain deprecation notices and are no longer used:
+
+1. **`src/hooks/useIdentity.tsx`** — Legacy identity hook, replaced by `useAuth`
+2. **`src/components/IdentitySetup.tsx`** — Legacy identity creation UI
+3. **`src/components/auth/MigrationPrompt.tsx`** — One-time migration UI (migration complete)
+4. **`src/lib/identity.ts`** — Legacy identity utilities
+5. **`src/lib/migration.ts`** — Migration utilities for MigrationPrompt
+
+### Verification Steps
+Before deleting, verify no active imports exist:
+```bash
+# Check for any imports of these files (should return nothing or only deprecated files)
+grep -r "useIdentity" src/ --include="*.tsx" --include="*.ts" | grep -v "deprecated"
+grep -r "IdentitySetup" src/ --include="*.tsx" --include="*.ts" | grep -v "deprecated"
+grep -r "MigrationPrompt" src/ --include="*.tsx" --include="*.ts" | grep -v "deprecated"
+grep -r "from.*identity" src/ --include="*.tsx" --include="*.ts" | grep -v "deprecated"
+grep -r "from.*migration" src/ --include="*.tsx" --include="*.ts" | grep -v "deprecated"
+```
+
+### Acceptance Criteria
+- [ ] All 5 files listed above are deleted
+- [ ] No build errors (`bun run build`)
+- [ ] No lint errors (`bun run lint`)
+- [ ] App runs and authentication still works
+
+### Definition of Done
+When complete, Ralph should:
+1. Verify no active imports exist (run grep commands above)
+2. Delete the 5 files
+3. Run build and lint to verify nothing broke
+4. Commit with message: `chore: remove deprecated localStorage identity files (Phase 6.1)`
 
 ---
 
 ## Next Up (Priority Order)
 
-(Lisa to prioritize from Backlog when ready for post-v2 work)
+### Phase 6: Technical Debt Cleanup
+
+#### 6.1 [IN PROGRESS] Remove deprecated identity files
+See Working Context above.
+
+#### 6.2 Remove collaboratorDid field from lists table
+- The `collaboratorDid` field in lists table is legacy (Phase 3 migrated to collaborators table)
+- Before removing: verify migration script has been run for production data
+- Remove field from `convex/schema.ts` line ~57
+- Remove any remaining references in code
+- Run `npx convex dev` to verify schema compiles
+
+#### 6.3 Protect "Uncategorized" category name
+- `convex/categories.ts` should reject creating a category named "Uncategorized"
+- Add validation in `create` mutation
+- Home.tsx and CategoryManager.tsx use "Uncategorized" as a hardcoded label for lists without a category
+- Creating a real category with that name would confuse users
+
+### Phase 7: Minor Gaps (Optional)
+
+- Auth: Use AuthGuard component instead of inline check in App.tsx
+- Publication: VerifyButton component for per-item credential verification
+- Publication: RequestAccessButton for "Join this list" flow
+- Publication: Rate limiting on public list queries
 
 ---
 
@@ -330,20 +385,13 @@ All 5 major phases complete:
 ## Backlog (Post v2)
 
 ### Technical Debt
-- [TECH-DEBT] Remove deprecated localStorage identity code after migration period (useIdentity.tsx, IdentitySetup.tsx, MigrationPrompt.tsx, identity.ts, migration.ts)
-- [TECH-DEBT] Remove `collaboratorDid` field from lists table after running migration
 - [TECH-DEBT] Remove deprecated CollaboratorBadge component (replaced by CollaboratorList)
 - [TECH-DEBT] Add comprehensive E2E tests for new features
 - [TECH-DEBT] Performance audit after all features implemented
 
 ### Minor Gaps (Low Priority)
 - Auth: Add `signCredential` convenience method to useAuth (workaround: use `getSigner().sign()`)
-- Auth: Use AuthGuard component instead of inline check in App.tsx
-- Categories: Protect "Uncategorized" name from being created as a real category
 - Categories: Add UI for category reordering (backend ready via `reorderCategory`)
-- Publication: Item-level credential verification (VerifyButton component per spec)
-- Publication: RequestAccessButton for "Join this list" flow from public view
-- Publication: Rate limiting on public list queries
 
 ### Future Features
 - Bitcoin inscription for lists (did:btco layer)
