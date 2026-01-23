@@ -193,6 +193,22 @@ export async function getAllCachedLists(): Promise<OfflineList[]> {
 }
 
 /**
+ * Cache multiple lists at once (more efficient than individual calls).
+ */
+export async function cacheAllLists(
+  lists: Omit<OfflineList, "_cachedAt">[]
+): Promise<void> {
+  const db = await getOfflineDB();
+  const tx = db.transaction("lists", "readwrite");
+  const store = tx.objectStore("lists");
+  const now = Date.now();
+  await Promise.all([
+    ...lists.map((list) => store.put({ ...list, _cachedAt: now })),
+    tx.done,
+  ]);
+}
+
+/**
  * Remove a list from the cache.
  */
 export async function removeCachedList(listId: Id<"lists">): Promise<void> {

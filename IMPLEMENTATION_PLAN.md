@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Gap analysis complete — Critical offline gaps identified
+**Current Status:** Phase 5.7 completed — Offline cache fallback implemented
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,102 +12,11 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-### Current Task
-[CRITICAL] Phase 5.7: Offline Cache Fallback — Display cached lists/items when offline
-
-### Problem Statement
-Users currently see a blank/loading screen when offline. The IndexedDB cache exists (`src/lib/offline.ts`) with `cacheList`, `getAllCachedLists`, `cacheItems`, `getCachedItemsByList` helpers, but **these are never called**. The app needs to:
-1. Cache lists and items when online
-2. Fall back to cached data when offline
-
-### Files to Read First
-- `src/lib/offline.ts` — Contains cache helpers (already implemented, unused)
-- `src/hooks/useOffline.tsx` — Hook for offline state
-- `src/pages/Home.tsx` — Needs to fall back to cached lists
-- `src/pages/ListView.tsx` — Needs to fall back to cached items
-
-### Files to Modify
-- `src/pages/Home.tsx` — Add caching when online, fallback when offline
-- `src/pages/ListView.tsx` — Add caching when online, fallback when offline
-- `src/hooks/useOffline.tsx` — May need additional exports
-
-### Implementation Approach
-
-**Option A (Recommended): Cache-through pattern at page level**
-```typescript
-// In Home.tsx
-const serverLists = useQuery(api.lists.getUserLists, ...);
-const { isOnline } = useOffline();
-const [cachedLists, setCachedLists] = useState<List[]>([]);
-
-// Cache when online and data available
-useEffect(() => {
-  if (serverLists && isOnline) {
-    cacheAllLists(serverLists); // New batch helper needed
-  }
-}, [serverLists, isOnline]);
-
-// Load cache when offline
-useEffect(() => {
-  if (!isOnline) {
-    getAllCachedLists().then(setCachedLists);
-  }
-}, [isOnline]);
-
-// Use server data when available, cache when offline
-const lists = serverLists ?? (isOnline ? undefined : cachedLists);
-```
-
-**For ListView.tsx (similar pattern):**
-```typescript
-const serverItems = useQuery(api.items.getItems, { listId });
-const { isOnline } = useOffline();
-const [cachedItems, setCachedItems] = useState<Item[]>([]);
-
-useEffect(() => {
-  if (serverItems && isOnline) {
-    cacheItems(listId, serverItems);
-  }
-}, [serverItems, isOnline, listId]);
-
-useEffect(() => {
-  if (!isOnline) {
-    getCachedItemsByList(listId).then(setCachedItems);
-  }
-}, [isOnline, listId]);
-
-const items = serverItems ?? (isOnline ? undefined : cachedItems);
-```
-
-### Acceptance Criteria
-- [ ] When online: Lists and items are cached to IndexedDB after loading
-- [ ] When offline: Cached lists display on Home page (not blank)
-- [ ] When offline: Cached items display on ListView page (not blank)
-- [ ] Visual indicator that data is from cache (e.g., subtle "Cached" badge or dimmed state)
-- [ ] Build passes (`bun run build`)
-- [ ] Lint passes (`bun run lint`)
-
-### Key Context
-- `offline.ts` already has `cacheList`, `getAllCachedLists`, `cacheItems`, `getCachedItemsByList`
-- May need a batch `cacheAllLists` helper for efficiency
-- The `_cachedAt` field exists for TTL checks (7-day TTL per spec)
-- Don't over-engineer — simple fallback is fine for now
-
-### Definition of Done
-When complete, Ralph should:
-1. Test by going offline in DevTools Network tab
-2. Verify lists and items still display from cache
-3. All acceptance criteria checked
-4. Commit with message: `feat(offline): add cache fallback for offline viewing (Phase 5.7)`
-5. Update this section with completion status
+**Phase 5.7 completed.** Lisa to prepare next task context.
 
 ---
 
 ## Next Up (Priority Order)
-
-### Phase 5.7: Offline Cache Fallback [IN PROGRESS]
-- Display cached lists/items when offline instead of blank screen
-- See Working Context above for implementation details
 
 ### Phase 5.8: Conflict Resolution
 - Add server timestamp comparison in SyncManager
@@ -350,8 +259,6 @@ When complete, Ralph should:
 
 ### Offline
 
-- [CRITICAL] **Cache fallback not wired up** — IndexedDB cache helpers exist but are never called. Users see blank screen offline. Phase 5.7 addresses this.
-
 - [CRITICAL] **No conflict resolution** — SyncManager doesn't check server timestamps. Multiple offline edits won't reconcile properly. Phase 5.8 addresses this.
 
 - [CRITICAL] **Service Worker updates** — SW caching can cause users to see stale app. Implement update notification with skipWaiting/claim flow.
@@ -374,6 +281,7 @@ When complete, Ralph should:
 
 ## Recently Completed
 
+- ✓ Phase 5.7: Offline Cache Fallback — `cacheAllLists` helper in offline.ts; cache-through pattern in Home.tsx and useOptimisticItems.tsx; amber warning banner when showing cached data; build and lint pass
 - ✓ Phase 5.6: UI Feedback — `OfflineIndicator.tsx` banner and `SyncStatus.tsx` detailed status component with ARIA accessibility; mounted in App.tsx
 - ✓ Phase 5.5: Optimistic Updates — `src/hooks/useOptimisticItems.tsx` hook with addItem, checkItem, uncheckItem, reorderItems; ListView, AddItemInput, ListItem updated to use callbacks; build and lint pass
 - ✓ Phase 5.4: useOffline Hook — `src/hooks/useOffline.tsx` with online/offline tracking, sync-on-reconnect, pending count polling

@@ -5,12 +5,12 @@
  * offline and merging with server state when back online.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { useOffline } from "./useOffline";
-import { queueMutation } from "../lib/offline";
+import { queueMutation, cacheItems, getCachedItemsByList, type OfflineItem } from "../lib/offline";
 
 /**
  * Extended item type with optimistic flag for UI styling
@@ -56,6 +56,35 @@ export function useOptimisticItems(listId: Id<"lists">) {
   const { isOnline } = useOffline();
   const serverItems = useQuery(api.items.getListItems, { listId });
   const [optimisticItems, setOptimisticItems] = useState<OptimisticItem[]>([]);
+  const [cachedItems, setCachedItems] = useState<OfflineItem[]>([]);
+
+  // Cache items when online and data is available
+  useEffect(() => {
+    if (serverItems && isOnline) {
+      const itemsToCache = serverItems.map((item) => ({
+        _id: item._id,
+        listId: item.listId,
+        name: item.name,
+        checked: item.checked,
+        createdByDid: item.createdByDid,
+        checkedByDid: item.checkedByDid,
+        createdAt: item.createdAt,
+        checkedAt: item.checkedAt,
+        order: item.order,
+      }));
+      cacheItems(itemsToCache);
+    }
+  }, [serverItems, isOnline]);
+
+  // Load cached items when offline
+  useEffect(() => {
+    if (!isOnline && !serverItems) {
+      getCachedItemsByList(listId).then(setCachedItems);
+    }
+  }, [isOnline, serverItems, listId]);
+
+  // Derive usingCache from whether we're showing cached data
+  const usingCache = !isOnline && !serverItems && cachedItems.length > 0;
 
   const addItemMutation = useMutation(api.items.addItem);
   const checkItemMutation = useMutation(api.items.checkItem);
@@ -255,6 +284,8 @@ export function useOptimisticItems(listId: Id<"lists">) {
 
   /**
    * Merge server items with optimistic items, filtering out stale optimistic items.
+   * Falls back to cached items when offline and server data is unavailable.
+   *
    * - Apply optimistic updates to matching server items (only if server hasn't caught up)
    * - Include new optimistic items (temp IDs) that don't exist on server yet
    * - Automatically filter stale optimistic items based on server state
@@ -265,42 +296,47 @@ export function useOptimisticItems(listId: Id<"lists">) {
    * (rollback on error) or items are eventually garbage collected.
    */
   const items = useMemo((): OptimisticItem[] => {
-    if (!serverItems) return optimisticItems;
+    // Use cached items when offline and no server data
+    const baseItems: Doc<"items">[] | undefined = serverItems ?? (!isOnline && cachedItems.length > 0
+      ? (cachedItems as unknown as Doc<"items">[])
+      : undefined);
 
-    const serverIds = new Set(serverItems.map((i) => i._id));
+    if (!baseItems) return optimisticItems;
+
+    const baseIds = new Set(baseItems.map((i) => i._id));
 
     // Filter optimistic items to only keep those that are still relevant
     const activeOptimisticItems = optimisticItems.filter((o) => {
       // For check/uncheck updates on existing items
       if (!(o._id as string).startsWith("temp-")) {
-        const serverItem = serverItems.find((s) => s._id === o._id);
-        // Keep if server hasn't caught up yet (checked state differs)
-        return serverItem && serverItem.checked !== o.checked;
+        const baseItem = baseItems.find((s) => s._id === o._id);
+        // Keep if base hasn't caught up yet (checked state differs)
+        return baseItem && baseItem.checked !== o.checked;
       }
-      // For new items (temp IDs), keep if server doesn't have matching item yet
-      const existsOnServer = serverItems.some(
+      // For new items (temp IDs), keep if base doesn't have matching item yet
+      const existsInBase = baseItems.some(
         (s) =>
           s.name === o.name &&
           s.createdByDid === o.createdByDid &&
           Math.abs(s.createdAt - o.createdAt) < 5000
       );
-      return !existsOnServer;
+      return !existsInBase;
     });
 
-    // Apply active optimistic updates to server items
-    const merged = serverItems.map((serverItem) => {
-      const optimistic = activeOptimisticItems.find((o) => o._id === serverItem._id);
-      return optimistic ?? serverItem;
+    // Apply active optimistic updates to base items
+    const merged = baseItems.map((baseItem) => {
+      const optimistic = activeOptimisticItems.find((o) => o._id === baseItem._id);
+      return optimistic ?? baseItem;
     });
 
-    // Add optimistic items that don't exist on server yet (temp IDs)
+    // Add optimistic items that don't exist in base yet (temp IDs)
     const newOptimistic = activeOptimisticItems.filter(
       (o) =>
-        (o._id as string).startsWith("temp-") || !serverIds.has(o._id)
+        (o._id as string).startsWith("temp-") || !baseIds.has(o._id)
     );
 
     return [...merged, ...newOptimistic];
-  }, [serverItems, optimisticItems]);
+  }, [serverItems, optimisticItems, isOnline, cachedItems]);
 
   return {
     items,
@@ -308,6 +344,8 @@ export function useOptimisticItems(listId: Id<"lists">) {
     checkItem,
     uncheckItem,
     reorderItems,
-    isLoading: serverItems === undefined,
+    isLoading: serverItems === undefined && (!usingCache || cachedItems.length === 0),
+    /** Whether items are being displayed from cache (offline fallback) */
+    usingCache,
   };
 }

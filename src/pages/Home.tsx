@@ -5,28 +5,66 @@
  * Empty categories are hidden. Uncategorized lists appear at the end.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useCategories } from "../hooks/useCategories";
+import { useOffline } from "../hooks/useOffline";
 import { ListCard } from "../components/ListCard";
 import { CreateListModal } from "../components/CreateListModal";
 import { CategoryHeader } from "../components/lists/CategoryHeader";
 import { CategoryManager } from "../components/lists/CategoryManager";
+import { cacheAllLists, getAllCachedLists, type OfflineList } from "../lib/offline";
 
 export function Home() {
   const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
   const { categories, isLoading: categoriesLoading } = useCategories();
+  const { isOnline } = useOffline();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [cachedLists, setCachedLists] = useState<OfflineList[]>([]);
 
   // Query lists for current DID, including legacyDid for migrated users
-  const lists = useQuery(
+  const serverLists = useQuery(
     api.lists.getUserLists,
     did ? { userDid: did, legacyDid: legacyDid ?? undefined } : "skip"
   );
+
+  // Cache lists when online and data is available
+  useEffect(() => {
+    if (serverLists && isOnline) {
+      // Convert Doc<"lists"> to OfflineList format
+      const listsToCache = serverLists.map((list) => ({
+        _id: list._id,
+        assetDid: list.assetDid,
+        name: list.name,
+        ownerDid: list.ownerDid,
+        collaboratorDid: list.collaboratorDid,
+        categoryId: list.categoryId,
+        createdAt: list.createdAt,
+      }));
+      cacheAllLists(listsToCache);
+    }
+  }, [serverLists, isOnline]);
+
+  // Load cached lists when offline
+  useEffect(() => {
+    if (!isOnline && !serverLists) {
+      getAllCachedLists().then(setCachedLists);
+    }
+  }, [isOnline, serverLists]);
+
+  // Use server data when available, cache when offline
+  // Cast OfflineList to Doc<"lists"> since OfflineList contains all the fields we need
+  // (missing _creationTime is not used in the UI)
+  const lists = (serverLists ?? (!isOnline ? cachedLists : undefined)) as
+    | Doc<"lists">[]
+    | undefined;
+
+  // Derive usingCache from whether we're showing cached data
+  const usingCache = !isOnline && !serverLists && cachedLists.length > 0;
 
   // Group lists by category
   const groupedLists = useMemo<{
@@ -82,6 +120,16 @@ export function Home() {
           </button>
         </div>
       </div>
+
+      {/* Cached data indicator */}
+      {usingCache && (
+        <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm flex items-center gap-2">
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>Showing cached data. Some information may be outdated.</span>
+        </div>
+      )}
 
       {isLoading && (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
