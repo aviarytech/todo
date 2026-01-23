@@ -4,7 +4,7 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 5.3 complete — Ready for Phase 5.4 (useOffline Hook)
+**Current Status:** Phase 5.4 complete — Ready for Phase 5.5 (Optimistic Updates)
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -12,99 +12,202 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[READY]** Phase 5.4: useOffline Hook
+**[READY]** Phase 5.5: Optimistic Updates
 
-Continuing Phase 5: Offline Support. SyncManager is complete (Phase 5.3). Now implement the useOffline hook that tracks online/offline state and triggers sync on reconnect.
+Continuing Phase 5: Offline Support. useOffline hook is complete (Phase 5.4). Now implement optimistic updates for item mutations so users see immediate feedback even when offline.
 
-### Current Task: 5.4 useOffline Hook
+### Current Task: 5.5 Optimistic Updates
 
-Create the useOffline React hook that tracks connectivity and integrates with SyncManager.
+Create a hook and wrapper logic that enables optimistic UI updates for item mutations, queuing mutations when offline and merging with server state when back online.
 
 ### Files to Read First
-- `specs/features/offline.md` — Full specification (see "useOffline Hook" section)
-- `src/lib/sync.ts` — SyncManager with `sync(convex)` and `subscribe(listener)` methods
-- `src/lib/offline.ts` — `getQueuedMutations` to count pending mutations
+- `specs/features/offline.md` — Full specification (see "Optimistic Updates" section)
+- `src/hooks/useOffline.tsx` — `useOffline` hook providing `isOnline` state
+- `src/lib/offline.ts` — `queueMutation` to queue offline mutations
+- `src/components/AddItemInput.tsx` — Current add item implementation (uses `useMutation`)
+- `src/components/ListItem.tsx` — Current check/uncheck implementation
+- `src/pages/ListView.tsx` — Where items are displayed and reordered
+- `convex/items.ts` — Convex mutation signatures (`addItem`, `checkItem`, `uncheckItem`, `reorderItems`)
 
 ### Files to Create
-- `src/hooks/useOffline.tsx` — useOffline hook
+- `src/hooks/useOptimisticItems.tsx` — Hook for optimistic item management
 
 ### Files to Modify
-- None
+- `src/components/AddItemInput.tsx` — Use optimistic add from hook
+- `src/components/ListItem.tsx` — Use optimistic check/uncheck from hook
+- `src/pages/ListView.tsx` — Use `useOptimisticItems` for item display and mutations
 
 ### Implementation Guidance
 
-Follow the spec at `specs/features/offline.md`. Key points:
+The spec at `specs/features/offline.md` provides the pattern. Key architecture:
 
 ```typescript
-import { useState, useEffect } from 'react';
-import { useConvex } from 'convex/react';
-import { syncManager, type SyncStatus } from '../lib/sync';
-import { getQueuedMutations } from '../lib/offline';
+// src/hooks/useOptimisticItems.tsx
 
-export function useOffline() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ status: 'idle' });
-  const [pendingCount, setPendingCount] = useState(0);
-  const convex = useConvex();
+import { useCallback, useMemo, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Doc, Id } from "../../convex/_generated/dataModel";
+import { useOffline } from "./useOffline";
+import { queueMutation } from "../lib/offline";
 
-  // Track online/offline events
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      syncManager.sync(convex);
+interface OptimisticItem extends Doc<"items"> {
+  _isOptimistic?: boolean; // Flag for UI styling (e.g., dimmed)
+}
+
+export function useOptimisticItems(listId: Id<"lists">) {
+  const { isOnline } = useOffline();
+  const serverItems = useQuery(api.items.getListItems, { listId });
+  const [optimisticItems, setOptimisticItems] = useState<OptimisticItem[]>([]);
+
+  const addItemMutation = useMutation(api.items.addItem);
+  const checkItemMutation = useMutation(api.items.checkItem);
+  const uncheckItemMutation = useMutation(api.items.uncheckItem);
+  const reorderItemsMutation = useMutation(api.items.reorderItems);
+
+  // Add item with optimistic update
+  const addItem = useCallback(async (args: {
+    name: string;
+    createdByDid: string;
+    legacyDid?: string;
+    createdAt: number;
+  }) => {
+    // Create temp ID and optimistic item
+    const tempId = `temp-${Date.now()}` as Id<"items">;
+    const optimistic: OptimisticItem = {
+      _id: tempId,
+      _creationTime: Date.now(),
+      listId,
+      name: args.name,
+      checked: false,
+      createdByDid: args.createdByDid,
+      createdAt: args.createdAt,
+      _isOptimistic: true,
     };
-    const handleOffline = () => setIsOnline(false);
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => { ... };
-  }, [convex]);
+    setOptimisticItems(prev => [...prev, optimistic]);
 
-  // Subscribe to sync status
+    if (isOnline) {
+      try {
+        await addItemMutation({ listId, ...args });
+        // Server item will appear via useQuery, remove optimistic
+        // But we can't match by ID since server generates new ID
+        // Rely on server response and natural query update
+      } catch (err) {
+        // Rollback on failure
+        setOptimisticItems(prev => prev.filter(i => i._id !== tempId));
+        throw err;
+      }
+    } else {
+      // Queue for later sync
+      await queueMutation({
+        type: "addItem",
+        payload: { listId, ...args },
+        timestamp: Date.now(),
+        retryCount: 0,
+      });
+    }
+  }, [isOnline, listId, addItemMutation]);
+
+  // Similar pattern for checkItem, uncheckItem
+  const checkItem = useCallback(async (itemId: Id<"items">, checkedByDid: string, legacyDid?: string) => {
+    // Update optimistically
+    setOptimisticItems(prev =>
+      prev.map(i => i._id === itemId ? { ...i, checked: true, checkedByDid, checkedAt: Date.now() } : i)
+    );
+
+    if (isOnline) {
+      try {
+        await checkItemMutation({ itemId, checkedByDid, legacyDid, checkedAt: Date.now() });
+      } catch (err) {
+        // Rollback
+        setOptimisticItems(prev =>
+          prev.map(i => i._id === itemId ? { ...i, checked: false, checkedByDid: undefined, checkedAt: undefined } : i)
+        );
+        throw err;
+      }
+    } else {
+      await queueMutation({
+        type: "checkItem",
+        payload: { itemId, checkedByDid, legacyDid, checkedAt: Date.now() },
+        timestamp: Date.now(),
+        retryCount: 0,
+      });
+    }
+  }, [isOnline, checkItemMutation]);
+
+  // Merge server items with optimistic items
+  const items = useMemo(() => {
+    if (!serverItems) return optimisticItems;
+
+    const serverIds = new Set(serverItems.map(i => i._id));
+
+    // Apply optimistic updates to server items
+    const merged = serverItems.map(serverItem => {
+      const optimistic = optimisticItems.find(o => o._id === serverItem._id);
+      return optimistic ?? serverItem;
+    });
+
+    // Add optimistic items that don't exist on server yet (temp IDs)
+    const newOptimistic = optimisticItems.filter(o =>
+      o._id.startsWith("temp-") || !serverIds.has(o._id)
+    );
+
+    return [...merged, ...newOptimistic];
+  }, [serverItems, optimisticItems]);
+
+  // Clear stale optimistic items when server data changes
   useEffect(() => {
-    return syncManager.subscribe(setSyncStatus);
-  }, []);
+    if (!serverItems) return;
 
-  // Poll pending count (or update on sync status change)
-  useEffect(() => {
-    const updateCount = async () => {
-      const mutations = await getQueuedMutations();
-      setPendingCount(mutations.length);
-    };
-    updateCount();
-    const interval = setInterval(updateCount, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    // Remove optimistic items that now exist on server (by matching name+createdAt for new items)
+    setOptimisticItems(prev => prev.filter(o => {
+      if (!o._id.startsWith("temp-")) return true; // Keep check/uncheck optimism
+      // For new items, check if server now has an item with same name from same user
+      const existsOnServer = serverItems.some(s =>
+        s.name === o.name &&
+        s.createdByDid === o.createdByDid &&
+        Math.abs(s.createdAt - o.createdAt) < 5000 // Within 5s
+      );
+      return !existsOnServer;
+    }));
+  }, [serverItems]);
 
   return {
-    isOnline,
-    syncStatus,
-    pendingCount,
-    manualSync: () => syncManager.sync(convex),
+    items,
+    addItem,
+    checkItem,
+    uncheckItem: /* similar pattern */,
+    reorderItems: /* similar pattern */,
+    isLoading: serverItems === undefined,
   };
 }
 ```
 
 ### Acceptance Criteria
-- [ ] `src/hooks/useOffline.tsx` created with `useOffline` hook
-- [ ] Tracks `navigator.onLine` state reactively
-- [ ] Subscribes to `online`/`offline` window events
-- [ ] Triggers `syncManager.sync(convex)` on reconnect
-- [ ] Subscribes to `syncManager` for status updates
-- [ ] Tracks pending mutation count (poll every 5s or on status change)
-- [ ] Exports: `isOnline`, `syncStatus`, `pendingCount`, `manualSync`
+- [ ] `src/hooks/useOptimisticItems.tsx` created with `useOptimisticItems` hook
+- [ ] Optimistic add: new items appear immediately with `_isOptimistic: true` flag
+- [ ] Optimistic check/uncheck: toggle state appears immediately
+- [ ] Offline queueing: mutations queued via `queueMutation` when `!isOnline`
+- [ ] Rollback on failure: optimistic state reverted if mutation throws
+- [ ] Server merge: optimistic items cleaned up when server data arrives
+- [ ] `AddItemInput.tsx` updated to use `useOptimisticItems.addItem`
+- [ ] `ListItem.tsx` updated to use optimistic check/uncheck (passed from parent)
+- [ ] `ListView.tsx` uses `useOptimisticItems` for items and mutations
 - [ ] Build passes (`bun run build`)
 - [ ] Lint passes (`bun run lint`)
 
 ### Key Context
-- `useConvex()` from `convex/react` provides the client for sync
-- Cleanup is critical: remove event listeners and unsubscribe on unmount
-- The hook will be used by UI components in Phase 5.6
+- Temp IDs use `temp-${Date.now()}` pattern (cast as `Id<"items">`)
+- Items with `_isOptimistic: true` should appear slightly dimmed in UI (visual feedback)
+- Matching new items to server items is tricky — use name + createdByDid + timestamp proximity
+- The `reorderItems` mutation is lower priority — can be Phase 5.5b if complex
+- Keep credential signing (`signItemActionWithSigner`) in components for now — it's best-effort
 
 ### Definition of Done
 When complete, Ralph should:
 1. All acceptance criteria checked
-2. Commit with message: `feat(offline): add useOffline hook (Phase 5.4)`
+2. Commit with message: `feat(offline): add optimistic updates for items (Phase 5.5)`
 3. Update this section with completion status
 
 ---
@@ -272,12 +375,14 @@ When complete, Ralph should:
 - ✅ `subscribe(listener)` for status updates returns unsubscribe function
 - ✅ Status notifications: `idle` → `syncing` → `synced` (or `error`)
 
-#### 5.4 useOffline Hook
-- Create `src/hooks/useOffline.tsx`
-- Track `navigator.onLine` state
-- Subscribe to online/offline events
-- Trigger sync on reconnect
-- Expose: isOnline, syncStatus, pendingCount, manualSync
+#### 5.4 [COMPLETED] useOffline Hook
+- ✅ Created `src/hooks/useOffline.tsx` with `useOffline` hook
+- ✅ Tracks `navigator.onLine` state reactively
+- ✅ Subscribes to `online`/`offline` window events
+- ✅ Triggers `syncManager.sync(convex)` on reconnect
+- ✅ Subscribes to `syncManager` for status updates
+- ✅ Polls pending mutation count (every 5s + on sync status change)
+- ✅ Exports: `isOnline`, `syncStatus`, `pendingCount`, `manualSync`
 
 #### 5.5 Optimistic Updates
 - Wrap item mutations for optimistic UI
@@ -348,6 +453,7 @@ When complete, Ralph should:
 
 ## Recently Completed
 
+- ✓ Phase 5.4: useOffline Hook — `src/hooks/useOffline.tsx` with online/offline tracking, sync-on-reconnect, pending count polling
 - ✓ Phase 5.3: Sync Manager — `src/lib/sync.ts` with SyncManager class, exponential backoff retries, subscribe pattern for status updates
 - ✓ Phase 5.2: IndexedDB Setup — `src/lib/offline.ts` with lists/items/mutations stores, CRUD helpers for mutation queue, cache helpers for lists/items
 - ✓ Phase 5.1: Service Worker — TypeScript SW with custom Vite plugin, cache-first strategy, Convex API exclusion, offline navigation fallback
