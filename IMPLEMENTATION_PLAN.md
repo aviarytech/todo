@@ -1,254 +1,277 @@
 # Implementation Plan
 
-## Project: Shared List App with Originals
+## Project: Shared List App v2
 
-A real-time shared todo/grocery list for couples, built with React + Convex + Originals SDK.
+Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** 🎉 **DEPLOYED AND WORKING** — Phase 6.5 Part B (Verification) ready for operator testing.
+**Current Status:** Planning complete — Ready for Phase 1 (Auth)
 
-**Production URL:** https://lisa-production-6b0f.up.railway.app
+**Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
 ---
 
 ## Working Context (For Ralph)
 
 ### Current Task
-**Production Verification** — App is now live and serving HTML, ready for manual testing
+**Phase 1.1: Add @originals/auth dependency and Turnkey client setup**
 
-### Lisa's Gap Analysis (2026-01-23)
-All features verified against specs:
-- ✅ **Identity** — Complete (DID generation, localStorage, ProfileBadge)
-- ✅ **List Management** — Complete (create, view, delete with real-time sync)
-- ✅ **Item Management** — Complete (add, check, remove with attribution)
-- ✅ **Sharing** — Complete (invite generation, join flow, collaborator display)
-- ✅ **No incomplete work** — No TODOs, FIXMEs, stubs, or placeholder code found
-- ⚠️ Minor tech debt items added to Backlog (asset lifecycle, share button UX)
+### Files to Read First
+- `src/lib/originals.ts` — Current Originals SDK wrapper, understand existing patterns
+- `src/hooks/useIdentity.tsx` — Current identity system to eventually replace
+- `src/lib/identity.ts` — Current localStorage identity storage
+- `package.json` — Current dependencies
 
-### Status
-✅ Phase 6.4 completed — Railway configuration created
-✅ Phase 6.5 Part A completed — **App deployed to Railway by operator**
-✅ **404 Issue Fixed** — Added `serve` to dependencies, changed `npx` to `bunx` in railway.toml
-✅ **Deployment Working** — Production URL now returns HTTP 200 with correct HTML
-✅ Gap analysis verified — No TODOs, placeholders, or stubs in codebase
-✅ Build passes locally — TypeScript and Vite build successful
-✅ Lint passes — No ESLint errors
-✅ E2E tests ready — 4 test suites covering identity, lists, items, sharing
-✅ **All static assets verified** — JS chunks (index, react-vendor, originals-sdk, convex-vendor) return HTTP 200
-
-### Fix Applied (2026-01-23)
-The 404 error was caused by `npx serve` failing because:
-1. `serve` package was not in dependencies
-2. `npx` may not work correctly with Bun-based Nixpacks builds
-
-**Fix committed:**
-- Added `serve` (v14.2.5) to dependencies
-- Changed `railway.toml` to use `bunx serve` instead of `npx serve`
-- Added `start` script to package.json
-
-### What Remains for Phase 6.5
-
-**Part A: Pre-Deployment — ✅ COMPLETE**
-The operator has deployed the app to: `https://lisa-production-6b0f.up.railway.app`
-
-**Part B: Post-Deployment Verification — READY FOR TESTING**
-
-The following manual verification steps should be performed on the live production URL:
-
-| # | Check | How to Verify | Status |
-|---|-------|--------------|--------|
-| 1 | HTTPS enforced | Visit production URL, check for padlock icon | ✅ Verified (HTTP/2 200 over HTTPS) |
-| 1a | Static assets served | All JS/CSS chunks return HTTP 200 | ✅ Verified programmatically |
-| 2 | App loads | Page renders without errors, no blank screen | ⬜ Needs manual browser test |
-| 3 | Convex connection | Check Network tab for WebSocket to convex.cloud | ⬜ Pending |
-| 4 | Identity creation | Create a new identity, verify DID is generated | ⬜ Pending |
-| 5 | List creation | Create a new list, verify it appears | ⬜ Pending |
-| 6 | Item management | Add item, check item, delete item | ⬜ Pending |
-| 7 | Sharing flow | Generate invite link, open in new tab/incognito | ⬜ Pending |
-| 8 | Join flow | Accept invite as second user, verify access | ⬜ Pending |
-| 9 | Real-time sync | Both users see changes within 1 second | ⬜ Pending |
-| 10 | Lighthouse audit | Run Lighthouse in Chrome DevTools | ⬜ Target: 90+ |
-
-### How to Verify
-
-1. **Open the production URL:** https://lisa-production-6b0f.up.railway.app
-2. **Check HTTPS:** Look for padlock icon in browser address bar
-3. **Open DevTools (F12):**
-   - Network tab → Filter by "WS" → Look for WebSocket to convex.cloud
-   - Console tab → Check for any errors
-4. **Test the full flow:**
-   - Create identity (enter name)
-   - Create a list
-   - Add a few items
-   - Check an item off
-   - Delete an item
-   - Click "Share" to generate invite link
-   - Open invite link in incognito window
-   - Join as second user
-   - Verify both users see the same list
-5. **Run Lighthouse:**
-   - DevTools → Lighthouse tab
-   - Check "Performance"
-   - Click "Analyze page load"
-   - Target: 90+ score
+### Files to Create/Modify
+- `package.json` — Add `@originals/auth` dependency
+- `src/lib/turnkey.ts` — NEW: Turnkey client wrapper
+- `src/hooks/useAuth.tsx` — NEW: Auth context and hook (will eventually replace useIdentity)
 
 ### Acceptance Criteria
-- [x] User has deployed to Railway successfully ✅ (confirmed by operator)
-- [x] `serve` package added to dependencies ✅
-- [x] `railway.toml` configured correctly ✅
-- [x] **404 Fixed** — Production URL now returns HTTP 200 ✅
-- [x] HTTPS is enforced (Railway default) — Verified HTTP/2 over HTTPS
-- [ ] App loads without errors
-- [ ] Convex WebSocket connection working
-- [ ] Full flow tested: identity → list → items → share → join
-- [ ] Real-time sync verified between users
-- [ ] Lighthouse audit shows 90+ performance score
+- [ ] `@originals/auth` installed and builds successfully
+- [ ] `src/lib/turnkey.ts` exports `initializeTurnkeyClient`, `initOtp`, `completeOtp`, `fetchWallets`
+- [ ] `src/hooks/useAuth.tsx` provides auth state (but doesn't replace useIdentity yet)
+- [ ] Build passes (`bun run build`)
+- [ ] Lint passes (`bun run lint`)
+- [ ] No changes to existing functionality (additive only)
+
+### Key Context
+- @originals/auth client exports: `initializeTurnkeyClient`, `initOtp`, `completeOtp`, `fetchWallets`, `TurnkeyDIDSigner`, `createDIDWithTurnkey`
+- The auth system needs to work alongside existing localStorage identity during migration
+- See `specs/features/auth.md` for full specification
 
 ### Definition of Done
-When all verification checks pass:
-1. Update this document marking Phase 6.5 complete
-2. Move project to "MVP Complete" status
-3. Commit final documentation update
+When complete, Ralph should:
+1. All acceptance criteria checked
+2. Commit with descriptive message
+3. Push changes
+4. Update this section with completion status
 
 ---
 
 ## Next Up (Priority Order)
 
-### [IN PROGRESS] Phase 6.5: Production Deployment & Verification
+### Phase 1: Turnkey Authentication
 
-**Part A: Deployment — ✅ COMPLETE**
-- [x] Production metadata in index.html (title, description, theme-color)
-- [x] Bundle size optimization (code splitting) — Manual chunks in vite.config.ts
-- [x] Build and lint pass
-- [x] Deployed to Railway: https://lisa-production-6b0f.up.railway.app
+#### 1.1 [NEXT] Setup and Dependencies
+- Add `@originals/auth` to package.json
+- Create `src/lib/turnkey.ts` wrapper
+- Create `src/hooks/useAuth.tsx` shell (parallel to useIdentity)
 
-**Part A.5: Fix 404 — ✅ COMPLETE**
-- [x] Added `serve` to dependencies
-- [x] Changed `npx serve` to `bunx serve` in railway.toml
-- [x] Deployment now working (HTTP 200)
+#### 1.2 Login UI
+- Create `src/pages/Login.tsx` with email input
+- Create `src/components/auth/OtpInput.tsx` for OTP entry
+- Create `src/components/auth/AuthGuard.tsx` wrapper component
 
-**Part B: Post-deployment verification** — READY FOR TESTING
-- [x] HTTPS enforced (check padlock) — Verified
-- [ ] App loads without errors
-- [ ] Convex WebSocket connection verified
-- [ ] Full user flow tested (identity → list → items → share → join)
-- [ ] Real-time sync between users verified
-- [ ] Lighthouse audit 90+ performance
+#### 1.3 Auth Flow Integration
+- Implement full OTP flow in useAuth
+- Connect to Convex for user upsert
+- Handle session storage (coordinate with Turnkey session tokens)
 
-**After verification passes:**
-- [ ] Update IMPLEMENTATION_PLAN.md with "MVP COMPLETE" status
-- [ ] Commit final status update
+#### 1.4 Convex Schema Update
+- Add `turnkeySubOrgId`, `email`, `lastLoginAt` to users table
+- Add indices for new fields
+- Create `convex/auth.ts` for auth-related functions
 
-**Optional (Post-MVP):**
-- [ ] Sentry error tracking integration
+#### 1.5 DID Creation with Turnkey
+- Use `createDIDWithTurnkey` for new user DID generation
+- Create `TurnkeyDIDSigner` wrapper for signing
+- Update originals.ts to support Turnkey signer
+
+#### 1.6 Migration Path
+- Detect localStorage identity on app load
+- Prompt migration to Turnkey
+- Support both auth methods during transition
+
+#### 1.7 Replace Identity System
+- Swap `useIdentity` for `useAuth` throughout app
+- Update all signing to use Turnkey signer
+- Remove localStorage identity code (or deprecate)
+
+---
+
+### Phase 2: Multiple Lists with Categories
+
+#### 2.1 Schema Changes
+- Add `categories` table to Convex schema
+- Add `categoryId` field to lists table
+- Create indices
+
+#### 2.2 Convex Functions
+- Create `convex/categories.ts` with CRUD operations
+- Update `convex/lists.ts` to support category assignment
+
+#### 2.3 UI Components
+- Create `src/components/lists/CategorySelector.tsx`
+- Create `src/components/lists/CategoryHeader.tsx`
+- Update `CreateListModal.tsx` to include category selection
+
+#### 2.4 Home Page Update
+- Group lists by category on Home page
+- Add collapsible category sections
+- Handle empty categories
+
+#### 2.5 Category Management
+- Create category manager UI (add/rename/delete)
+- Handle list reassignment when category deleted
+
+---
+
+### Phase 3: Unlimited Collaborators
+
+#### 3.1 Schema Migration
+- Create `collaborators` junction table
+- Add `role` field to collaborators
+- Update `invites` table with role field
+
+#### 3.2 Data Migration
+- Create migration script for existing lists
+- Move `collaboratorDid` data to collaborators table
+- Add owners to collaborators table
+
+#### 3.3 Convex Functions
+- Create `convex/collaborators.ts`
+- Update `convex/lists.ts` queries to use collaborators table
+- Update `convex/invites.ts` for role-based invites
+
+#### 3.4 Authorization
+- Create permission helpers (`canEdit`, `canManage`, etc.)
+- Add role checks to all mutations
+- Update item mutations for role verification
+
+#### 3.5 UI Updates
+- Update `ShareModal.tsx` with role selector
+- Create `CollaboratorList.tsx` component
+- Update `ListView.tsx` to show all collaborators
+
+#### 3.6 Collaborator Management
+- Add role change functionality
+- Add remove collaborator functionality
+- Add "leave list" functionality
+
+---
+
+### Phase 4: did:webvh Publication
+
+#### 4.1 Schema
+- Create `publications` table
+- Add indices for lookup
+
+#### 4.2 Publication Logic
+- Create `src/lib/publication.ts`
+- Integrate with Originals SDK for did:webvh creation
+- Connect Turnkey signer for publication signing
+
+#### 4.3 Convex Functions
+- Create `convex/publication.ts`
+- Record publication status
+- Query public lists
+
+#### 4.4 UI Components
+- Create `PublishModal.tsx`
+- Create `PublicListView.tsx`
+- Add publish/unpublish buttons to ListView
+
+#### 4.5 Public Route
+- Create `src/pages/PublicList.tsx`
+- Add route `/public/:did`
+- Handle verification display
+
+---
+
+### Phase 5: Offline Support
+
+#### 5.1 Service Worker
+- Create `src/workers/service-worker.ts`
+- Cache static assets
+- Handle offline navigation
+
+#### 5.2 IndexedDB Setup
+- Create `src/lib/offline.ts`
+- Define stores for lists, items, mutations
+- Create CRUD helpers
+
+#### 5.3 Mutation Queue
+- Implement mutation queuing
+- Handle queue persistence
+- Create retry logic
+
+#### 5.4 Sync Manager
+- Create `src/lib/sync.ts`
+- Implement sync on reconnect
+- Handle conflicts
+
+#### 5.5 useOffline Hook
+- Create `src/hooks/useOffline.tsx`
+- Track online/offline state
+- Expose sync status and pending count
+
+#### 5.6 Optimistic Updates
+- Update item mutations for optimistic UI
+- Merge server data with local optimistic data
+- Handle failures gracefully
+
+#### 5.7 UI Feedback
+- Create `OfflineIndicator.tsx`
+- Create `SyncStatus.tsx`
+- Show pending sync count
 
 ---
 
 ## Warnings & Pitfalls
 
-### Deployment
+### Authentication
 
-- [NOTE] **Use `bunx` not `npx`** — When using Nixpacks with Bun, prefer `bunx serve` over `npx serve` for better compatibility.
+- [CRITICAL] **Turnkey requires API proxy** — Client-side Turnkey calls go through their auth proxy. Ensure CORS and credentials handled properly.
 
-- [NOTE] **Environment variable required** — `VITE_CONVEX_URL` must be set in Railway's environment variables for the app to connect to Convex. Without it, the app may build but fail at runtime.
+- [WARNING] **Session token handling** — Turnkey session tokens are separate from JWT. Coordinate storage carefully.
 
-### Convex
+- [NOTE] **Migration complexity** — Existing users have DIDs from localStorage. Migration should preserve their DID or create mapping.
 
-- [CRITICAL] **Convex Provider is REQUIRED** — The app will crash without `<ConvexProvider>`. Already configured.
+### Categories
 
-- [CRITICAL] **Convex dev server must be running** — Run `npx convex dev` in a separate terminal. Without this, no queries/mutations will work.
+- [NOTE] **Categories are per-user** — Each user has their own category organization. A shared list can be in different categories for different users.
 
-- [NOTE] **Convex types are generated** — `convex/_generated/dataModel.ts` exists. Re-run `npx convex dev --once` if schema changes.
+### Collaborators
 
-- [WARNING] **Timestamps must come from client** — Convex mutations must be deterministic. Never use `Date.now()` inside a mutation — always pass `createdAt: Date.now()` from the client.
+- [CRITICAL] **Breaking schema change** — Removing `collaboratorDid` from lists is breaking. Run migration before deploying schema change.
 
-- [NOTE] **Backend is complete** — The `convex/` directory has all schema and functions. Don't modify unless there's a bug.
+- [WARNING] **Query performance** — With unlimited collaborators, optimize queries. Don't load all collaborator details eagerly.
 
-### React
+### Publication
 
-- [WARNING] **No impure functions in render** — The ESLint rule `react-hooks/purity` catches `Date.now()` inside useQuery. Store time in state instead.
+- [WARNING] **Public data exposure** — Published lists are visible to anyone. Make sure owners understand this.
 
-### Originals SDK
+- [NOTE] **did:webvh creation requires signing** — Must use Turnkey signer, not localStorage keys.
 
-- [WARNING] **Use the wrapper, not SDK directly** — `src/lib/originals.ts` abstracts SDK differences:
-  - Use `createIdentity()` for DID generation
-  - Use `createListAsset()` for creating list DIDs
-  - Use `signItemAction()` for signing item credentials
+### Offline
 
-- [CRITICAL] **privateKey must be in identity context** — `signItemAction()` requires the private key. The `useIdentity()` hook exposes it via `privateKey`.
+- [WARNING] **Conflict resolution is lossy** — Server wins conflicts. User may lose offline changes if collaborator edited same item.
 
-### Security
+- [NOTE] **Storage limits** — IndexedDB has browser-enforced limits (~50MB typical). Prune old data.
 
-- [WARNING] **localStorage is insecure** — Private key in localStorage is acceptable for MVP but document this limitation.
-
-- [WARNING] **Validate invite tokens** — Tokens must be: cryptographically random (`crypto.randomUUID()`), single-use, time-limited (24h). Always call `validateInvite` before `acceptInvite`.
-
-### Design Philosophy
-
-- [WARNING] **Don't over-engineer** — v1 scope:
-  - No offline support
-  - No push notifications
-  - Max 2 collaborators per list
-  - did:peer only (no did:webvh publication)
-  - Best-effort credential verification (non-blocking)
-
-  Ship fast, iterate later.
+- [CRITICAL] **Service Worker updates** — SW caching can cause users to see stale app. Implement update notification.
 
 ---
 
 ## Recently Completed
 
-- **Phase 6.5 Part A.5 Completed** — Fixed 404 deployment issue (2026-01-23)
-  - Root cause: `serve` package not in dependencies, `npx` incompatible with Bun Nixpacks
-  - Fix: Added `serve` to dependencies, changed `railway.toml` to use `bunx serve`
-  - Commit: 1ff22b2
-- **Phase 6.5 Part A Completed** — Deployed to Railway by operator (2026-01-23)
-  - Production URL: https://lisa-production-6b0f.up.railway.app
-- **Phase 6.5 Code Work Completed** — Production readiness optimizations
-  - Updated `index.html` with proper production metadata (title, description, theme-color, apple-touch-icon)
-  - Added code splitting via manual chunks in `vite.config.ts` for better caching:
-    - `react-vendor`: React, React DOM, React Router
-    - `convex-vendor`: Convex
-    - `originals-sdk`: @originals/sdk
-  - Verification items require actual deployment (HTTPS, Lighthouse audit, full flow test)
-- **Phase 6.4 Completed** — Railway deployment configuration
-  - Created `railway.toml` for Nixpacks build and static file serving
-  - Created `.env.example` for environment variable documentation
-  - Manual steps documented for user: GitHub push, Convex deploy, Railway setup
-- **Phase 6.1-6.3 Committed** — Commit 1ab8e42
-  - ErrorBoundary component for graceful error handling
-  - Responsive design with 44x44px minimum touch targets
-  - Playwright E2E tests for identity, lists, items, sharing flows
-- **Phases 3-5 Committed** — Commit 5392c89, tag v0.0.3
-- **Phases 1-5 Implementation** — All core features implemented:
-  - Phase 1: Project setup with TailwindCSS v4, React Router v7, Convex Provider
-  - Phase 2: Full identity system with DID generation, localStorage persistence, and UI
-  - Phase 3: Home page, CreateListModal, ListCard, ListView, DeleteListDialog
-  - Phase 4: AddItemInput, ListItem, ItemAttribution, time utilities
-  - Phase 5: ShareModal, JoinList page, CollaboratorBadge
-- Specs written (overview, architecture, features, constraints)
-- Convex backend fully implemented
-- Originals SDK wrapper completed (`src/lib/originals.ts`)
-- Gap analysis confirms: No TODOs, no placeholders, no stubs in codebase
+- ✓ Planning complete — Specs created for all 5 features
+- ✓ MVP deployed and working at https://lisa-production-6b0f.up.railway.app
 
 ---
 
-## Backlog (Post-MVP)
+## Backlog (Post v2)
 
-### Technical Debt (Lower Priority)
-- [TECH-DEBT] Add scalability limits to backend (max 500 items/list, max 50 lists/user per constraints.md)
-- [TECH-DEBT] Improve `verifyItemAction()` error handling (currently best-effort, silently fails)
-- [TECH-DEBT] Batch `getUsersByDids` optimization (currently potential N+1 in ItemAttribution)
-- [TECH-DEBT] Add performance monitoring (verify < 3s initial load, < 1s item sync)
-- [TECH-DEBT] Mark Originals asset as inactive on list deletion (currently orphaned)
-- [TECH-DEBT] Share button UX — disappears after collaborator joins, preventing re-invitation if needed
+### Technical Debt
+- [TECH-DEBT] Remove deprecated localStorage identity code after migration period
+- [TECH-DEBT] Add comprehensive E2E tests for new features
+- [TECH-DEBT] Performance audit after all features implemented
 
 ### Future Features
 - Bitcoin inscription for lists (did:btco layer)
-- Multiple lists with categories
 - Due dates and reminders
-- More than 2 collaborators
-- Offline support with sync
-- Secure key storage (Web Crypto API)
 - Push notifications
-- Native mobile apps
-- did:webvh publication for lists
+- Native mobile apps (React Native)
+- List templates
+- Item images/attachments
+- Comments on items

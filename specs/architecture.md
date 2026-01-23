@@ -4,97 +4,163 @@
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | React (Vite) |
+| Frontend | React 19 (Vite) |
 | Backend | Convex |
-| Asset Protocol | Originals SDK (`@originals/sdk`) |
+| Auth | @originals/auth + Turnkey |
+| Asset Protocol | @originals/sdk |
+| DID Resolution | did:webvh (via originals) |
+| Offline | Service Worker + IndexedDB |
 | Deployment | Railway |
 
 ## System Overview
 
 ```
-┌─────────────────┐     ┌─────────────────┐
-│   Partner A     │     │   Partner B     │
-│   (React App)   │     │   (React App)   │
-└────────┬────────┘     └────────┬────────┘
-         │                       │
-         │    WebSocket/HTTP     │
-         └───────────┬───────────┘
-                     │
-              ┌──────▼──────┐
-              │   Convex    │
-              │  (Backend)  │
-              │             │
-              │ - Lists     │
-              │ - Items     │
-              │ - Users     │
-              │ - Invites   │
-              └─────────────┘
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   User A        │     │   User B        │     │   User N...     │
+│   (React App)   │     │   (React App)   │     │   (React App)   │
+└────────┬────────┘     └────────┬────────┘     └────────┬────────┘
+         │                       │                       │
+         │ ┌─────────────────────┼───────────────────────┘
+         │ │   Turnkey Auth      │
+         │ │   (OTP + Keys)      │
+         │ └──────────┬──────────┘
+         │            │
+         └────────────┼────────────────────────────────────┐
+                      │                                    │
+               ┌──────▼──────┐                     ┌───────▼───────┐
+               │   Convex    │                     │   did:webvh   │
+               │  (Backend)  │                     │   (Public)    │
+               │             │                     │               │
+               │ - Users     │                     │ - Published   │
+               │ - Lists     │                     │   lists       │
+               │ - Items     │                     │ - Discovery   │
+               │ - Invites   │                     └───────────────┘
+               │ - Categories│
+               │ - Collaborators
+               └─────────────┘
 ```
 
 ## Key Architectural Decisions
 
-### 1. Originals Integration
+### 1. Authentication (NEW)
 
-Each **list** is an Originals asset:
-- Created with `did:peer` (private by default)
-- Published to `did:webvh` for discovery/sharing
-- Stores the list metadata and ownership credentials
+**Before:** DIDs generated client-side, private key in localStorage (insecure)
 
-Each **item action** (add, remove, check) generates a Verifiable Credential:
-- Signed by the user who performed the action
-- Stored in Convex for real-time sync
-- Linked to the list's credential chain
+**After:** Turnkey-managed keys via @originals/auth:
+- Email OTP authentication flow
+- Keys stored securely in Turnkey's infrastructure
+- `TurnkeyDIDSigner` for signing without exposing private keys
+- Session tokens for authenticated API calls
 
-### 2. Identity
+Flow:
+1. User enters email → `initOtp()` sends OTP
+2. User enters OTP code → `completeOtp()` creates/logs in user
+3. Turnkey creates sub-organization with wallet for user
+4. DID derived from Turnkey-managed Ed25519 key
+5. Session token stored in httpOnly cookie
 
-Users are identified by DIDs generated via Originals SDK:
-- DID created on first visit (stored in localStorage)
-- Display name chosen by user
-- Partner association happens via invite link
+### 2. List Organization (NEW)
 
-### 3. Real-time Sync
+Lists can be organized into categories:
+- Default category: "Uncategorized"
+- User-created categories (e.g., "Groceries", "Home", "Work")
+- Lists can be moved between categories
+- Categories are per-user (not shared)
 
-Convex handles real-time subscriptions:
-- Optimistic updates for snappy UX
-- Conflict resolution: last-write-wins (simple for v1)
-- Credential verification happens client-side
+### 3. Unlimited Collaborators (NEW)
 
-### 4. Invite Flow
+**Before:** Single `collaboratorDid` field (max 2 users)
 
-1. User A creates list → gets invite link with list ID + one-time token
-2. User B opens link → joins list, both DIDs now authorized
-3. Token invalidated after use
+**After:** Separate `collaborators` table:
+- Many-to-many relationship between lists and users
+- Roles: `owner`, `editor`, `viewer`
+- Real-time sync to all collaborators
 
-## Directory Structure
+### 4. did:webvh Publication (NEW)
+
+Lists can be published for public discovery:
+- Creates a `did:webvh` identity for the list
+- Published to originals resolver
+- Anyone can discover and verify the list
+- Read-only public view (editing still requires invite)
+
+### 5. Offline Support (NEW)
+
+Service Worker + IndexedDB strategy:
+- Cache app shell for offline access
+- Queue mutations when offline
+- Sync queue when connection restored
+- Conflict resolution: server wins with merge
+
+## Directory Structure (Updated)
 
 ```
 src/
-├── components/       # React components
-│   ├── List.tsx
-│   ├── ListItem.tsx
-│   ├── InviteModal.tsx
-│   └── ...
-├── hooks/            # Custom React hooks
-│   ├── useList.ts
-│   ├── useOriginals.ts
-│   └── ...
-├── lib/              # Utilities and SDK wrappers
-│   ├── originals.ts  # Originals SDK setup
-│   └── convex.ts     # Convex client setup
-├── pages/            # Route pages
+├── components/
+│   ├── auth/             # NEW: Auth components
+│   │   ├── LoginForm.tsx
+│   │   ├── OtpInput.tsx
+│   │   └── AuthGuard.tsx
+│   ├── lists/
+│   │   ├── ListCard.tsx
+│   │   ├── CreateListModal.tsx
+│   │   └── CategorySelector.tsx  # NEW
+│   ├── items/
+│   │   ├── ListItem.tsx
+│   │   ├── AddItemInput.tsx
+│   │   └── ItemAttribution.tsx
+│   ├── sharing/
+│   │   ├── ShareModal.tsx
+│   │   ├── CollaboratorList.tsx  # NEW: Shows all collaborators
+│   │   └── CollaboratorBadge.tsx
+│   └── publish/              # NEW: Publication components
+│       ├── PublishModal.tsx
+│       └── PublicListView.tsx
+├── hooks/
+│   ├── useAuth.tsx           # NEW: Replaces useIdentity
+│   ├── useLists.tsx
+│   ├── useCategories.tsx     # NEW
+│   ├── useCollaborators.tsx  # NEW
+│   └── useOffline.tsx        # NEW
+├── lib/
+│   ├── originals.ts
+│   ├── turnkey.ts            # NEW: Turnkey client wrapper
+│   ├── offline.ts            # NEW: Offline queue
+│   └── sync.ts               # NEW: Sync utilities
+├── pages/
 │   ├── Home.tsx
+│   ├── Login.tsx             # NEW
 │   ├── ListView.tsx
-│   └── JoinList.tsx
-└── convex/           # Convex backend functions
-    ├── schema.ts
+│   ├── JoinList.tsx
+│   └── PublicList.tsx        # NEW
+├── workers/
+│   └── service-worker.ts     # NEW
+└── convex/
+    ├── schema.ts             # Updated
+    ├── auth.ts               # NEW
+    ├── users.ts
     ├── lists.ts
     ├── items.ts
-    └── invites.ts
+    ├── invites.ts
+    ├── categories.ts         # NEW
+    ├── collaborators.ts      # NEW
+    └── publication.ts        # NEW
 ```
 
-## Security Considerations
+## Security Model
 
-- DIDs stored in localStorage (acceptable for v1, consider more secure storage later)
-- Invite tokens are single-use and expire after 24 hours
-- All item mutations verify the user's DID is authorized for the list
-- Credentials are verified client-side before displaying provenance
+### Authentication
+- Turnkey manages private keys in secure enclaves
+- Session tokens are short-lived (24h) with refresh
+- HttpOnly cookies prevent XSS token theft
+- CSRF protection via same-site cookies
+
+### Authorization
+- List access verified server-side in Convex
+- Collaborator roles enforced (owner > editor > viewer)
+- Invite tokens are single-use, time-limited (24h)
+
+### Data Privacy
+- Private lists only accessible to collaborators
+- Published lists are publicly readable
+- Item credentials verify authorship cryptographically

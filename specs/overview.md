@@ -2,30 +2,42 @@
 
 ## Vision
 
-A simple, real-time shared todo/grocery list for couples. Each list is an Originals asset with cryptographic provenance — you can see exactly who added or modified each item.
+A real-time shared todo/grocery list app with cryptographic provenance. Users can create lists, organize them by category, share with unlimited collaborators, and optionally publish lists for public discovery via did:webvh.
 
 ## Users
 
-- **Primary:** Couples/partners who want to share grocery or todo lists
-- **Use case:** "Add milk to the list" and your partner sees it instantly with proof you added it
+- **Primary:** Couples, families, roommates, small teams sharing lists
+- **Use case:** "Add milk to the list" and collaborators see it instantly with cryptographic proof of who added it
 
 ## Goals
 
 1. **Simple** — Create a list and share it in seconds
-2. **Real-time** — Changes sync instantly between partners
-3. **Provenance** — Every action is cryptographically attributable to a person
-4. **Trustworthy** — Built on Originals protocol for verifiable history
+2. **Real-time** — Changes sync instantly across all collaborators
+3. **Provenance** — Every action is cryptographically attributable via Originals credentials
+4. **Secure** — Turnkey-managed keys replace insecure localStorage storage
+5. **Organized** — Multiple lists with categories for better organization
+6. **Discoverable** — Optional did:webvh publication for public lists
+7. **Resilient** — Works offline with automatic sync when reconnected
 
-## Non-Goals (v1)
+## Evolution from MVP
 
-- Bitcoin inscription (future feature)
-- Due dates or reminders
-- Multiple list types or categories
-- More than 2 collaborators per list
-- Mobile native apps (web-only for now)
+This builds on the deployed MVP (https://lisa-production-6b0f.up.railway.app) which has:
+- [x] Basic identity (localStorage-based DIDs)
+- [x] Single lists with max 2 collaborators
+- [x] Real-time sync via Convex
+- [x] Item management with attribution
+
+New capabilities:
+- [ ] Turnkey-based authentication (@originals/auth)
+- [ ] Multiple lists with categories
+- [ ] Unlimited collaborators per list
+- [ ] did:webvh publication for public lists
+- [ ] Offline support with sync
 
 ## Success Criteria
 
-- Two users can create and share a list within 30 seconds
-- Items sync in under 1 second
-- Clear UI showing who added/modified each item
+- User can authenticate via email OTP (Turnkey)
+- User can organize lists into custom categories
+- Lists support 2+ collaborators with real-time sync
+- User can publish a list to did:webvh for public discovery
+- App works offline and syncs changes when reconnected
