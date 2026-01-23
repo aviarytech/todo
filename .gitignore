@@ -1,6 +1,9 @@
 # Logs
 .logs/
 
+# Archives (from ./loop.sh restart)
+.archive/
+
 # Dependencies
 node_modules/
 

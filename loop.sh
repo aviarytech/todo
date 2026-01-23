@@ -5,6 +5,7 @@
 #   both        - Run Ralph and Lisa in parallel (default)
 #   ralph       - Builder agent only — implements functionality
 #   lisa        - Planning agent only — creates plan, then steers ongoing work
+#   restart      - Reset project state and run Lisa's interview again
 #
 # Examples:
 #   ./loop.sh              # Both agents in parallel, unlimited
@@ -13,6 +14,7 @@
 #   ./loop.sh ralph 20     # Ralph only, max 20 iterations
 #   ./loop.sh lisa         # Lisa only, unlimited (starts interview if new project)
 #   ./loop.sh lisa 5       # Lisa only, max 5 iterations
+#   ./loop.sh restart       # Reset and re-run Lisa's interview
 
 set -e
 
@@ -180,6 +182,61 @@ log_echo "  Viewer: http://localhost:3333"
 log_echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 case "$MODE" in
+    restart)
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "  🔄 Restarting Project"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "This will reset the project for a fresh interview."
+        echo ""
+        read -p "Archive existing specs and plan? [y/N] " -n 1 -r
+        echo ""
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            # Archive existing files
+            ARCHIVE_DIR=".archive/$(date +%Y%m%d_%H%M%S)"
+            mkdir -p "$ARCHIVE_DIR"
+            
+            if [ -f "IMPLEMENTATION_PLAN.md" ]; then
+                cp "IMPLEMENTATION_PLAN.md" "$ARCHIVE_DIR/"
+                echo "  📦 Archived IMPLEMENTATION_PLAN.md"
+            fi
+            
+            if [ -d "specs" ] && [ -n "$(ls -A specs 2>/dev/null)" ]; then
+                cp -r "specs" "$ARCHIVE_DIR/"
+                echo "  📦 Archived specs/"
+            fi
+            
+            echo ""
+            echo "Archives saved to: $ARCHIVE_DIR"
+        fi
+        
+        # Reset to uninitialized state
+        echo ""
+        echo "Resetting project state..."
+        
+        # Mark plan as uninitialized
+        echo "# Implementation Plan
+
+> **NOT INITIALIZED** — Run \`./loop.sh lisa\` to start the interview.
+" > IMPLEMENTATION_PLAN.md
+        echo "  ✓ Reset IMPLEMENTATION_PLAN.md"
+        
+        # Clear specs directory
+        rm -rf specs
+        mkdir -p specs
+        echo "  ✓ Cleared specs/"
+        
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "  ✅ Reset complete! Starting Lisa's interview..."
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        
+        # Immediately start Lisa's interview
+        run_lisa_interactive
+        ;;
     ralph|build)
         # Check if initialized
         if needs_init; then
@@ -257,7 +314,7 @@ case "$MODE" in
         ;;
     *)
         echo "Unknown mode: $MODE"
-        echo "Valid modes: ralph, lisa, both"
+        echo "Valid modes: ralph, lisa, both, restart"
         exit 1
         ;;
 esac

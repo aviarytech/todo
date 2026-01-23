@@ -4,12 +4,6 @@ Lisa has meticulously planned all the work in @IMPLEMENTATION_PLAN.md and will b
 
 ---
 
-## Phase 0a: Check Human Notes
-
-**FIRST, always check `NOTES.md` for messages from the human operator.**
-
-This file contains important context, deployment info, or urgent instructions. Read it before starting work. If there are actionable notes that affect your current task, adjust accordingly.
-
 ---
 
 ## Phase 0: Recovery Check (Fault Tolerance)
