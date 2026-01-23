@@ -12,9 +12,75 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
+### Current Task
+**[IN PROGRESS]** Phase 3.1: Collaborators Schema Migration
+
+### Overview
+Create the `collaborators` junction table to enable unlimited collaborators per list. This is a foundational schema change that other Phase 3 tasks depend on. The old `collaboratorDid` field on `lists` will remain temporarily for backwards compatibility until migration completes.
+
+### Files to Read First
+- `convex/schema.ts` — Current schema, you'll add the `collaborators` table here
+- `specs/features/collaborators.md` — Full spec with schema definition and migration plan
+- `convex/lists.ts` — Current collaborator logic (uses `collaboratorDid` field)
+
+### Files to Create/Modify
+1. **`convex/schema.ts`** — Add `collaborators` table:
+   ```typescript
+   collaborators: defineTable({
+     listId: v.id("lists"),
+     userDid: v.string(),
+     role: v.union(v.literal("owner"), v.literal("editor"), v.literal("viewer")),
+     joinedAt: v.number(),
+     invitedByDid: v.optional(v.string()),
+   })
+     .index("by_list", ["listId"])
+     .index("by_user", ["userDid"])
+     .index("by_list_user", ["listId", "userDid"]),
+   ```
+
+2. **`convex/schema.ts`** — Update `invites` table to add `role` field:
+   ```typescript
+   invites: defineTable({
+     // ... existing fields ...
+     role: v.optional(v.union(v.literal("editor"), v.literal("viewer"))), // NEW - optional for backwards compat
+   })
+   ```
+
+3. **`src/lib/permissions.ts`** (NEW) — Authorization helpers:
+   ```typescript
+   export type Role = "owner" | "editor" | "viewer";
+   export function canEdit(role: Role | null): boolean;
+   export function canManageCollaborators(role: Role | null): boolean;
+   export function canDeleteList(role: Role | null): boolean;
+   ```
+
+### Acceptance Criteria
+- [ ] `collaborators` table exists in schema with correct indices
+- [ ] `invites` table has optional `role` field (backwards compatible)
+- [ ] `src/lib/permissions.ts` exists with role helper functions
+- [ ] Schema is valid (no Convex errors on `npx convex dev`)
+- [ ] Existing functionality still works (old `collaboratorDid` field preserved)
+
+### Key Context
+- **DO NOT remove `collaboratorDid`** from `lists` table yet — that happens after data migration
+- **Role field on invites is OPTIONAL** (`v.optional(...)`) for backwards compatibility
+- The permissions file is UI-only for now; Convex authorization comes in Phase 3.4
+
+### Definition of Done
+When complete:
+1. All acceptance criteria checked
+2. Run `npx convex dev` to verify schema compiles
+3. Commit with: `feat(collaborators): add collaborators schema and permissions helpers (Phase 3.1)`
+4. Update this section with completion status
+
+---
+
+## Completed Working Context
+
 **[COMPLETED]** Phase 2: Multiple Lists with Categories
 
-### Changes Made
+<details>
+<summary>Phase 2 Changes (click to expand)</summary>
 
 **Schema Updates:**
 - Added `categories` table with `ownerDid`, `name`, `order`, `createdAt` fields
@@ -40,6 +106,8 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 - Created `src/components/lists/CategoryManager.tsx` — full category management modal
 - Updated `src/components/CreateListModal.tsx` — added category selection
 - Updated `src/pages/Home.tsx` — lists grouped by category with collapsible sections
+
+</details>
 
 ---
 
@@ -118,10 +186,11 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ### Phase 3: Unlimited Collaborators
 
-#### 3.1 Schema Migration
+#### 3.1 [IN PROGRESS] Schema Migration
 - Create `collaborators` junction table
 - Add `role` field to collaborators
 - Update `invites` table with role field
+- Create `src/lib/permissions.ts` helper functions
 
 #### 3.2 Data Migration
 - Create migration script for existing lists
