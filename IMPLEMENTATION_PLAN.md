@@ -12,37 +12,62 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ## Working Context (For Ralph)
 
-**[COMPLETED]** Phase 1.7: Replace Identity System
+**[IN PROGRESS]** Phase 2.1: Schema Changes for Categories
 
-### Changes Made
+### Current Task
 
-**Authentication Flow:**
-- App now uses Turnkey-only authentication
-- Unauthenticated users are redirected to `/login`
-- Login page uses OTP via email for authentication
-- ProfileBadge includes logout functionality
+Add the `categories` table to the Convex schema and add `categoryId` field to the lists table. This is the foundation for the categories feature.
 
-**Component Updates:**
-- `src/App.tsx` — Redirects to Login for unauthenticated users, no longer uses IdentitySetup or MigrationPrompt
-- `src/main.tsx` — Removed IdentityProvider, now only uses AuthProvider
-- `src/pages/JoinList.tsx` — Uses useCurrentUser, shows Login for unauthenticated users
-- `src/pages/ListView.tsx` — Uses getSigner() from useCurrentUser for Turnkey signing
-- `src/pages/Home.tsx` — Updated comment (IdentitySetup reference removed)
-- `src/components/AddItemInput.tsx` — Uses useCurrentUser with getSigner() for Turnkey signing
-- `src/components/ListItem.tsx` — Accepts `signer` prop instead of `userPrivateKey`
-- `src/components/ProfileBadge.tsx` — Uses useCurrentUser + useAuth for logout
+### Files to Read First
 
-**Hook Updates:**
-- `src/hooks/useCurrentUser.tsx` — Simplified to Turnkey-only, exports getSigner()
-- `src/hooks/useAuth.tsx` — Updated documentation (removed migration period reference)
+- `convex/schema.ts` — Current schema, add categories table here
+- `specs/features/categories.md` — Full spec for categories feature (lines 47-66 have exact schema)
+- `convex/lists.ts` — Current list queries, understand existing patterns
 
-**Library Updates:**
-- `src/lib/originals.ts` — Added `signItemActionWithSigner()` and `ExternalSigner` interface for Turnkey signing
+### Files to Create/Modify
 
-**Deprecated Files (marked @deprecated, kept for reference):**
-- `src/hooks/useIdentity.tsx` — Marked deprecated, kept for reference
-- `src/components/IdentitySetup.tsx` — Marked deprecated, kept for reference
-- `src/components/auth/MigrationPrompt.tsx` — Marked deprecated, kept for reference
+- `convex/schema.ts` — Add categories table, add categoryId to lists
+
+### Exact Schema to Add
+
+```typescript
+// Add to convex/schema.ts
+
+// Categories table - for organizing lists (per-user)
+categories: defineTable({
+  ownerDid: v.string(),        // User who owns this category
+  name: v.string(),            // Category name (e.g., "Groceries", "Work")
+  order: v.number(),           // Sort order for display
+  createdAt: v.number(),       // Timestamp
+})
+  .index("by_owner", ["ownerDid"])
+  .index("by_owner_name", ["ownerDid", "name"]),
+
+// Update lists table - add this field:
+categoryId: v.optional(v.id("categories")), // null = Uncategorized
+```
+
+### Acceptance Criteria
+
+- [ ] `categories` table added with fields: `ownerDid`, `name`, `order`, `createdAt`
+- [ ] `categories` table has indices: `by_owner`, `by_owner_name`
+- [ ] `lists` table has new field: `categoryId: v.optional(v.id("categories"))`
+- [ ] Build passes (`bun run build`)
+- [ ] Convex dev server accepts schema (`npx convex dev` runs without error)
+
+### Key Context
+
+- Categories are per-user — each user organizes their own lists
+- A shared list can be in different categories for different users
+- `categoryId: undefined` means "Uncategorized" (the default)
+- The `by_owner_name` index enables checking for duplicate category names per user
+
+### Definition of Done
+
+When complete, Ralph should:
+1. All acceptance criteria checked
+2. Commit with message: `feat(categories): add categories table to Convex schema`
+3. Update this section with completion status
 
 ---
 
@@ -94,7 +119,7 @@ Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, 
 
 ### Phase 2: Multiple Lists with Categories
 
-#### 2.1 Schema Changes
+#### 2.1 [IN PROGRESS] Schema Changes
 - Add `categories` table to Convex schema
 - Add `categoryId` field to lists table
 - Create indices
