@@ -87,8 +87,10 @@ export type { TurnkeyDIDSigner };
 - Create `AuthContext` with `AuthContextValue` interface
 - Create `AuthProvider` component (similar pattern to `IdentityProvider`)
 - Export `useAuth` hook
+- Define `AuthUser` type: `{ email: string; did: string | null; turnkeySubOrgId: string }`
 - Store auth state in component state (not localStorage — Turnkey handles sessions)
 - Stub out the OTP methods (actual implementation in Phase 1.3)
+- Note: `@turnkey/core` comes bundled with `@originals/auth`, no separate install needed
 
 ### Definition of Done
 When complete, Ralph should:
