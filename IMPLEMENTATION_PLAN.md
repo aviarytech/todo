@@ -20,51 +20,172 @@ Starting Phase 5: Offline Support. This phase adds offline capability through se
 
 Create the service worker to cache static assets and enable offline app loading.
 
+### Pre-flight Check
+- `idb` package was added to package.json but `bun install` may not have run — run `bun install` first if needed
+
 ### Files to Read First
-- `vite.config.ts` — Current Vite configuration (need to add PWA plugin or manual SW registration)
+- `specs/features/offline.md` — Full specification for offline support (lines 56-102 have SW implementation)
+- `vite.config.ts` — Current Vite configuration
 - `src/main.tsx` — Entry point where SW registration will be added
-- `specs/features/offline.md` — Full specification for offline support
 
 ### Files to Create
-- `src/workers/service-worker.ts` — Service worker with cache-first strategy for static assets
-- `src/lib/sw-registration.ts` — Helper to register and manage service worker updates
+1. **`public/sw.js`** — Service worker file (plain JS, NOT TypeScript)
+   - Must be in `public/` for Vite to serve it at root scope (`/sw.js`)
+   - Cannot use imports — must be self-contained vanilla JS
+   - See spec for exact implementation pattern
+
+2. **`src/lib/sw-registration.ts`** — Helper to register and manage service worker
+   - Register SW on app load
+   - Handle SW updates (skipWaiting/claim)
+   - Export a function to call from main.tsx
 
 ### Files to Modify
-- `vite.config.ts` — May need configuration for SW bundling
-- `src/main.tsx` — Register service worker on app mount
-- `package.json` — No new dependencies needed (using native SW APIs)
+- `src/main.tsx` — Import and call SW registration after render
+
+### Why public/sw.js (NOT src/workers/)
+The IMPLEMENTATION_PLAN warns: "Place in `public/` or use a separate build step. Don't use `src/workers/` directly without bundler config."
+
+Vite doesn't automatically bundle files in `src/workers/`. The simplest approach:
+- Put `sw.js` in `public/` (served as-is at `/sw.js`)
+- Use plain JavaScript (no TypeScript, no imports)
+- The SW will have access to all assets because Vite's build output goes to the same directory
+
+### Service Worker Implementation (public/sw.js)
+
+```javascript
+const CACHE_NAME = 'lisa-v1';
+
+// Install: cache shell assets
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(['/']);
+    })
+  );
+  self.skipWaiting();
+});
+
+// Activate: clean old caches
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// Fetch: cache-first for same-origin, skip Convex API
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Skip non-GET
+  if (event.request.method !== 'GET') return;
+
+  // CRITICAL: Never cache Convex API calls
+  if (url.hostname.includes('convex.cloud')) return;
+
+  // Only handle same-origin requests
+  if (url.origin !== location.origin) return;
+
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+
+      return fetch(event.request).then((response) => {
+        // Cache successful same-origin responses
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, clone);
+          });
+        }
+        return response;
+      });
+    }).catch(() => {
+      // Offline fallback for navigation
+      if (event.request.mode === 'navigate') {
+        return caches.match('/');
+      }
+    })
+  );
+});
+```
+
+### SW Registration Helper (src/lib/sw-registration.ts)
+
+```typescript
+export async function registerServiceWorker(): Promise<void> {
+  if (!('serviceWorker' in navigator)) {
+    console.log('Service workers not supported');
+    return;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.register('/sw.js', {
+      scope: '/',
+    });
+
+    console.log('SW registered:', registration.scope);
+
+    // Handle updates
+    registration.addEventListener('updatefound', () => {
+      const newWorker = registration.installing;
+      if (newWorker) {
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // New SW available, could prompt user to refresh
+            console.log('New content available, refresh to update');
+          }
+        });
+      }
+    });
+  } catch (error) {
+    console.error('SW registration failed:', error);
+  }
+}
+```
+
+### Integration in main.tsx
+
+Add after the render call:
+```typescript
+import { registerServiceWorker } from './lib/sw-registration'
+
+// ... existing render code ...
+
+// Register service worker
+registerServiceWorker()
+```
 
 ### Acceptance Criteria
-- [ ] Service worker is created at `src/workers/service-worker.ts`
+- [ ] `public/sw.js` exists with cache-first strategy
 - [ ] SW caches static assets (HTML, JS, CSS) on install
-- [ ] SW serves cached assets when offline (cache-first for assets)
-- [ ] SW skips caching for Convex API calls (`convex.cloud` URLs)
-- [ ] SW is registered in `src/main.tsx` on app load
+- [ ] SW serves cached assets when offline
+- [ ] SW explicitly skips `*.convex.cloud` URLs (CRITICAL)
+- [ ] `src/lib/sw-registration.ts` exists and exports `registerServiceWorker`
+- [ ] `src/main.tsx` calls `registerServiceWorker()` after render
 - [ ] App shell loads when offline (navigation returns cached index.html)
 - [ ] Build passes (`bun run build`)
 - [ ] Lint passes (`bun run lint`)
 
-### Key Context
-- Using Vite, not CRA — SW needs to be in `public/` or built separately
-- Convex calls go to `*.convex.cloud` — these should NEVER be cached
-- Static assets use content hashing from Vite build
-- Per spec: use cache name `lisa-v1` for versioning
-
-### Service Worker Strategy (from spec)
-```typescript
-// Cache static assets on install
-// For fetch: cache-first for GET requests to same origin
-// Skip Convex API calls entirely
-// Return cached '/' for navigation requests when offline
-```
+### Testing Steps
+1. `bun install` (if not done)
+2. `bun run build && bun run preview`
+3. Open app in browser, navigate around to populate cache
+4. In DevTools → Application → Service Workers, verify SW is registered
+5. In DevTools → Network, check "Offline"
+6. Refresh page — app shell should load (data won't, that's expected)
+7. Check console for any SW errors
 
 ### Definition of Done
 When complete, Ralph should:
 1. All acceptance criteria checked
-2. Test manually: `bun run build && bun run preview`, then go offline in DevTools
-3. Verify app shell loads offline (even if data doesn't)
-4. Commit with message: `feat(offline): add service worker for static asset caching (Phase 5.1)`
-5. Update this section with completion status
+2. Manual offline test passes (app shell loads)
+3. Commit with message: `feat(offline): add service worker for static asset caching (Phase 5.1)`
+4. Update this section with completion status
 
 ---
 
