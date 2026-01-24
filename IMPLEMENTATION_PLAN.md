@@ -15,40 +15,35 @@ v2 core is complete (Phases 1-7). Now adding server-side auth via `@originals/au
 ## Working Context (For Ralph)
 
 ### Current Task
-**Phase 8.3: Protect Mutations with JWT**
+**Phase 8.4: Update Client Auth Flow**
 
-Update sensitive Convex mutations to require authentication.
+Update the client-side auth to call the new Convex HTTP endpoints.
 
 ### Files to Read First
-- `convex/lib/jwt.ts` — JWT verification helper (created in 8.2)
-- `convex/lib/auth.ts` — `requireAuth(request)` helper (created in 8.2)
-- `convex/lists.ts` — List mutations to protect
-- `convex/categories.ts` — Category mutations to protect
+- `src/hooks/useAuth.tsx` — Current Turnkey-based auth hook
+- `convex/http.ts` — HTTP router with all endpoint routes
+- `convex/listsHttp.ts`, `convex/itemsHttp.ts` — Example HTTP action patterns
 
 ### Files to Modify
-- `convex/lists.ts` — Add auth check to `createList`, `deleteList`
-- `convex/categories.ts` — Add auth check to `createCategory`, `renameCategory`, `deleteCategory`
-- `convex/items.ts` — Add auth check to item mutations
-- `convex/collaborators.ts` — Add auth check to collaborator mutations
+- `src/hooks/useAuth.tsx` — Update to call Convex HTTP endpoints instead of Turnkey directly
 
 ### Acceptance Criteria
-- [ ] HTTP actions for protected mutations use `requireAuth(request)`
-- [ ] `createList`, `deleteList` require auth
-- [ ] Category mutations require auth
-- [ ] Item mutations require auth (addItem, checkItem, uncheckItem, reorderItems)
-- [ ] `getPublicList` query remains public (no auth required)
+- [ ] `useAuth` hook calls `/auth/initiate` and `/auth/verify` HTTP endpoints
+- [ ] Remove direct Turnkey OTP calls (`initOtp`, `completeOtp`)
+- [ ] JWT is stored (from cookie or response body)
+- [ ] Keep `TurnkeyDIDSigner` for client-side signing (DID operations still need wallet access)
 - [ ] `bun run build` and `bun run lint` pass
 
 ### Key Context
-- Current mutations use `userDid` passed from client
-- Server-side auth replaces client-passed DIDs with server-verified identity
-- Use `requireAuth(request)` to get `{ turnkeySubOrgId, email }`
-- Look up user by turnkeySubOrgId to get their DID
+- Phase 8.3 created HTTP action wrappers that validate JWT and call mutations
+- Client needs to call `/auth/initiate` with email to start OTP flow
+- Client needs to call `/auth/verify` with sessionId and code to verify OTP
+- Response includes JWT token (also set as httpOnly cookie)
 
 ### Definition of Done
 When complete, Ralph should:
 1. All acceptance criteria checked
-2. Commit with message: "feat: protect mutations with JWT auth (Phase 8.3)"
+2. Commit with message: "feat: update client auth flow (Phase 8.4)"
 3. Push changes
 4. Update this section with completion status
 
@@ -77,10 +72,16 @@ Migrate auth from client-side Turnkey calls to server-side via `@originals/auth/
 - ✅ Added `tryAuth(request)` for optional auth and error response helpers
 - ✅ Build and lint pass
 
-#### 8.3 Protect Mutations with JWT
-- Create `convex/lib/auth.ts` with `requireAuth(ctx)` helper that validates JWT and returns user
-- Update sensitive mutations to require auth: `createList`, `deleteList`, `createCategory`, etc.
-- Keep public queries accessible without auth (e.g., `getPublicList`)
+#### 8.3 [COMPLETED] Protect Mutations with JWT
+- ✅ Created `convex/listsHttp.ts` with HTTP action wrappers for `createList`, `deleteList`
+- ✅ Created `convex/categoriesHttp.ts` with HTTP action wrappers for `createCategory`, `renameCategory`, `deleteCategory`, `setListCategory`
+- ✅ Created `convex/itemsHttp.ts` with HTTP action wrappers for `addItem`, `checkItem`, `uncheckItem`, `removeItem`, `reorderItems`
+- ✅ Created `convex/collaboratorsHttp.ts` with HTTP action wrappers for `addCollaborator`, `updateCollaboratorRole`, `removeCollaborator`
+- ✅ All HTTP actions use `requireAuth(request)` to validate JWT
+- ✅ All HTTP actions look up user by `turnkeySubOrgId` to get server-verified DID
+- ✅ Added routes in `convex/http.ts` for all protected endpoints under `/api/`
+- ✅ Public queries (`getPublicList`) remain accessible without auth
+- ✅ Build and lint pass
 
 #### 8.4 Update Client Auth Flow
 - Update `src/hooks/useAuth.tsx` to call Convex HTTP endpoints instead of Turnkey directly
@@ -465,6 +466,7 @@ All Phase 7 items complete. These were discovered during comprehensive code revi
 
 ## Recently Completed
 
+- ✓ Phase 8.3: Protect Mutations with JWT — Created HTTP action wrappers (`listsHttp.ts`, `categoriesHttp.ts`, `itemsHttp.ts`, `collaboratorsHttp.ts`) that use `requireAuth(request)` to validate JWT and look up user DID by turnkeySubOrgId; added routes in `convex/http.ts` for `/api/lists/*`, `/api/categories/*`, `/api/items/*`, `/api/collaborators/*`; public queries remain accessible; build and lint pass
 - ✓ Phase 8.2: JWT Validation Helper — Created `convex/lib/jwt.ts` with `verifyAuthToken(token)` and `extractTokenFromRequest`; created `convex/lib/auth.ts` with `requireAuth(request)`, `tryAuth`, `AuthError` class, and response helpers; build and lint pass
 - ✓ Phase 8.1: Convex HTTP Auth Endpoints — Created `convex/http.ts` HTTP router; `convex/authHttp.ts` with `/auth/initiate`, `/auth/verify`, `/auth/logout` handlers using `@originals/auth/server`; `convex/authSessions.ts` for Convex-backed session storage; `authSessions` table in schema; build and lint pass
 - ✓ Phase 7.5: Bundle Size Optimization — Route-based code splitting with `React.lazy()` for ListView, JoinList, PublicList; modal lazy loading for DeleteListDialog, ShareModal, PublishModal; `@originals/auth` split into separate chunk; main bundle reduced from 802KB to 501KB (37% reduction); build and lint pass
