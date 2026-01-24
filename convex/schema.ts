@@ -9,6 +9,19 @@ export const roleValidator = v.union(
 );
 
 export default defineSchema({
+  // Auth sessions table - for server-side OTP session storage (Phase 8)
+  authSessions: defineTable({
+    sessionId: v.string(), // Unique session identifier
+    email: v.string(), // User's email address
+    subOrgId: v.optional(v.string()), // Turnkey sub-organization ID
+    otpId: v.optional(v.string()), // Turnkey OTP ID
+    timestamp: v.number(), // Session creation timestamp
+    verified: v.boolean(), // Whether OTP has been verified
+    expiresAt: v.number(), // Session expiration timestamp
+  })
+    .index("by_session_id", ["sessionId"])
+    .index("by_expires_at", ["expiresAt"]),
+
   // Users table - for display name lookup by DID
   users: defineTable({
     did: v.string(), // did:peer:... from Originals SDK or Turnkey

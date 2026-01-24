@@ -15,39 +15,33 @@ v2 core is complete (Phases 1-7). Now adding server-side auth via `@originals/au
 ## Working Context (For Ralph)
 
 ### Current Task
-**Phase 8.1: Convex HTTP Auth Endpoints**
+**Phase 8.2: JWT Validation Helper**
 
-Create Convex HTTP endpoints for server-side OTP authentication flow using `@originals/auth/server`.
+Create JWT validation helper for protecting Convex mutations.
 
 ### Files to Read First
-- `convex/auth.ts` — Current auth mutations (upsertUser, getUserByTurnkeyId)
-- `src/hooks/useAuth.tsx` — Current client-side auth flow (will be updated later)
-- `node_modules/@originals/auth/src/server/` — Server-side auth implementation
+- `convex/authHttp.ts` — See how JWT is signed with `signToken`
+- `node_modules/@originals/auth/src/server/jwt.ts` — JWT implementation
 
 ### Files to Create/Modify
-- `convex/http.ts` — NEW: HTTP router with auth endpoints
-- `convex/authHttp.ts` — NEW: HTTP action handlers for auth flow
-- `convex/authSessions.ts` — NEW: Session storage functions (Convex table-based)
-- `convex/schema.ts` — ADD: `authSessions` table for OTP session storage
+- `convex/lib/jwt.ts` — NEW: `verifyAuthToken(token)` helper
+- `convex/lib/auth.ts` — NEW: `requireAuth(ctx)` helper
 
 ### Acceptance Criteria
-- [ ] `authSessions` table added to schema with fields: `sessionId`, `email`, `subOrgId`, `otpId`, `timestamp`, `verified`
-- [ ] `POST /auth/initiate` endpoint sends OTP via Turnkey server SDK, stores session in Convex
-- [ ] `POST /auth/verify` endpoint verifies OTP, issues JWT, upserts user
-- [ ] `POST /auth/logout` endpoint clears session
-- [ ] Environment variables documented: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_ORGANIZATION_ID`, `JWT_SECRET`
-- [ ] `npx convex dev` runs without errors
+- [ ] `convex/lib/jwt.ts` with `verifyAuthToken(token)` that returns `{ turnkeySubOrgId, email }`
+- [ ] `convex/lib/auth.ts` with `requireAuth(ctx)` that validates JWT from header/cookie
+- [ ] Helper throws on invalid/expired token
+- [ ] `bun run build` and `bun run lint` pass
 
 ### Key Context
-- Use `@originals/auth/server` imports: `createTurnkeyClient`, `initiateEmailAuth`, `verifyEmailAuth`, `signToken`
-- Convex serverless = no in-memory session storage. Use Convex `authSessions` table instead.
-- JWT payload: `{ sub: turnkeySubOrgId, email, sessionToken?, iat, exp }`
-- Keep existing `upsertUser` mutation — call it after successful OTP verification
+- Use `verifyToken` from `@originals/auth/server`
+- Extract JWT from `Authorization: Bearer <token>` header or `auth_token` cookie
+- Return decoded payload with `turnkeySubOrgId` and `email`
 
 ### Definition of Done
 When complete, Ralph should:
 1. All acceptance criteria checked
-2. Commit with message: "feat: add Convex HTTP auth endpoints (Phase 8.1)"
+2. Commit with message: "feat: add JWT validation helper (Phase 8.2)"
 3. Push changes
 4. Update this section with completion status
 
@@ -59,14 +53,16 @@ When complete, Ralph should:
 
 Migrate auth from client-side Turnkey calls to server-side via `@originals/auth/server`. See `specs/features/server-auth.md`.
 
-#### 8.1 [IN PROGRESS] Convex HTTP Auth Endpoints
-- Create `convex/http.ts` HTTP router
-- Create `convex/authHttp.ts` with handlers for `/auth/initiate`, `/auth/verify`, `/auth/logout`
-- Add `authSessions` table to schema for OTP session storage
-- Use `@originals/auth/server`: `createTurnkeyClient`, `initiateEmailAuth`, `verifyEmailAuth`, `signToken`
-- Document required env vars: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_ORGANIZATION_ID`, `JWT_SECRET`
+#### 8.1 [COMPLETED] Convex HTTP Auth Endpoints
+- ✅ Created `convex/http.ts` HTTP router with routes for `/auth/initiate`, `/auth/verify`, `/auth/logout`
+- ✅ Created `convex/authHttp.ts` with HTTP action handlers using `@originals/auth/server`
+- ✅ Added `authSessions` table to schema with `sessionId`, `email`, `subOrgId`, `otpId`, `timestamp`, `verified`, `expiresAt`
+- ✅ Created `convex/authSessions.ts` with session CRUD and cleanup functions
+- ✅ Uses `createTurnkeyClient`, `initiateEmailAuth`, `verifyEmailAuth`, `signToken` from `@originals/auth/server`
+- ✅ Required env vars: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_ORGANIZATION_ID`, `JWT_SECRET`
+- ✅ Build and lint pass
 
-#### 8.2 JWT Validation Helper
+#### 8.2 [IN PROGRESS] JWT Validation Helper
 - Create `convex/lib/jwt.ts` with `verifyAuthToken(token)` helper
 - Extract JWT from `Authorization: Bearer` header or `auth_token` cookie
 - Return `{ turnkeySubOrgId, email }` on success, throw on invalid/expired
@@ -459,6 +455,7 @@ All Phase 7 items complete. These were discovered during comprehensive code revi
 
 ## Recently Completed
 
+- ✓ Phase 8.1: Convex HTTP Auth Endpoints — Created `convex/http.ts` HTTP router; `convex/authHttp.ts` with `/auth/initiate`, `/auth/verify`, `/auth/logout` handlers using `@originals/auth/server`; `convex/authSessions.ts` for Convex-backed session storage; `authSessions` table in schema; build and lint pass
 - ✓ Phase 7.5: Bundle Size Optimization — Route-based code splitting with `React.lazy()` for ListView, JoinList, PublicList; modal lazy loading for DeleteListDialog, ShareModal, PublishModal; `@originals/auth` split into separate chunk; main bundle reduced from 802KB to 501KB (37% reduction); build and lint pass
 - ✓ Phase 7.4: Remove Debug Console Logs — Removed 4 `console.log` statements from `PublishModal.tsx`; kept `console.error` for production debugging; build and lint pass
 - ✓ Phase 7.3: Hook Memory Leak Fixes — Added `timeoutRefs` Map to `useToast` for proper timeout cleanup; added `isMounted` refs to `useOffline` and `useAuth` to prevent setState after unmount; build and lint pass
