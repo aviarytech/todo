@@ -10,8 +10,6 @@
 
 import {
   initializeTurnkeyClient,
-  initOtp,
-  completeOtp,
   fetchWallets,
   fetchUser,
   getKeyByCurve,
@@ -25,8 +23,6 @@ import type { TurnkeyWallet } from "@originals/auth/types";
 // Re-export functions and classes for consumers
 export {
   initializeTurnkeyClient,
-  initOtp,
-  completeOtp,
   fetchWallets,
   fetchUser,
   getKeyByCurve,

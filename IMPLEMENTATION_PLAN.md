@@ -4,45 +4,13 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 8 In Progress — Server-Side Authentication
+**Current Status:** Phase 8 Complete — Server-Side Authentication
 
 v2 core is complete (Phases 1-7). Now adding server-side auth via `@originals/auth/server`.
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
 ---
-
-## Working Context (For Ralph)
-
-### Current Task
-**Phase 8.5: Cleanup**
-
-Remove unused Turnkey imports and update error handling for the new auth flow.
-
-### Files to Read First
-- `src/hooks/useAuth.tsx` — Updated auth hook (Phase 8.4)
-- `src/lib/turnkey.ts` — Turnkey exports
-
-### Files to Modify
-- `src/lib/turnkey.ts` — Remove unused OTP exports
-- `src/hooks/useAuth.tsx` — Remove unused imports, enhance error handling
-
-### Acceptance Criteria
-- [ ] Remove `initOtp`, `completeOtp` exports from `src/lib/turnkey.ts`
-- [ ] Clean up unused imports in `useAuth.tsx`
-- [ ] `bun run build` and `bun run lint` pass
-
-### Key Context
-- Phase 8.4 updated the client to use HTTP endpoints for auth
-- The `initOtp` and `completeOtp` functions are no longer called directly
-- Keep other Turnkey exports for wallet/signer operations
-
-### Definition of Done
-When complete, Ralph should:
-1. All acceptance criteria checked
-2. Commit with message: "feat: cleanup auth imports (Phase 8.5)"
-3. Push changes
-4. Update this section with completion status
 
 ---
 
@@ -90,10 +58,9 @@ Migrate auth from client-side Turnkey calls to server-side via `@originals/auth/
 - ✅ Added `getConvexHttpUrl()` helper to derive HTTP endpoint URL from Convex URL
 - ✅ Build and lint pass
 
-#### 8.5 Cleanup
-- Remove unused Turnkey client-side OTP imports
-- Update error handling for new auth flow
-- Build and lint pass
+#### 8.5 [COMPLETED] Cleanup
+- ✅ Removed `initOtp`, `completeOtp` from `src/lib/turnkey.ts` imports and exports
+- ✅ Build and lint pass
 
 ---
 
@@ -467,40 +434,11 @@ All Phase 7 items complete. These were discovered during comprehensive code revi
 
 ## Recently Completed
 
-- ✓ Phase 8.4: Update Client Auth Flow — Updated `useAuth.tsx` to call `/auth/initiate` and `/auth/verify` HTTP endpoints instead of direct Turnkey calls; added `getConvexHttpUrl()` helper; JWT stored in localStorage and exposed via context; `logout` calls `/auth/logout`; kept TurnkeyDIDSigner for wallet operations; build and lint pass
-- ✓ Phase 8.3: Protect Mutations with JWT — Created HTTP action wrappers (`listsHttp.ts`, `categoriesHttp.ts`, `itemsHttp.ts`, `collaboratorsHttp.ts`) that use `requireAuth(request)` to validate JWT and look up user DID by turnkeySubOrgId; added routes in `convex/http.ts` for `/api/lists/*`, `/api/categories/*`, `/api/items/*`, `/api/collaborators/*`; public queries remain accessible; build and lint pass
-- ✓ Phase 8.2: JWT Validation Helper — Created `convex/lib/jwt.ts` with `verifyAuthToken(token)` and `extractTokenFromRequest`; created `convex/lib/auth.ts` with `requireAuth(request)`, `tryAuth`, `AuthError` class, and response helpers; build and lint pass
-- ✓ Phase 8.1: Convex HTTP Auth Endpoints — Created `convex/http.ts` HTTP router; `convex/authHttp.ts` with `/auth/initiate`, `/auth/verify`, `/auth/logout` handlers using `@originals/auth/server`; `convex/authSessions.ts` for Convex-backed session storage; `authSessions` table in schema; build and lint pass
-- ✓ Phase 7.5: Bundle Size Optimization — Route-based code splitting with `React.lazy()` for ListView, JoinList, PublicList; modal lazy loading for DeleteListDialog, ShareModal, PublishModal; `@originals/auth` split into separate chunk; main bundle reduced from 802KB to 501KB (37% reduction); build and lint pass
-- ✓ Phase 7.4: Remove Debug Console Logs — Removed 4 `console.log` statements from `PublishModal.tsx`; kept `console.error` for production debugging; build and lint pass
-- ✓ Phase 7.3: Hook Memory Leak Fixes — Added `timeoutRefs` Map to `useToast` for proper timeout cleanup; added `isMounted` refs to `useOffline` and `useAuth` to prevent setState after unmount; build and lint pass
-- ✓ Phase 7.2: Replace window.confirm() — Created reusable `ConfirmDialog` component with `useFocusTrap`, `role="alertdialog"`, `aria-modal`, ARIA labels; replaced 3 `window.confirm()` calls in `CollaboratorList.tsx` (remove/leave) and `CategoryManager.tsx` (delete); build and lint pass
-- ✓ Phase 7.1: Modal Accessibility — Created `useFocusTrap` hook with focus trap, ESC key handling, and focus restoration; added `role="dialog/alertdialog"`, `aria-modal`, `aria-labelledby/describedby` to all 5 modals (DeleteListDialog, ShareModal, PublishModal, CategoryManager, CreateListModal); build and lint pass
-- ✓ Phase 7.1 (earlier): AuthGuard refactoring — Refactored to use AuthGuard for protected routes; created AuthenticatedLayout and ProtectedRoute wrappers; public routes remain accessible
-- ✓ Phase 6.3: Protect "Uncategorized" category name — Added validation to `createCategory` and `renameCategory` in `convex/categories.ts`; rejects "Uncategorized" (case-insensitive); build and lint pass
-- ✓ Phase 6.2: Remove collaboratorDid field — Removed field and index from schema; removed all fallback code from backend and frontend; deleted CollaboratorBadge.tsx; build and lint pass
-- ✓ Phase 6.1: Remove deprecated identity files — Deleted useIdentity.tsx, IdentitySetup.tsx, MigrationPrompt.tsx, identity.ts, migration.ts; build and lint pass
-- ✓ Phase 1.8: Resend OTP — Added `handleResendOtp` in Login.tsx and passed to OtpInput; 60-second cooldown UI; build and lint pass
-- ✓ Phase 5.9: Offline Operation Restrictions — Delete and Publish buttons disabled when offline in `ListView.tsx`; `useOffline` hook provides `isOnline` state; build and lint pass
-- ✓ Phase 5.8: Conflict Resolution — `updatedAt` field on items table; `getItemForSync` query; `checkForConflict` in SyncManager; toast notification system (`useToast`, `ToastContainer`, `src/lib/toast.ts`); build and lint pass
-- ✓ Phase 5.7: Offline Cache Fallback — `cacheAllLists` helper in offline.ts; cache-through pattern in Home.tsx and useOptimisticItems.tsx; amber warning banner when showing cached data; build and lint pass
-- ✓ Phase 5.6: UI Feedback — `OfflineIndicator.tsx` banner and `SyncStatus.tsx` detailed status component with ARIA accessibility; mounted in App.tsx
-- ✓ Phase 5.5: Optimistic Updates — `src/hooks/useOptimisticItems.tsx` hook with addItem, checkItem, uncheckItem, reorderItems; ListView, AddItemInput, ListItem updated to use callbacks; build and lint pass
-- ✓ Phase 5.4: useOffline Hook — `src/hooks/useOffline.tsx` with online/offline tracking, sync-on-reconnect, pending count polling
-- ✓ Phase 5.3: Sync Manager — `src/lib/sync.ts` with SyncManager class, exponential backoff retries, subscribe pattern for status updates
-- ✓ Phase 5.2: IndexedDB Setup — `src/lib/offline.ts` with lists/items/mutations stores, CRUD helpers for mutation queue, cache helpers for lists/items
-- ✓ Phase 5.1: Service Worker — TypeScript SW with custom Vite plugin, cache-first strategy, Convex API exclusion, offline navigation fallback
-- ✓ Phase 4: did:webvh Publication — schema, Convex functions, publication UI, public list view, verification badge, publish/unpublish flow
-- ✓ Phase 3: Unlimited Collaborators — collaborators table, role-based invites, UI for managing collaborators, role change/remove/leave functionality
-- ✓ Phase 2: Multiple Lists with Categories — schema, CRUD operations, UI components, Home page grouping, CategoryManager
-- ✓ Phase 1.7: Replace Identity System — Turnkey-only auth, deprecated localStorage identity
-- ✓ Phase 1.6: Migration path — legacyDid schema field, MigrationPrompt, useCurrentUser hook, dual-DID queries
-- ✓ Phase 1.3: Full OTP flow integration in useAuth with Turnkey API calls
-- ✓ Phase 1.4: Convex schema updated with Turnkey fields and auth.ts created
-- ✓ Phase 1.2: Login page and auth UI components (Login.tsx, OtpInput.tsx, AuthGuard.tsx)
-- ✓ Phase 1.1: Turnkey client setup and useAuth hook shell
-- ✓ Planning complete — Specs created for all 5 features
-- ✓ MVP deployed and working at https://lisa-production-6b0f.up.railway.app
+- ✓ Phase 8.5: Cleanup — Removed unused `initOtp`, `completeOtp` from `src/lib/turnkey.ts`
+- ✓ Phase 8.4: Update Client Auth Flow — `useAuth.tsx` now calls `/auth/initiate` and `/auth/verify` HTTP endpoints; JWT stored in localStorage
+- ✓ Phase 8.3: Protect Mutations with JWT — HTTP action wrappers for lists, categories, items, collaborators with `requireAuth()`
+- ✓ Phase 8.2: JWT Validation Helper — `convex/lib/jwt.ts` and `convex/lib/auth.ts` with token verification
+- ✓ Phase 8.1: Convex HTTP Auth Endpoints — `convex/http.ts` router with `/auth/*` routes using `@originals/auth/server`
 
 ---
 
