@@ -9,6 +9,17 @@ export const roleValidator = v.union(
 );
 
 export default defineSchema({
+  // Rate limits table - for tracking auth endpoint rate limits (Phase 9.2)
+  rateLimits: defineTable({
+    key: v.string(), // Unique identifier (IP address or session ID)
+    endpoint: v.string(), // Endpoint being limited ("initiate" or "verify")
+    attempts: v.number(), // Number of attempts in current window
+    windowStart: v.number(), // Timestamp when current window started
+    expiresAt: v.number(), // When this record can be cleaned up (windowStart + window duration)
+  })
+    .index("by_key_endpoint", ["key", "endpoint"])
+    .index("by_expires_at", ["expiresAt"]),
+
   // Auth sessions table - for server-side OTP session storage (Phase 8)
   authSessions: defineTable({
     sessionId: v.string(), // Unique session identifier

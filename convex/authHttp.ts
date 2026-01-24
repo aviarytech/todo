@@ -17,6 +17,56 @@ import {
 } from "@originals/auth/server";
 import type { EmailAuthSession } from "@originals/auth";
 import { api } from "./_generated/api";
+import { RATE_LIMITS } from "./rateLimits";
+
+/**
+ * Helper to extract client IP from request headers.
+ *
+ * Checks common proxy headers and falls back to a generic identifier.
+ */
+function getClientIp(request: Request): string {
+  // Check standard headers in priority order
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    // X-Forwarded-For can contain multiple IPs; take the first (client IP)
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) {
+    return realIp.trim();
+  }
+
+  // Cloudflare-specific header
+  const cfConnectingIp = request.headers.get("cf-connecting-ip");
+  if (cfConnectingIp) {
+    return cfConnectingIp.trim();
+  }
+
+  // Fallback: use a generic identifier (not ideal but better than nothing)
+  // In production, reverse proxy should always set one of the above headers
+  return "unknown-ip";
+}
+
+/**
+ * Create a 429 Too Many Requests response.
+ */
+function createRateLimitResponse(retryAfterMs: number): Response {
+  const retryAfterSeconds = Math.ceil(retryAfterMs / 1000);
+  return new Response(
+    JSON.stringify({
+      error: "Too many requests. Please try again later.",
+      retryAfterSeconds,
+    }),
+    {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "Retry-After": String(retryAfterSeconds),
+      },
+    }
+  );
+}
 
 /**
  * Create a Convex-backed session storage adapter.
@@ -59,6 +109,18 @@ function createConvexSessionStorage(
  */
 export const initiate = httpAction(async (ctx, request) => {
   try {
+    // Rate limiting check (per IP)
+    const clientIp = getClientIp(request);
+    const rateLimitResult = await ctx.runMutation(api.rateLimits.checkAndIncrement, {
+      key: clientIp,
+      endpoint: "initiate",
+    });
+
+    if (!rateLimitResult.allowed) {
+      console.log(`[authHttp] Rate limit exceeded for IP: ${clientIp}`);
+      return createRateLimitResponse(rateLimitResult.retryAfterMs ?? RATE_LIMITS.initiate.windowMs);
+    }
+
     const body = await request.json();
     const email = body.email as string;
 
@@ -78,7 +140,7 @@ export const initiate = httpAction(async (ctx, request) => {
       );
     }
 
-    console.log(`[authHttp] Initiating auth for: ${email}`);
+    console.log(`[authHttp] Initiating auth for: ${email} (IP: ${clientIp})`);
 
     // Create Turnkey client (uses env vars)
     const turnkeyClient = createTurnkeyClient();
@@ -145,7 +207,18 @@ export const verify = httpAction(async (ctx, request) => {
       );
     }
 
-    console.log(`[authHttp] Verifying OTP for session: ${sessionId}`);
+    // Rate limiting check (per session ID to prevent brute force OTP guessing)
+    const rateLimitResult = await ctx.runMutation(api.rateLimits.checkAndIncrement, {
+      key: sessionId,
+      endpoint: "verify",
+    });
+
+    if (!rateLimitResult.allowed) {
+      console.log(`[authHttp] Rate limit exceeded for session: ${sessionId}`);
+      return createRateLimitResponse(rateLimitResult.retryAfterMs ?? RATE_LIMITS.verify.windowMs);
+    }
+
+    console.log(`[authHttp] Verifying OTP for session: ${sessionId} (attempt ${rateLimitResult.currentAttempts}/${RATE_LIMITS.verify.maxAttempts})`);
 
     // Get session from Convex database
     const dbSession = await ctx.runQuery(api.authSessions.getSession, { sessionId });

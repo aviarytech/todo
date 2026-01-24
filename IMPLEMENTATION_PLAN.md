@@ -4,9 +4,9 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 8 Complete — Server-Side Authentication ✅
+**Current Status:** Phase 9.2 Complete — Auth Rate Limiting ✅
 
-v2 core is complete (Phases 1-8). All phases implemented.
+v2 core is complete (Phases 1-8). Phase 9 validation & polish in progress.
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -14,42 +14,7 @@ v2 core is complete (Phases 1-8). All phases implemented.
 
 ## Working Context (For Ralph)
 
-### Current Task
-Phase 9.1: Manual Auth Flow Testing — **Requires User Action**
-
-### Prerequisites (User Must Complete)
-
-Before testing can continue, the user needs to:
-
-1. **Start Convex dev server**: Run `npx convex dev` in a separate terminal
-   - This will prompt for Convex login if not already authenticated
-   - This syncs the HTTP routes (`convex/http.ts`) to the local backend
-
-2. **Set Convex environment variables** (via `npx convex env set` or Convex dashboard):
-   - `TURNKEY_API_PUBLIC_KEY` — Server API key from Turnkey dashboard
-   - `TURNKEY_API_PRIVATE_KEY` — Server API secret from Turnkey dashboard
-   - `TURNKEY_ORGANIZATION_ID` — Parent org ID from Turnkey dashboard
-   - `JWT_SECRET` — Random 256-bit secret (generate with `openssl rand -base64 32`)
-
-### Automated Verification Complete
-- [x] Build passes with updated @originals/auth@1.6.1 and @originals/sdk@1.6.1
-- [x] Lint passes
-- [x] Vite dev server starts and responds (port 5173)
-- [x] Client env vars present: `VITE_CONVEX_URL`, `VITE_TURNKEY_API_BASE_URL`, `VITE_TURNKEY_ORGANIZATION_ID`
-
-### Manual Testing Required
-- [ ] Verify Convex env vars are set: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_ORGANIZATION_ID`, `JWT_SECRET`
-- [ ] Login flow works: enter email → receive OTP → verify → authenticated
-- [ ] Protected routes accessible after auth
-- [ ] Logout works and clears session
-
-### Blocker Found
-- Convex HTTP routes return 404 ("No matching routes found")
-- Root cause: `npx convex dev` is not running (cannot run non-interactively)
-- The local Convex backend (port 3211) is running but functions are not synced
-
-### Notes
-This is validation work, not implementation. Test the auth flow Ralph just built. If issues found, create bug tasks.
+_No active task. Phase 9.2 complete. Phase 9.1 blocked on user action._
 
 ---
 
@@ -57,7 +22,7 @@ This is validation work, not implementation. Test the auth flow Ralph just built
 
 ### Phase 9: Validation & Polish
 
-#### 9.1 [BLOCKED] Manual Auth Flow Testing
+#### 9.1 [BLOCKED:user-action] Manual Auth Flow Testing
 - [x] Automated checks pass (build, lint, dev server)
 - [ ] **BLOCKER**: User must run `npx convex dev` to sync HTTP routes
 - [ ] **BLOCKER**: User must set Convex env vars for Turnkey auth
@@ -65,10 +30,15 @@ This is validation work, not implementation. Test the auth flow Ralph just built
 - [ ] Test protected mutation access (requires above)
 - [ ] Document any bugs found
 
-#### 9.2 Add Auth Endpoint Rate Limiting
-- Limit `/auth/initiate` to 10 attempts/minute per IP (per specs)
-- Limit `/auth/verify` to 5 attempts/minute per session
-- Return 429 Too Many Requests on limit exceeded
+#### 9.2 [COMPLETED] Add Auth Endpoint Rate Limiting
+- ✅ Created `convex/rateLimits.ts` with `checkAndIncrement`, `checkStatus`, `cleanupExpired` functions
+- ✅ Added `rateLimits` table to `convex/schema.ts` with `by_key_endpoint` and `by_expires_at` indices
+- ✅ `/auth/initiate` limited to 10 attempts/minute per IP (via `getClientIp` helper)
+- ✅ `/auth/verify` limited to 5 attempts/minute per session ID
+- ✅ Returns 429 Too Many Requests with `Retry-After` header when exceeded
+- ✅ Rate limit state stored in Convex table (serverless-compatible)
+- ✅ TTL-based cleanup via `cleanupExpired` mutation
+- ✅ Build and lint pass
 
 ---
 
@@ -490,6 +460,7 @@ All Phase 7 items complete. These were discovered during comprehensive code revi
 
 ## Recently Completed
 
+- ✓ Phase 9.2: Auth Endpoint Rate Limiting — Complete
 - ✓ Phase 8: Server-Side Authentication — Complete (8.1-8.5)
 
 ---
@@ -508,7 +479,6 @@ These items are specified in `specs/constraints.md` but not enforced in code:
 - [TECH-DEBT] Add comprehensive E2E tests for new features
 - [TECH-DEBT] Performance audit — measure against specs/constraints.md targets (initial load <3s on 3G, item sync <1s)
 - [TECH-DEBT] WCAG 2.1 AA accessibility audit with automated tools (axe-core, Lighthouse)
-- [TECH-DEBT] Add rate limiting for auth endpoints (10 attempts/minute per specs)
 - [TECH-DEBT] Remove/gate remaining console.log statements in `src/lib/publication.ts` and `src/lib/sw-registration.ts`
 
 ### Minor Gaps (Low Priority)
