@@ -28,11 +28,11 @@ This builds on the deployed MVP (https://lisa-production-6b0f.up.railway.app) wh
 - [x] Item management with attribution
 
 New capabilities:
-- [ ] Turnkey-based authentication (@originals/auth)
-- [ ] Multiple lists with categories
-- [ ] Unlimited collaborators per list
-- [ ] did:webvh publication for public lists
-- [ ] Offline support with sync
+- [x] Turnkey-based authentication (@originals/auth)
+- [x] Multiple lists with categories
+- [x] Unlimited collaborators per list
+- [x] did:webvh publication for public lists
+- [x] Offline support with sync
 
 ## Success Criteria
 
