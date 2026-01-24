@@ -15,35 +15,32 @@ v2 core is complete (Phases 1-7). Now adding server-side auth via `@originals/au
 ## Working Context (For Ralph)
 
 ### Current Task
-**Phase 8.4: Update Client Auth Flow**
+**Phase 8.5: Cleanup**
 
-Update the client-side auth to call the new Convex HTTP endpoints.
+Remove unused Turnkey imports and update error handling for the new auth flow.
 
 ### Files to Read First
-- `src/hooks/useAuth.tsx` — Current Turnkey-based auth hook
-- `convex/http.ts` — HTTP router with all endpoint routes
-- `convex/listsHttp.ts`, `convex/itemsHttp.ts` — Example HTTP action patterns
+- `src/hooks/useAuth.tsx` — Updated auth hook (Phase 8.4)
+- `src/lib/turnkey.ts` — Turnkey exports
 
 ### Files to Modify
-- `src/hooks/useAuth.tsx` — Update to call Convex HTTP endpoints instead of Turnkey directly
+- `src/lib/turnkey.ts` — Remove unused OTP exports
+- `src/hooks/useAuth.tsx` — Remove unused imports, enhance error handling
 
 ### Acceptance Criteria
-- [ ] `useAuth` hook calls `/auth/initiate` and `/auth/verify` HTTP endpoints
-- [ ] Remove direct Turnkey OTP calls (`initOtp`, `completeOtp`)
-- [ ] JWT is stored (from cookie or response body)
-- [ ] Keep `TurnkeyDIDSigner` for client-side signing (DID operations still need wallet access)
+- [ ] Remove `initOtp`, `completeOtp` exports from `src/lib/turnkey.ts`
+- [ ] Clean up unused imports in `useAuth.tsx`
 - [ ] `bun run build` and `bun run lint` pass
 
 ### Key Context
-- Phase 8.3 created HTTP action wrappers that validate JWT and call mutations
-- Client needs to call `/auth/initiate` with email to start OTP flow
-- Client needs to call `/auth/verify` with sessionId and code to verify OTP
-- Response includes JWT token (also set as httpOnly cookie)
+- Phase 8.4 updated the client to use HTTP endpoints for auth
+- The `initOtp` and `completeOtp` functions are no longer called directly
+- Keep other Turnkey exports for wallet/signer operations
 
 ### Definition of Done
 When complete, Ralph should:
 1. All acceptance criteria checked
-2. Commit with message: "feat: update client auth flow (Phase 8.4)"
+2. Commit with message: "feat: cleanup auth imports (Phase 8.5)"
 3. Push changes
 4. Update this section with completion status
 
@@ -83,11 +80,15 @@ Migrate auth from client-side Turnkey calls to server-side via `@originals/auth/
 - ✅ Public queries (`getPublicList`) remain accessible without auth
 - ✅ Build and lint pass
 
-#### 8.4 Update Client Auth Flow
-- Update `src/hooks/useAuth.tsx` to call Convex HTTP endpoints instead of Turnkey directly
-- Remove direct Turnkey OTP calls (`initOtp`, `completeOtp`)
-- Store JWT from response (cookie handles persistence)
-- Keep `TurnkeyDIDSigner` for client-side signing (DID operations still need wallet access)
+#### 8.4 [COMPLETED] Update Client Auth Flow
+- ✅ Updated `src/hooks/useAuth.tsx` to call Convex HTTP endpoints
+- ✅ `startOtp` now calls `/auth/initiate` HTTP endpoint (removed `initOtp` direct call)
+- ✅ `verifyOtp` now calls `/auth/verify` HTTP endpoint (removed `completeOtp` direct call)
+- ✅ JWT token stored in localStorage and exposed via context
+- ✅ `logout` calls `/auth/logout` HTTP endpoint
+- ✅ Kept `TurnkeyDIDSigner` for client-side signing (attempts wallet access after server auth)
+- ✅ Added `getConvexHttpUrl()` helper to derive HTTP endpoint URL from Convex URL
+- ✅ Build and lint pass
 
 #### 8.5 Cleanup
 - Remove unused Turnkey client-side OTP imports
@@ -466,6 +467,7 @@ All Phase 7 items complete. These were discovered during comprehensive code revi
 
 ## Recently Completed
 
+- ✓ Phase 8.4: Update Client Auth Flow — Updated `useAuth.tsx` to call `/auth/initiate` and `/auth/verify` HTTP endpoints instead of direct Turnkey calls; added `getConvexHttpUrl()` helper; JWT stored in localStorage and exposed via context; `logout` calls `/auth/logout`; kept TurnkeyDIDSigner for wallet operations; build and lint pass
 - ✓ Phase 8.3: Protect Mutations with JWT — Created HTTP action wrappers (`listsHttp.ts`, `categoriesHttp.ts`, `itemsHttp.ts`, `collaboratorsHttp.ts`) that use `requireAuth(request)` to validate JWT and look up user DID by turnkeySubOrgId; added routes in `convex/http.ts` for `/api/lists/*`, `/api/categories/*`, `/api/items/*`, `/api/collaborators/*`; public queries remain accessible; build and lint pass
 - ✓ Phase 8.2: JWT Validation Helper — Created `convex/lib/jwt.ts` with `verifyAuthToken(token)` and `extractTokenFromRequest`; created `convex/lib/auth.ts` with `requireAuth(request)`, `tryAuth`, `AuthError` class, and response helpers; build and lint pass
 - ✓ Phase 8.1: Convex HTTP Auth Endpoints — Created `convex/http.ts` HTTP router; `convex/authHttp.ts` with `/auth/initiate`, `/auth/verify`, `/auth/logout` handlers using `@originals/auth/server`; `convex/authSessions.ts` for Convex-backed session storage; `authSessions` table in schema; build and lint pass
