@@ -15,33 +15,40 @@ v2 core is complete (Phases 1-7). Now adding server-side auth via `@originals/au
 ## Working Context (For Ralph)
 
 ### Current Task
-**Phase 8.2: JWT Validation Helper**
+**Phase 8.3: Protect Mutations with JWT**
 
-Create JWT validation helper for protecting Convex mutations.
+Update sensitive Convex mutations to require authentication.
 
 ### Files to Read First
-- `convex/authHttp.ts` — See how JWT is signed with `signToken`
-- `node_modules/@originals/auth/src/server/jwt.ts` — JWT implementation
+- `convex/lib/jwt.ts` — JWT verification helper (created in 8.2)
+- `convex/lib/auth.ts` — `requireAuth(request)` helper (created in 8.2)
+- `convex/lists.ts` — List mutations to protect
+- `convex/categories.ts` — Category mutations to protect
 
-### Files to Create/Modify
-- `convex/lib/jwt.ts` — NEW: `verifyAuthToken(token)` helper
-- `convex/lib/auth.ts` — NEW: `requireAuth(ctx)` helper
+### Files to Modify
+- `convex/lists.ts` — Add auth check to `createList`, `deleteList`
+- `convex/categories.ts` — Add auth check to `createCategory`, `renameCategory`, `deleteCategory`
+- `convex/items.ts` — Add auth check to item mutations
+- `convex/collaborators.ts` — Add auth check to collaborator mutations
 
 ### Acceptance Criteria
-- [ ] `convex/lib/jwt.ts` with `verifyAuthToken(token)` that returns `{ turnkeySubOrgId, email }`
-- [ ] `convex/lib/auth.ts` with `requireAuth(ctx)` that validates JWT from header/cookie
-- [ ] Helper throws on invalid/expired token
+- [ ] HTTP actions for protected mutations use `requireAuth(request)`
+- [ ] `createList`, `deleteList` require auth
+- [ ] Category mutations require auth
+- [ ] Item mutations require auth (addItem, checkItem, uncheckItem, reorderItems)
+- [ ] `getPublicList` query remains public (no auth required)
 - [ ] `bun run build` and `bun run lint` pass
 
 ### Key Context
-- Use `verifyToken` from `@originals/auth/server`
-- Extract JWT from `Authorization: Bearer <token>` header or `auth_token` cookie
-- Return decoded payload with `turnkeySubOrgId` and `email`
+- Current mutations use `userDid` passed from client
+- Server-side auth replaces client-passed DIDs with server-verified identity
+- Use `requireAuth(request)` to get `{ turnkeySubOrgId, email }`
+- Look up user by turnkeySubOrgId to get their DID
 
 ### Definition of Done
 When complete, Ralph should:
 1. All acceptance criteria checked
-2. Commit with message: "feat: add JWT validation helper (Phase 8.2)"
+2. Commit with message: "feat: protect mutations with JWT auth (Phase 8.3)"
 3. Push changes
 4. Update this section with completion status
 
@@ -62,10 +69,13 @@ Migrate auth from client-side Turnkey calls to server-side via `@originals/auth/
 - ✅ Required env vars: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_ORGANIZATION_ID`, `JWT_SECRET`
 - ✅ Build and lint pass
 
-#### 8.2 [IN PROGRESS] JWT Validation Helper
-- Create `convex/lib/jwt.ts` with `verifyAuthToken(token)` helper
-- Extract JWT from `Authorization: Bearer` header or `auth_token` cookie
-- Return `{ turnkeySubOrgId, email }` on success, throw on invalid/expired
+#### 8.2 [COMPLETED] JWT Validation Helper
+- ✅ Created `convex/lib/jwt.ts` with `verifyAuthToken(token)` helper using `@originals/auth/server`
+- ✅ Created `convex/lib/auth.ts` with `requireAuth(request)` helper for HTTP actions
+- ✅ `extractTokenFromRequest` extracts JWT from `Authorization: Bearer` header or `auth_token` cookie
+- ✅ Returns `{ turnkeySubOrgId, email }` on success, throws `AuthError` on invalid/expired
+- ✅ Added `tryAuth(request)` for optional auth and error response helpers
+- ✅ Build and lint pass
 
 #### 8.3 Protect Mutations with JWT
 - Create `convex/lib/auth.ts` with `requireAuth(ctx)` helper that validates JWT and returns user
@@ -455,6 +465,7 @@ All Phase 7 items complete. These were discovered during comprehensive code revi
 
 ## Recently Completed
 
+- ✓ Phase 8.2: JWT Validation Helper — Created `convex/lib/jwt.ts` with `verifyAuthToken(token)` and `extractTokenFromRequest`; created `convex/lib/auth.ts` with `requireAuth(request)`, `tryAuth`, `AuthError` class, and response helpers; build and lint pass
 - ✓ Phase 8.1: Convex HTTP Auth Endpoints — Created `convex/http.ts` HTTP router; `convex/authHttp.ts` with `/auth/initiate`, `/auth/verify`, `/auth/logout` handlers using `@originals/auth/server`; `convex/authSessions.ts` for Convex-backed session storage; `authSessions` table in schema; build and lint pass
 - ✓ Phase 7.5: Bundle Size Optimization — Route-based code splitting with `React.lazy()` for ListView, JoinList, PublicList; modal lazy loading for DeleteListDialog, ShareModal, PublishModal; `@originals/auth` split into separate chunk; main bundle reduced from 802KB to 501KB (37% reduction); build and lint pass
 - ✓ Phase 7.4: Remove Debug Console Logs — Removed 4 `console.log` statements from `PublishModal.tsx`; kept `console.error` for production debugging; build and lint pass
