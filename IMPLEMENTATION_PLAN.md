@@ -4,9 +4,9 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 7 Complete — All phases done, v2 ready for production
+**Current Status:** Phase 8 In Progress — Server-Side Authentication
 
-All 7 phases complete. Core features (Phase 1-5), tech debt cleanup (Phase 6), and quality improvements (Phase 7) all done.
+v2 core is complete (Phases 1-7). Now adding server-side auth via `@originals/auth/server`.
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
@@ -15,30 +15,83 @@ All 7 phases complete. Core features (Phase 1-5), tech debt cleanup (Phase 6), a
 ## Working Context (For Ralph)
 
 ### Current Task
-**All phases complete.** No active task.
+**Phase 8.1: Convex HTTP Auth Endpoints**
 
-v2 development is done. All 7 phases complete:
-- Phases 1-5: Core features (auth, categories, collaborators, publication, offline)
-- Phase 6: Tech debt cleanup (removed deprecated files and fields)
-- Phase 7: Quality improvements (accessibility, memory leaks, bundle optimization)
+Create Convex HTTP endpoints for server-side OTP authentication flow using `@originals/auth/server`.
 
-### What's Next?
-The only remaining items are in **Backlog (Post v2)**:
-- Optional publication features (VerifyButton, RequestAccessButton, rate limiting)
-- E2E tests
-- Performance audit
-- Category reordering UI
-- Future features (Bitcoin inscriptions, due dates, push notifications, etc.)
+### Files to Read First
+- `convex/auth.ts` — Current auth mutations (upsertUser, getUserByTurnkeyId)
+- `src/hooks/useAuth.tsx` — Current client-side auth flow (will be updated later)
+- `node_modules/@originals/auth/src/server/` — Server-side auth implementation
 
-**If the operator wants to continue development**, add notes to NOTES.md specifying which backlog item to prioritize.
+### Files to Create/Modify
+- `convex/http.ts` — NEW: HTTP router with auth endpoints
+- `convex/authHttp.ts` — NEW: HTTP action handlers for auth flow
+- `convex/authSessions.ts` — NEW: Session storage functions (Convex table-based)
+- `convex/schema.ts` — ADD: `authSessions` table for OTP session storage
+
+### Acceptance Criteria
+- [ ] `authSessions` table added to schema with fields: `sessionId`, `email`, `subOrgId`, `otpId`, `timestamp`, `verified`
+- [ ] `POST /auth/initiate` endpoint sends OTP via Turnkey server SDK, stores session in Convex
+- [ ] `POST /auth/verify` endpoint verifies OTP, issues JWT, upserts user
+- [ ] `POST /auth/logout` endpoint clears session
+- [ ] Environment variables documented: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_ORGANIZATION_ID`, `JWT_SECRET`
+- [ ] `npx convex dev` runs without errors
+
+### Key Context
+- Use `@originals/auth/server` imports: `createTurnkeyClient`, `initiateEmailAuth`, `verifyEmailAuth`, `signToken`
+- Convex serverless = no in-memory session storage. Use Convex `authSessions` table instead.
+- JWT payload: `{ sub: turnkeySubOrgId, email, sessionToken?, iat, exp }`
+- Keep existing `upsertUser` mutation — call it after successful OTP verification
+
+### Definition of Done
+When complete, Ralph should:
+1. All acceptance criteria checked
+2. Commit with message: "feat: add Convex HTTP auth endpoints (Phase 8.1)"
+3. Push changes
+4. Update this section with completion status
 
 ---
 
 ## Next Up (Priority Order)
 
-### Phase 7: Quality Improvements (Optional)
+### Phase 8: Server-Side Authentication
 
-These were discovered during comprehensive code review. All are optional improvements, not blockers.
+Migrate auth from client-side Turnkey calls to server-side via `@originals/auth/server`. See `specs/features/server-auth.md`.
+
+#### 8.1 [IN PROGRESS] Convex HTTP Auth Endpoints
+- Create `convex/http.ts` HTTP router
+- Create `convex/authHttp.ts` with handlers for `/auth/initiate`, `/auth/verify`, `/auth/logout`
+- Add `authSessions` table to schema for OTP session storage
+- Use `@originals/auth/server`: `createTurnkeyClient`, `initiateEmailAuth`, `verifyEmailAuth`, `signToken`
+- Document required env vars: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_ORGANIZATION_ID`, `JWT_SECRET`
+
+#### 8.2 JWT Validation Helper
+- Create `convex/lib/jwt.ts` with `verifyAuthToken(token)` helper
+- Extract JWT from `Authorization: Bearer` header or `auth_token` cookie
+- Return `{ turnkeySubOrgId, email }` on success, throw on invalid/expired
+
+#### 8.3 Protect Mutations with JWT
+- Create `convex/lib/auth.ts` with `requireAuth(ctx)` helper that validates JWT and returns user
+- Update sensitive mutations to require auth: `createList`, `deleteList`, `createCategory`, etc.
+- Keep public queries accessible without auth (e.g., `getPublicList`)
+
+#### 8.4 Update Client Auth Flow
+- Update `src/hooks/useAuth.tsx` to call Convex HTTP endpoints instead of Turnkey directly
+- Remove direct Turnkey OTP calls (`initOtp`, `completeOtp`)
+- Store JWT from response (cookie handles persistence)
+- Keep `TurnkeyDIDSigner` for client-side signing (DID operations still need wallet access)
+
+#### 8.5 Cleanup
+- Remove unused Turnkey client-side OTP imports
+- Update error handling for new auth flow
+- Build and lint pass
+
+---
+
+### Phase 7 [COMPLETED]: Quality Improvements
+
+All Phase 7 items complete. These were discovered during comprehensive code review.
 
 #### 7.1 [COMPLETED] Modal Accessibility
 - ✅ Created `src/hooks/useFocusTrap.tsx` — reusable focus trap hook with ESC handler and focus restoration
@@ -326,9 +379,21 @@ These were discovered during comprehensive code review. All are optional improve
 
 ## Warnings & Pitfalls
 
-### Authentication
+### Server-Side Authentication (Phase 8)
 
-- [CRITICAL] **Turnkey requires API proxy** — Client-side Turnkey calls go through their auth proxy. Ensure CORS and credentials handled properly.
+- [CRITICAL] **Turnkey server API keys** — The `TURNKEY_API_PRIVATE_KEY` is highly sensitive. Only store in Convex environment variables, never in client code or git.
+
+- [CRITICAL] **Convex serverless sessions** — Cannot use in-memory session storage like the `@originals/auth/server` defaults. Must use Convex `authSessions` table with TTL cleanup.
+
+- [WARNING] **JWT secret strength** — Use a cryptographically random 256-bit secret for `JWT_SECRET`. Generate with `openssl rand -base64 32`.
+
+- [NOTE] **Client still needs wallet access** — Server-side auth handles OTP verification, but the client still needs Turnkey wallet access for DID signing operations. The JWT can include the Turnkey session token to enable this.
+
+- [NOTE] **HTTP actions vs mutations** — Convex HTTP actions can't call mutations directly. Use `ctx.runMutation()` to call existing mutations like `upsertUser`.
+
+### Authentication (Legacy Notes)
+
+- [RESOLVED] **Turnkey API proxy** — Moving to server-side auth eliminates client-side Turnkey calls for OTP.
 
 - [WARNING] **Session token handling** — Turnkey session tokens are separate from JWT. Coordinate storage carefully.
 
