@@ -4,19 +4,75 @@
 
 Evolving from MVP to support Turnkey auth, categories, unlimited collaborators, did:webvh publication, and offline sync.
 
-**Current Status:** Phase 8 Complete — Server-Side Authentication
+**Current Status:** Phase 8 Complete — Server-Side Authentication ✅
 
-v2 core is complete (Phases 1-7). Now adding server-side auth via `@originals/auth/server`.
+v2 core is complete (Phases 1-8). All phases implemented.
 
 **Production URL:** https://lisa-production-6b0f.up.railway.app (MVP still running)
 
 ---
 
+## Working Context (For Ralph)
+
+### Current Task
+Phase 9.1: Manual Auth Flow Testing — **Requires User Action**
+
+### Prerequisites (User Must Complete)
+
+Before testing can continue, the user needs to:
+
+1. **Start Convex dev server**: Run `npx convex dev` in a separate terminal
+   - This will prompt for Convex login if not already authenticated
+   - This syncs the HTTP routes (`convex/http.ts`) to the local backend
+
+2. **Set Convex environment variables** (via `npx convex env set` or Convex dashboard):
+   - `TURNKEY_API_PUBLIC_KEY` — Server API key from Turnkey dashboard
+   - `TURNKEY_API_PRIVATE_KEY` — Server API secret from Turnkey dashboard
+   - `TURNKEY_ORGANIZATION_ID` — Parent org ID from Turnkey dashboard
+   - `JWT_SECRET` — Random 256-bit secret (generate with `openssl rand -base64 32`)
+
+### Automated Verification Complete
+- [x] Build passes with updated @originals/auth@1.6.1 and @originals/sdk@1.6.1
+- [x] Lint passes
+- [x] Vite dev server starts and responds (port 5173)
+- [x] Client env vars present: `VITE_CONVEX_URL`, `VITE_TURNKEY_API_BASE_URL`, `VITE_TURNKEY_ORGANIZATION_ID`
+
+### Manual Testing Required
+- [ ] Verify Convex env vars are set: `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_ORGANIZATION_ID`, `JWT_SECRET`
+- [ ] Login flow works: enter email → receive OTP → verify → authenticated
+- [ ] Protected routes accessible after auth
+- [ ] Logout works and clears session
+
+### Blocker Found
+- Convex HTTP routes return 404 ("No matching routes found")
+- Root cause: `npx convex dev` is not running (cannot run non-interactively)
+- The local Convex backend (port 3211) is running but functions are not synced
+
+### Notes
+This is validation work, not implementation. Test the auth flow Ralph just built. If issues found, create bug tasks.
+
 ---
 
 ## Next Up (Priority Order)
 
-### Phase 8: Server-Side Authentication
+### Phase 9: Validation & Polish
+
+#### 9.1 [BLOCKED] Manual Auth Flow Testing
+- [x] Automated checks pass (build, lint, dev server)
+- [ ] **BLOCKER**: User must run `npx convex dev` to sync HTTP routes
+- [ ] **BLOCKER**: User must set Convex env vars for Turnkey auth
+- [ ] Test full login/logout flow (requires above)
+- [ ] Test protected mutation access (requires above)
+- [ ] Document any bugs found
+
+#### 9.2 Add Auth Endpoint Rate Limiting
+- Limit `/auth/initiate` to 10 attempts/minute per IP (per specs)
+- Limit `/auth/verify` to 5 attempts/minute per session
+- Return 429 Too Many Requests on limit exceeded
+
+---
+
+### Phase 8: Server-Side Authentication [COMPLETED]
 
 Migrate auth from client-side Turnkey calls to server-side via `@originals/auth/server`. See `specs/features/server-auth.md`.
 
@@ -434,11 +490,7 @@ All Phase 7 items complete. These were discovered during comprehensive code revi
 
 ## Recently Completed
 
-- ✓ Phase 8.5: Cleanup — Removed unused `initOtp`, `completeOtp` from `src/lib/turnkey.ts`
-- ✓ Phase 8.4: Update Client Auth Flow — `useAuth.tsx` now calls `/auth/initiate` and `/auth/verify` HTTP endpoints; JWT stored in localStorage
-- ✓ Phase 8.3: Protect Mutations with JWT — HTTP action wrappers for lists, categories, items, collaborators with `requireAuth()`
-- ✓ Phase 8.2: JWT Validation Helper — `convex/lib/jwt.ts` and `convex/lib/auth.ts` with token verification
-- ✓ Phase 8.1: Convex HTTP Auth Endpoints — `convex/http.ts` router with `/auth/*` routes using `@originals/auth/server`
+- ✓ Phase 8: Server-Side Authentication — Complete (8.1-8.5)
 
 ---
 

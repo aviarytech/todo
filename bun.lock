@@ -5,8 +5,8 @@
     "": {
       "name": "lisa-temp",
       "dependencies": {
-        "@originals/auth": "^1.5.0",
-        "@originals/sdk": "^1.5.0",
+        "@originals/auth": "^1.6.1",
+        "@originals/sdk": "^1.6.1",
         "convex": "^1.31.6",
         "idb": "^8.0.3",
         "react": "^19.2.0",
@@ -183,9 +183,9 @@
 
     "@noble/secp256k1": ["@noble/secp256k1@2.3.0", "", {}, "sha512-0TQed2gcBbIrh7Ccyw+y/uZQvbJwm7Ao4scBUxqpBCcsOlZG0O4KGfjtNAy/li4W8n1xt3dxrwJ0beZ2h2G6Kw=="],
 
-    "@originals/auth": ["@originals/auth@1.5.0", "", { "dependencies": { "@noble/ed25519": "^2.0.0", "@noble/hashes": "^2.0.1", "@originals/sdk": "^1.4.4", "@turnkey/core": "^1.10.0", "@turnkey/sdk-server": "^5.0.0", "jsonwebtoken": "^9.0.2" }, "peerDependencies": { "express": ">=4.0.0" }, "optionalPeers": ["express"] }, "sha512-he54/VDikV+01GND7LMHI5c/XzTZQq92moLzLxnv+6HiSGq6bNMW4IoLE3tp4KwEyQGsTn0a0W+906tm+4VGGQ=="],
+    "@originals/auth": ["@originals/auth@1.6.1", "", { "dependencies": { "@noble/ed25519": "^2.0.0", "@noble/hashes": "^2.0.1", "@originals/sdk": "^1.4.4", "@turnkey/core": "^1.10.0", "@turnkey/sdk-server": "^5.0.0", "jsonwebtoken": "^9.0.2" }, "peerDependencies": { "express": ">=4.0.0" }, "optionalPeers": ["express"] }, "sha512-3Asc4g6YuTHyofKXOAiqBeRhG6qFpc9J2LNecQHuS4r2ZcA8IP65UqHcZFWIZ1Qg/FdGVC3AVyd6DrBmijNCDA=="],
 
-    "@originals/sdk": ["@originals/sdk@1.5.0", "", { "dependencies": { "@aviarytech/did-peer": "^1.1.2", "@noble/curves": "^1.6.0", "@noble/ed25519": "^2.0.0", "@noble/hashes": "^2.0.1", "@noble/secp256k1": "^2.0.0", "@scure/base": "^1.1.6", "@scure/bip32": "^2.0.0", "@scure/btc-signer": "^1.8.0", "@stablelib/ed25519": "^2.0.2", "b58": "^4.0.3", "bitcoinjs-lib": "^6.1.0", "cbor-js": "^0.1.0", "didwebvh-ts": "^2.5.5", "jsonld": "^8.3.3", "micro-ordinals": "^0.2.2", "multiformats": "^12.0.0", "uuid": "^13.0.0" } }, "sha512-kbEYruxvHfZRtq6hvhGhQFzGoLpnTE1xyGuaCNOPRxoTC2K/nhCUz2z8OPdvY1vZVrbMGHRZTMOw+mFIp7EpdQ=="],
+    "@originals/sdk": ["@originals/sdk@1.6.1", "", { "dependencies": { "@aviarytech/did-peer": "^1.1.2", "@noble/curves": "^1.6.0", "@noble/ed25519": "^2.0.0", "@noble/hashes": "^2.0.1", "@noble/secp256k1": "^2.0.0", "@scure/base": "^1.1.6", "@scure/bip32": "^2.0.0", "@scure/btc-signer": "^1.8.0", "@stablelib/ed25519": "^2.0.2", "b58": "^4.0.3", "bitcoinjs-lib": "^6.1.0", "cbor-js": "^0.1.0", "didwebvh-ts": "^2.5.5", "jsonld": "^8.3.3", "micro-ordinals": "^0.2.2", "multiformats": "^12.0.0", "uuid": "^13.0.0" }, "bin": { "originals-cel": "dist/cel/cli/index.js" } }, "sha512-S4eFqnGZ9roSIlkjseSHJX9TSmZ8FS4feqacwS5065QzVuG7EL8iZlLrU4au9ovVe1GUl+YjRsoezWzctcgqVA=="],
 
     "@peculiar/asn1-cms": ["@peculiar/asn1-cms@2.6.0", "", { "dependencies": { "@peculiar/asn1-schema": "^2.6.0", "@peculiar/asn1-x509": "^2.6.0", "@peculiar/asn1-x509-attr": "^2.6.0", "asn1js": "^3.0.6", "tslib": "^2.8.1" } }, "sha512-2uZqP+ggSncESeUF/9Su8rWqGclEfEiz1SyU02WX5fUONFfkjzS2Z/F1Li0ofSmf4JqYXIOdCAZqIXAIBAT1OA=="],
 
