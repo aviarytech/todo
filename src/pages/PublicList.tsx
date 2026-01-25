@@ -70,7 +70,7 @@ export function PublicList() {
         <div className="container mx-auto p-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="text-xl font-bold hover:text-gray-700">
-              Lisa
+              Poo App
             </Link>
             <span className="text-sm text-gray-500">Public List</span>
           </div>
@@ -180,7 +180,7 @@ export function PublicList() {
             to="/login"
             className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
           >
-            Sign up for Lisa
+            Sign up for Poo App
           </Link>
         </div>
       </main>

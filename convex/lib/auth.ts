@@ -16,12 +16,15 @@ export type { AuthTokenPayload };
  * Error thrown when authentication fails.
  */
 export class AuthError extends Error {
+  readonly code: "UNAUTHORIZED" | "INVALID_TOKEN" | "EXPIRED_TOKEN";
+
   constructor(
     message: string,
-    public readonly code: "UNAUTHORIZED" | "INVALID_TOKEN" | "EXPIRED_TOKEN"
+    code: "UNAUTHORIZED" | "INVALID_TOKEN" | "EXPIRED_TOKEN"
   ) {
     super(message);
     this.name = "AuthError";
+    this.code = code;
   }
 }
 
@@ -38,12 +41,12 @@ export class AuthError extends Error {
  * @example
  * ```typescript
  * export const protectedAction = httpAction(async (ctx, request) => {
- *   const auth = requireAuth(request);
+ *   const auth = await requireAuth(request);
  *   // auth.turnkeySubOrgId and auth.email are now available
  * });
  * ```
  */
-export function requireAuth(request: Request): AuthTokenPayload {
+export async function requireAuth(request: Request): Promise<AuthTokenPayload> {
   // Extract token from request
   const token = extractTokenFromRequest(request);
 
@@ -56,7 +59,7 @@ export function requireAuth(request: Request): AuthTokenPayload {
 
   try {
     // Verify and decode the token
-    return verifyAuthToken(token);
+    return await verifyAuthToken(token);
   } catch (error) {
     // Map specific error messages to error codes
     const message = error instanceof Error ? error.message : "Invalid token";
@@ -77,9 +80,9 @@ export function requireAuth(request: Request): AuthTokenPayload {
  * @param request - HTTP request object
  * @returns Authenticated user payload or null if not authenticated
  */
-export function tryAuth(request: Request): AuthTokenPayload | null {
+export async function tryAuth(request: Request): Promise<AuthTokenPayload | null> {
   try {
-    return requireAuth(request);
+    return await requireAuth(request);
   } catch {
     return null;
   }

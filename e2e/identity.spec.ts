@@ -12,7 +12,7 @@ test.describe("Identity creation flow", () => {
     await page.goto("/");
 
     // Should show the welcome modal
-    await expect(page.getByRole("heading", { name: "Welcome to Lisa" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome to Poo App" })).toBeVisible();
     await expect(page.getByLabel("Your name")).toBeVisible();
     await expect(page.getByRole("button", { name: "Get Started" })).toBeVisible();
   });
@@ -27,7 +27,7 @@ test.describe("Identity creation flow", () => {
     await page.getByRole("button", { name: "Get Started" }).click();
 
     // Wait for identity creation and modal to close
-    await expect(page.getByRole("heading", { name: "Welcome to Lisa" })).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Welcome to Poo App" })).not.toBeVisible({ timeout: 10000 });
 
     // Should show the home page with user's name in profile badge
     await expect(page.getByText("Test User")).toBeVisible();
@@ -58,6 +58,6 @@ test.describe("Identity creation flow", () => {
 
     // Identity should persist
     await expect(page.getByText("Persistent User")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Welcome to Lisa" })).not.toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome to Poo App" })).not.toBeVisible();
   });
 });

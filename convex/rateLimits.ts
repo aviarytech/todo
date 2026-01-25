@@ -159,6 +159,21 @@ export const checkStatus = query({
 });
 
 /**
+ * Clear all rate limits (for development/testing only).
+ */
+export const clearAll = mutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const all = await ctx.db.query("rateLimits").collect();
+    for (const record of all) {
+      await ctx.db.delete(record._id);
+    }
+    return all.length;
+  },
+});
+
+/**
  * Clean up expired rate limit records.
  *
  * Run periodically to prevent table bloat.

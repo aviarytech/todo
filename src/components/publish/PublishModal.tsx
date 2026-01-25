@@ -176,7 +176,7 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
                   type="text"
                   value={publicUrl ?? ""}
                   readOnly
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm"
+                  className="flex-1 px-3 py-2 text-gray-900 border border-gray-300 rounded-md bg-gray-50 text-sm"
                 />
                 <button
                   onClick={handleCopy}

@@ -15,7 +15,12 @@ import { OtpInput } from "../components/auth/OtpInput";
 
 type LoginStep = "email" | "otp";
 
-export function Login() {
+interface LoginProps {
+  /** If true, don't redirect after authentication (for embedded use in JoinList etc.) */
+  embedded?: boolean;
+}
+
+export function Login({ embedded = false }: LoginProps) {
   const { startOtp, verifyOtp, isLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -23,8 +28,8 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
+  // Redirect if already authenticated (unless embedded)
+  if (isAuthenticated && !embedded) {
     navigate("/", { replace: true });
     return null;
   }
@@ -64,11 +69,15 @@ export function Login() {
     try {
       await verifyOtp(code);
       // On successful verification, useAuth will update isAuthenticated
-      // and we'll redirect via the check at the top of this component
-      navigate("/", { replace: true });
+      // If not embedded, redirect to home; if embedded, parent handles navigation
+      if (!embedded) {
+        navigate("/", { replace: true });
+      }
     } catch (err) {
       console.error("Failed to verify OTP:", err);
-      setError("Invalid verification code. Please try again.");
+      // Show actual error message for debugging
+      const message = err instanceof Error ? err.message : "Verification failed";
+      setError(message);
     }
   };
 
@@ -92,7 +101,7 @@ export function Login() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-          Welcome to Lisa
+          Welcome to Poo App
         </h1>
         <p className="text-gray-600 mb-6 text-center">
           {step === "email"
@@ -114,7 +123,7 @@ export function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               disabled={isLoading}
               autoFocus
               autoComplete="email"

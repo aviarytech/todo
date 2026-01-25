@@ -29,6 +29,15 @@ export function OtpInput({ onComplete, isLoading = false, error, onResend }: Otp
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // Track submitted code to prevent duplicate submissions
+  const submittedCodeRef = useRef<string | null>(null);
+  // Use ref for callback to avoid effect re-running on callback change
+  const onCompleteRef = useRef(onComplete);
+
+  // Update ref when callback changes (must be done in effect, not during render)
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   // Focus first input on mount
   useEffect(() => {
@@ -46,13 +55,21 @@ export function OtpInput({ onComplete, isLoading = false, error, onResend }: Otp
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  // Check if code is complete and submit
+  // Reset submitted code when error occurs so user can retry
+  useEffect(() => {
+    if (error) {
+      submittedCodeRef.current = null;
+    }
+  }, [error]);
+
+  // Check if code is complete and submit (only once per code)
   useEffect(() => {
     const code = digits.join("");
-    if (code.length === OTP_LENGTH && !digits.includes("")) {
-      onComplete(code);
+    if (code.length === OTP_LENGTH && !digits.includes("") && code !== submittedCodeRef.current) {
+      submittedCodeRef.current = code;
+      onCompleteRef.current(code);
     }
-  }, [digits, onComplete]);
+  }, [digits]);
 
   const handleChange = (index: number, e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -113,8 +130,9 @@ export function OtpInput({ onComplete, isLoading = false, error, onResend }: Otp
 
     onResend();
     setResendCooldown(RESEND_COOLDOWN_SECONDS);
-    // Clear existing digits
+    // Clear existing digits and allow re-submission
     setDigits(Array(OTP_LENGTH).fill(""));
+    submittedCodeRef.current = null;
     inputRefs.current[0]?.focus();
   };
 
@@ -139,7 +157,7 @@ export function OtpInput({ onComplete, isLoading = false, error, onResend }: Otp
             onKeyDown={(e) => handleKeyDown(index, e)}
             onPaste={handlePaste}
             disabled={isLoading}
-            className="w-12 h-14 text-center text-2xl font-semibold border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-12 h-14 text-center text-2xl font-semibold text-gray-900 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label={`Digit ${index + 1}`}
           />
         ))}

@@ -59,12 +59,17 @@ export const getUserLists = query({
     userDid: v.string(),
     // Optional legacy DID for migrated users (their old localStorage DID)
     legacyDid: v.optional(v.string()),
+    // Optional wallet DID (client-generated did:peer:xxx, may differ from canonical did:temp:xxx)
+    walletDid: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // DIDs to check: current DID and optionally legacy DID
+    // DIDs to check: current DID and optionally legacy/wallet DIDs
     const didsToCheck = [args.userDid];
     if (args.legacyDid) {
       didsToCheck.push(args.legacyDid);
+    }
+    if (args.walletDid) {
+      didsToCheck.push(args.walletDid);
     }
 
     const listMap = new Map<string, Doc<"lists">>();

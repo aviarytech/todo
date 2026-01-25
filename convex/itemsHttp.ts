@@ -7,6 +7,7 @@
 
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import {
   requireAuth,
   AuthError,
@@ -14,17 +15,9 @@ import {
 } from "./lib/auth";
 
 /**
- * Helper to get user info from turnkeySubOrgId.
+ * Helper type for user info.
  */
-async function getUserFromAuth(
-  ctx: { runQuery: (query: unknown, args: unknown) => Promise<unknown> },
-  turnkeySubOrgId: string
-): Promise<{ did: string; legacyDid?: string } | null> {
-  const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
-    turnkeySubOrgId,
-  }) as { did: string; legacyDid?: string } | null;
-  return user;
-}
+type UserInfo = { did: string; legacyDid?: string } | null;
 
 /**
  * Standard JSON response helper.
@@ -57,10 +50,12 @@ function errorResponse(message: string, status = 400): Response {
 export const addItem = httpAction(async (ctx, request) => {
   try {
     // Require authentication
-    const auth = requireAuth(request);
+    const auth = await requireAuth(request);
 
     // Get user's DID from their turnkeySubOrgId
-    const user = await getUserFromAuth(ctx, auth.turnkeySubOrgId);
+    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
+      turnkeySubOrgId: auth.turnkeySubOrgId,
+    }) as UserInfo;
     if (!user) {
       return errorResponse("User not found", 404);
     }
@@ -75,7 +70,7 @@ export const addItem = httpAction(async (ctx, request) => {
 
     // Call the mutation with server-verified DID
     const itemId = await ctx.runMutation(api.items.addItem, {
-      listId: listId as unknown as ReturnType<typeof api.items.addItem>["_args"]["listId"],
+      listId: listId as Id<"lists">,
       name,
       createdByDid: user.did,
       legacyDid: user.legacyDid,
@@ -106,10 +101,12 @@ export const addItem = httpAction(async (ctx, request) => {
 export const checkItem = httpAction(async (ctx, request) => {
   try {
     // Require authentication
-    const auth = requireAuth(request);
+    const auth = await requireAuth(request);
 
     // Get user's DID from their turnkeySubOrgId
-    const user = await getUserFromAuth(ctx, auth.turnkeySubOrgId);
+    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
+      turnkeySubOrgId: auth.turnkeySubOrgId,
+    }) as UserInfo;
     if (!user) {
       return errorResponse("User not found", 404);
     }
@@ -124,7 +121,7 @@ export const checkItem = httpAction(async (ctx, request) => {
 
     // Call the mutation with server-verified DID
     await ctx.runMutation(api.items.checkItem, {
-      itemId: itemId as unknown as ReturnType<typeof api.items.checkItem>["_args"]["itemId"],
+      itemId: itemId as Id<"items">,
       checkedByDid: user.did,
       legacyDid: user.legacyDid,
       checkedAt: Date.now(),
@@ -154,10 +151,12 @@ export const checkItem = httpAction(async (ctx, request) => {
 export const uncheckItem = httpAction(async (ctx, request) => {
   try {
     // Require authentication
-    const auth = requireAuth(request);
+    const auth = await requireAuth(request);
 
     // Get user's DID from their turnkeySubOrgId
-    const user = await getUserFromAuth(ctx, auth.turnkeySubOrgId);
+    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
+      turnkeySubOrgId: auth.turnkeySubOrgId,
+    }) as UserInfo;
     if (!user) {
       return errorResponse("User not found", 404);
     }
@@ -172,7 +171,7 @@ export const uncheckItem = httpAction(async (ctx, request) => {
 
     // Call the mutation with server-verified DID
     await ctx.runMutation(api.items.uncheckItem, {
-      itemId: itemId as unknown as ReturnType<typeof api.items.uncheckItem>["_args"]["itemId"],
+      itemId: itemId as Id<"items">,
       userDid: user.did,
       legacyDid: user.legacyDid,
     });
@@ -201,10 +200,12 @@ export const uncheckItem = httpAction(async (ctx, request) => {
 export const removeItem = httpAction(async (ctx, request) => {
   try {
     // Require authentication
-    const auth = requireAuth(request);
+    const auth = await requireAuth(request);
 
     // Get user's DID from their turnkeySubOrgId
-    const user = await getUserFromAuth(ctx, auth.turnkeySubOrgId);
+    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
+      turnkeySubOrgId: auth.turnkeySubOrgId,
+    }) as UserInfo;
     if (!user) {
       return errorResponse("User not found", 404);
     }
@@ -219,7 +220,7 @@ export const removeItem = httpAction(async (ctx, request) => {
 
     // Call the mutation with server-verified DID
     await ctx.runMutation(api.items.removeItem, {
-      itemId: itemId as unknown as ReturnType<typeof api.items.removeItem>["_args"]["itemId"],
+      itemId: itemId as Id<"items">,
       userDid: user.did,
       legacyDid: user.legacyDid,
     });
@@ -248,10 +249,12 @@ export const removeItem = httpAction(async (ctx, request) => {
 export const reorderItems = httpAction(async (ctx, request) => {
   try {
     // Require authentication
-    const auth = requireAuth(request);
+    const auth = await requireAuth(request);
 
     // Get user's DID from their turnkeySubOrgId
-    const user = await getUserFromAuth(ctx, auth.turnkeySubOrgId);
+    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
+      turnkeySubOrgId: auth.turnkeySubOrgId,
+    }) as UserInfo;
     if (!user) {
       return errorResponse("User not found", 404);
     }
@@ -266,8 +269,8 @@ export const reorderItems = httpAction(async (ctx, request) => {
 
     // Call the mutation with server-verified DID
     await ctx.runMutation(api.items.reorderItems, {
-      listId: listId as unknown as ReturnType<typeof api.items.reorderItems>["_args"]["listId"],
-      itemIds: itemIds as unknown as ReturnType<typeof api.items.reorderItems>["_args"]["itemIds"],
+      listId: listId as Id<"lists">,
+      itemIds: itemIds as Id<"items">[],
       userDid: user.did,
       legacyDid: user.legacyDid,
     });

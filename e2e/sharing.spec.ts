@@ -65,6 +65,6 @@ test.describe("Join flow", () => {
 
     // Should show error or redirect (depending on implementation)
     // Since identity doesn't exist, it will prompt for identity first
-    await expect(page.getByRole("heading", { name: "Welcome to Lisa" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome to Poo App" })).toBeVisible();
   });
 });

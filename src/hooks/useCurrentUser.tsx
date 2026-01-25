@@ -13,10 +13,12 @@ import { useAuth, type CreateDIDResult } from "./useAuth";
 import type { TurnkeyDIDSigner } from "../lib/turnkey";
 
 export interface CurrentUser {
-  /** User's DID (from Turnkey authentication) */
+  /** User's canonical DID (from Convex user record, or fallback to authUser.did) */
   did: string | null;
   /** Legacy DID for migrated users (their old localStorage DID, stored in Convex) */
   legacyDid: string | null;
+  /** Wallet-generated DID (from client-side Turnkey wallet, may differ from canonical DID) */
+  walletDid: string | null;
   /** Display name */
   displayName: string | null;
   /** Email address */
@@ -56,9 +58,18 @@ export function useCurrentUser(): CurrentUser {
 
   // Authenticated user
   if (isAuthenticated && authUser) {
+    // Prefer DID from Convex (canonical) over client-generated DID
+    // The server always stores did:temp:xxx, while the client might generate
+    // did:peer:xxx if wallet setup succeeds. Use Convex DID for consistency.
+    const canonicalDid = turnkeyUser?.did ?? authUser.did;
+    // Wallet DID is the client-generated DID, which may be did:peer:xxx
+    // Include it for backwards compatibility with records created before this fix
+    const walletDid = authUser.did !== canonicalDid ? authUser.did : null;
+
     return {
-      did: authUser.did,
+      did: canonicalDid,
       legacyDid: turnkeyUser?.legacyDid ?? null,
+      walletDid,
       displayName: authUser.displayName,
       email: authUser.email,
       isAuthenticated: true,
@@ -72,6 +83,7 @@ export function useCurrentUser(): CurrentUser {
   return {
     did: null,
     legacyDid: null,
+    walletDid: null,
     displayName: null,
     email: null,
     isAuthenticated: false,

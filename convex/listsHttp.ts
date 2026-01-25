@@ -7,6 +7,7 @@
 
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import {
   requireAuth,
   AuthError,
@@ -14,18 +15,9 @@ import {
 } from "./lib/auth";
 
 /**
- * Helper to get user info from turnkeySubOrgId.
- * Returns the user's DID and legacyDid for authorization checks.
+ * Helper type for user info.
  */
-async function getUserFromAuth(
-  ctx: { runQuery: (query: unknown, args: unknown) => Promise<unknown> },
-  turnkeySubOrgId: string
-): Promise<{ did: string; legacyDid?: string } | null> {
-  const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
-    turnkeySubOrgId,
-  }) as { did: string; legacyDid?: string } | null;
-  return user;
-}
+type UserInfo = { did: string; legacyDid?: string } | null;
 
 /**
  * Standard JSON response helper.
@@ -58,10 +50,12 @@ function errorResponse(message: string, status = 400): Response {
 export const createList = httpAction(async (ctx, request) => {
   try {
     // Require authentication
-    const auth = requireAuth(request);
+    const auth = await requireAuth(request);
 
     // Get user's DID from their turnkeySubOrgId
-    const user = await getUserFromAuth(ctx, auth.turnkeySubOrgId);
+    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
+      turnkeySubOrgId: auth.turnkeySubOrgId,
+    }) as UserInfo;
     if (!user) {
       return errorResponse("User not found", 404);
     }
@@ -111,10 +105,12 @@ export const createList = httpAction(async (ctx, request) => {
 export const deleteList = httpAction(async (ctx, request) => {
   try {
     // Require authentication
-    const auth = requireAuth(request);
+    const auth = await requireAuth(request);
 
     // Get user's DID from their turnkeySubOrgId
-    const user = await getUserFromAuth(ctx, auth.turnkeySubOrgId);
+    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
+      turnkeySubOrgId: auth.turnkeySubOrgId,
+    }) as UserInfo;
     if (!user) {
       return errorResponse("User not found", 404);
     }
@@ -129,7 +125,7 @@ export const deleteList = httpAction(async (ctx, request) => {
 
     // Call the mutation with server-verified DID
     await ctx.runMutation(api.lists.deleteList, {
-      listId: listId as unknown as ReturnType<typeof api.lists.deleteList>["_args"]["listId"],
+      listId: listId as Id<"lists">,
       userDid: user.did,
       legacyDid: user.legacyDid,
     });

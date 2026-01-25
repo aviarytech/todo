@@ -1,10 +1,10 @@
 /**
  * JWT validation helper for Convex mutations.
  *
- * Uses @originals/auth/server for token verification.
+ * Uses jose library for token verification (Web Crypto API - works everywhere).
  */
 
-import { verifyToken } from "@originals/auth/server";
+import * as jose from "jose";
 
 /**
  * Result of a successful token verification.
@@ -19,33 +19,66 @@ export interface AuthTokenPayload {
 }
 
 /**
+ * JWT payload structure from @originals/auth
+ */
+interface JWTPayload {
+  sub: string;
+  email: string;
+  sessionToken?: string;
+  iat?: number;
+  exp?: number;
+}
+
+/**
  * Verify a JWT auth token and return the decoded payload.
  *
  * @param token - JWT token string
  * @returns Decoded token payload with turnkeySubOrgId and email
  * @throws Error if token is invalid, expired, or missing required fields
  */
-export function verifyAuthToken(token: string): AuthTokenPayload {
+export async function verifyAuthToken(token: string): Promise<AuthTokenPayload> {
   if (!token) {
     throw new Error("Token is required");
   }
 
-  // verifyToken throws on invalid/expired tokens
-  const payload = verifyToken(token);
-
-  // Validate required fields
-  if (!payload.sub) {
-    throw new Error("Token missing sub-organization ID");
-  }
-  if (!payload.email) {
-    throw new Error("Token missing email");
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error("JWT_SECRET environment variable not set");
   }
 
-  return {
-    turnkeySubOrgId: payload.sub,
-    email: payload.email,
-    sessionToken: payload.sessionToken,
-  };
+  try {
+    // Encode secret as Uint8Array for jose
+    const secret = new TextEncoder().encode(jwtSecret);
+
+    // Verify the token
+    const { payload } = await jose.jwtVerify(token, secret, {
+      algorithms: ["HS256"],
+    });
+
+    const jwtPayload = payload as unknown as JWTPayload;
+
+    // Validate required fields
+    if (!jwtPayload.sub) {
+      throw new Error("Token missing sub-organization ID");
+    }
+    if (!jwtPayload.email) {
+      throw new Error("Token missing email");
+    }
+
+    return {
+      turnkeySubOrgId: jwtPayload.sub,
+      email: jwtPayload.email,
+      sessionToken: jwtPayload.sessionToken,
+    };
+  } catch (error) {
+    if (error instanceof jose.errors.JWTExpired) {
+      throw new Error("Token has expired");
+    }
+    if (error instanceof jose.errors.JWTInvalid) {
+      throw new Error("Invalid token");
+    }
+    throw error;
+  }
 }
 
 /**

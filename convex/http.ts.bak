@@ -33,9 +33,6 @@ const RATE_LIMITS = {
   verify: { windowMs: 60000, maxAttempts: 5 },
 };
 
-// Skip rate limiting in development
-const SKIP_RATE_LIMIT = process.env.NODE_ENV !== "production";
-
 /**
  * Helper to extract client IP from request headers.
  */
@@ -56,33 +53,18 @@ function getClientIp(request: Request): string {
 }
 
 /**
- * Get CORS headers for a request.
- * When credentials are included, we must echo the specific origin (not "*").
+ * CORS headers for all responses.
  */
-function getCorsHeaders(request: Request): Record<string, string> {
-  const origin = request.headers.get("Origin") || "*";
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Credentials": "true",
-  };
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
 /**
  * Create a JSON response with CORS headers.
  */
-function jsonResponse(
-  data: unknown,
-  status = 200,
-  extraHeaders: Record<string, string> = {},
-  request?: Request
-): Response {
-  const corsHeaders = request ? getCorsHeaders(request) : {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  };
+function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -96,13 +78,12 @@ function jsonResponse(
 /**
  * Create a 429 Too Many Requests response.
  */
-function createRateLimitResponse(retryAfterMs: number, request: Request): Response {
+function createRateLimitResponse(retryAfterMs: number): Response {
   const retryAfterSeconds = Math.ceil(retryAfterMs / 1000);
   return jsonResponse(
     { error: "Too many requests. Please try again later.", retryAfterSeconds },
     429,
-    { "Retry-After": String(retryAfterSeconds) },
-    request
+    { "Retry-After": String(retryAfterSeconds) }
   );
 }
 
@@ -116,29 +97,26 @@ function createRateLimitResponse(retryAfterMs: number, request: Request): Respon
 const initiate = httpAction(async (ctx, request) => {
   try {
     const clientIp = getClientIp(request);
+    const rateLimitResult = await ctx.runMutation(api.rateLimits.checkAndIncrement, {
+      key: clientIp,
+      endpoint: "initiate",
+    });
 
-    if (!SKIP_RATE_LIMIT) {
-      const rateLimitResult = await ctx.runMutation(api.rateLimits.checkAndIncrement, {
-        key: clientIp,
-        endpoint: "initiate",
-      });
-
-      if (!rateLimitResult.allowed) {
-        console.log(`[authHttp] Rate limit exceeded for IP: ${clientIp}`);
-        return createRateLimitResponse(rateLimitResult.retryAfterMs ?? RATE_LIMITS.initiate.windowMs, request);
-      }
+    if (!rateLimitResult.allowed) {
+      console.log(`[authHttp] Rate limit exceeded for IP: ${clientIp}`);
+      return createRateLimitResponse(rateLimitResult.retryAfterMs ?? RATE_LIMITS.initiate.windowMs);
     }
 
     const body = await request.json();
     const email = body.email as string;
 
     if (!email) {
-      return jsonResponse({ error: "Email is required" }, 400, {}, request);
+      return jsonResponse({ error: "Email is required" }, 400);
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return jsonResponse({ error: "Invalid email format" }, 400, {}, request);
+      return jsonResponse({ error: "Invalid email format" }, 400);
     }
 
     console.log(`[authHttp] Initiating auth for: ${email} (IP: ${clientIp})`);
@@ -159,14 +137,12 @@ const initiate = httpAction(async (ctx, request) => {
     return jsonResponse({
       sessionId: result.sessionId,
       message: result.message,
-    }, 200, {}, request);
+    });
   } catch (error) {
     console.error("[authHttp] Initiate error:", error);
     return jsonResponse(
       { error: error instanceof Error ? error.message : "Failed to initiate auth" },
-      500,
-      {},
-      request
+      500
     );
   }
 });
@@ -181,19 +157,17 @@ const verify = httpAction(async (ctx, request) => {
     const code = body.code as string;
 
     if (!sessionId || !code) {
-      return jsonResponse({ error: "Session ID and code are required" }, 400, {}, request);
+      return jsonResponse({ error: "Session ID and code are required" }, 400);
     }
 
-    if (!SKIP_RATE_LIMIT) {
-      const rateLimitResult = await ctx.runMutation(api.rateLimits.checkAndIncrement, {
-        key: sessionId,
-        endpoint: "verify",
-      });
+    const rateLimitResult = await ctx.runMutation(api.rateLimits.checkAndIncrement, {
+      key: sessionId,
+      endpoint: "verify",
+    });
 
-      if (!rateLimitResult.allowed) {
-        console.log(`[authHttp] Rate limit exceeded for session: ${sessionId}`);
-        return createRateLimitResponse(rateLimitResult.retryAfterMs ?? RATE_LIMITS.verify.windowMs, request);
-      }
+    if (!rateLimitResult.allowed) {
+      console.log(`[authHttp] Rate limit exceeded for session: ${sessionId}`);
+      return createRateLimitResponse(rateLimitResult.retryAfterMs ?? RATE_LIMITS.verify.windowMs);
     }
 
     console.log(`[authHttp] Verifying OTP for session: ${sessionId}`);
@@ -201,12 +175,12 @@ const verify = httpAction(async (ctx, request) => {
     // Get session from database
     const dbSession = await ctx.runQuery(api.authSessions.getSession, { sessionId });
     if (!dbSession) {
-      return jsonResponse({ error: "Invalid or expired session" }, 400, {}, request);
+      return jsonResponse({ error: "Invalid or expired session" }, 400);
     }
 
     // Validate required session fields
     if (!dbSession.subOrgId || !dbSession.otpId) {
-      return jsonResponse({ error: "Invalid session state" }, 400, {}, request);
+      return jsonResponse({ error: "Invalid session state" }, 400);
     }
 
     // Call internal Node.js action
@@ -223,7 +197,7 @@ const verify = httpAction(async (ctx, request) => {
     });
 
     if (!result.verified || !result.email || !result.subOrgId) {
-      return jsonResponse({ error: "Verification failed" }, 400, {}, request);
+      return jsonResponse({ error: "Verification failed" }, 400);
     }
 
     console.log(`[authHttp] OTP verified for: ${result.email}`);
@@ -264,16 +238,13 @@ const verify = httpAction(async (ctx, request) => {
         },
       },
       200,
-      { "Set-Cookie": authResult.cookieValue },
-      request
+      { "Set-Cookie": authResult.cookieValue }
     );
   } catch (error) {
     console.error("[authHttp] Verify error:", error);
     return jsonResponse(
       { error: error instanceof Error ? error.message : "Verification failed" },
-      500,
-      {},
-      request
+      500
     );
   }
 });
@@ -281,12 +252,12 @@ const verify = httpAction(async (ctx, request) => {
 /**
  * POST /auth/logout - Clear auth cookie
  */
-const logout = httpAction(async (ctx, request) => {
+const logout = httpAction(async (ctx) => {
   console.log("[authHttp] Logging out");
 
   const result = await ctx.runAction(internal.authInternal.getLogoutCookie, {});
 
-  return jsonResponse({ success: true }, 200, { "Set-Cookie": result.cookieValue }, request);
+  return jsonResponse({ success: true }, 200, { "Set-Cookie": result.cookieValue });
 });
 
 const http = httpRouter();
@@ -311,15 +282,13 @@ http.route({
 });
 
 // CORS preflight handler
-const corsHandler = httpAction(async (_ctx, request) => {
-  const origin = request.headers.get("Origin") || "*";
+const corsHandler = httpAction(async () => {
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Credentials": "true",
       "Access-Control-Max-Age": "86400",
     },
   });

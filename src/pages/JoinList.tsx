@@ -40,11 +40,11 @@ export function JoinList() {
       : "skip"
   );
 
-  // Show login if not authenticated
-  if (!isUserLoading && !isAuthenticated) {
+  // Show login if not authenticated (but don't unmount during loading to preserve OTP state)
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Login />
+        <Login embedded />
         <div className="text-center text-gray-500 -mt-4 pb-8">
           Sign in to join this list.
         </div>
@@ -52,7 +52,7 @@ export function JoinList() {
     );
   }
 
-  // Loading states
+  // Loading states (only shown after authenticated)
   if (isUserLoading || validation === undefined) {
     return (
       <div className="text-center py-12">

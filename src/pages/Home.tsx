@@ -19,17 +19,17 @@ import { CategoryManager } from "../components/lists/CategoryManager";
 import { cacheAllLists, getAllCachedLists, type OfflineList } from "../lib/offline";
 
 export function Home() {
-  const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
+  const { did, legacyDid, walletDid, isLoading: userLoading } = useCurrentUser();
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { isOnline } = useOffline();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [cachedLists, setCachedLists] = useState<OfflineList[]>([]);
 
-  // Query lists for current DID, including legacyDid for migrated users
+  // Query lists for current DID, including legacyDid and walletDid for backwards compat
   const serverLists = useQuery(
     api.lists.getUserLists,
-    did ? { userDid: did, legacyDid: legacyDid ?? undefined } : "skip"
+    did ? { userDid: did, legacyDid: legacyDid ?? undefined, walletDid: walletDid ?? undefined } : "skip"
   );
 
   // Cache lists when online and data is available

@@ -73,7 +73,7 @@ export function CategorySelector({
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
           placeholder="Category name"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           autoFocus
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -118,7 +118,7 @@ export function CategorySelector({
         value={value ?? ""}
         onChange={handleSelectChange}
         disabled={disabled}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+        className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
       >
         <option value="">Uncategorized</option>
         {categories.map((category) => (

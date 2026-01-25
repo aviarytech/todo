@@ -165,24 +165,31 @@ export const acceptInvite = mutation({
       )
       .first();
 
+    const newRole = invite.role ?? "editor";
+
     if (existing) {
-      throw new Error("You are already a collaborator on this list");
+      // If already a collaborator, check if this invite offers a role upgrade
+      const isUpgrade = newRole === "editor" && existing.role === "viewer";
+      if (isUpgrade) {
+        // Upgrade their role
+        await ctx.db.patch(existing._id, { role: "editor" });
+      }
+      // Either way, mark the invite as used (don't throw error)
+    } else {
+      // Add new collaborator
+      await ctx.db.insert("collaborators", {
+        listId: args.listId,
+        userDid: args.userDid,
+        role: newRole,
+        joinedAt: args.currentTime,
+        invitedByDid: list.ownerDid,
+      });
     }
 
     // Mark invite as used
     await ctx.db.patch(invite._id, {
       usedAt: args.currentTime,
       usedByDid: args.userDid,
-    });
-
-    // Add collaborator to collaborators table (Phase 3)
-    const role = invite.role ?? "editor";
-    await ctx.db.insert("collaborators", {
-      listId: args.listId,
-      userDid: args.userDid,
-      role,
-      joinedAt: args.currentTime,
-      invitedByDid: list.ownerDid,
     });
   },
 });

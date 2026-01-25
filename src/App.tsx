@@ -26,7 +26,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <header className="bg-white shadow-sm p-4">
         <div className="container mx-auto flex items-center justify-between">
           <Link to="/" className="text-xl font-bold hover:text-gray-700">
-            Lisa
+            Poo App
           </Link>
           <ProfileBadge />
         </div>

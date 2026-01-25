@@ -17,6 +17,7 @@
     "@originals/sdk": "^1.6.1",
     "convex": "^1.31.6",
     "idb": "^8.0.3",
+    "jose": "^6.1.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.12.0",

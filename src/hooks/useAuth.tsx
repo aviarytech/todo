@@ -40,15 +40,15 @@ import type { TurnkeyClient, WalletAccount } from "@turnkey/core";
  *
  * Convex URLs:
  * - Cloud: https://xxx.convex.cloud -> https://xxx.convex.site
- * - Local dev: http://127.0.0.1:3214 -> http://127.0.0.1:3211
+ * - Local dev: http://127.0.0.1:3210 -> http://127.0.0.1:3211
  */
 function getConvexHttpUrl(): string {
   const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
 
   // Local development
   if (convexUrl.includes("127.0.0.1") || convexUrl.includes("localhost")) {
-    // Replace port 3214 with 3211 for HTTP actions
-    return convexUrl.replace(":3214", ":3211");
+    // Replace port 3210 with 3211 for HTTP actions
+    return convexUrl.replace(":3210", ":3211");
   }
 
   // Convex cloud deployment
@@ -169,11 +169,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const isMountedRef = useRef(true);
 
   /**
-   * Get or create Turnkey client instance
+   * Get or create Turnkey client instance.
+   * Returns null if Turnkey client config is not available.
    */
-  const getTurnkeyClient = useCallback((): TurnkeyClient => {
+  const getTurnkeyClient = useCallback((): TurnkeyClient | null => {
     if (!turnkeyClientRef.current) {
-      turnkeyClientRef.current = initializeTurnkeyClient();
+      try {
+        turnkeyClientRef.current = initializeTurnkeyClient();
+      } catch (err) {
+        console.log("[useAuth] Turnkey client not available (config missing):", err);
+        return null;
+      }
     }
     return turnkeyClientRef.current;
   }, []);
@@ -195,14 +201,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   /**
-   * Create signer from wallet data
+   * Create signer from wallet data.
+   * Returns null if Turnkey client is not available.
    */
   const createSigner = useCallback(
     (
       walletAccount: WalletAccount,
       publicKeyMultibase: string
-    ): TurnkeyDIDSigner => {
+    ): TurnkeyDIDSigner | null => {
       const client = getTurnkeyClient();
+      if (!client) return null;
       return new TurnkeyDIDSigner(
         client,
         walletAccount,
@@ -260,7 +268,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   /**
-   * Restore session from localStorage and validate with Turnkey
+   * Restore session from localStorage.
+   * If Turnkey client is available, also validate and set up wallet access.
    */
   useEffect(() => {
     // Mark as mounted at start, unmount flag in cleanup
@@ -276,38 +285,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         const parsed: PersistedAuthState = JSON.parse(storedState);
-        console.log("[useAuth] Found stored session, validating...");
+        console.log("[useAuth] Found stored session, restoring...");
 
-        // Validate session with Turnkey by fetching user (for wallet access)
+        // Restore basic auth state (works without Turnkey client)
+        setUser(parsed.user);
+        setToken(parsed.token);
+        localStorage.setItem(JWT_STORAGE_KEY, parsed.token);
+
+        // Try to set up wallet access if Turnkey client is available
         const client = getTurnkeyClient();
-        try {
-          await fetchUser(client, handleSessionExpired);
-          if (!isMountedRef.current) return;
-          console.log("[useAuth] Session valid, restoring state");
+        if (client) {
+          try {
+            await fetchUser(client, handleSessionExpired);
+            if (!isMountedRef.current) return;
+            console.log("[useAuth] Turnkey session valid, restoring wallet access");
 
-          // Restore state
-          setUser(parsed.user);
-          setToken(parsed.token);
-          localStorage.setItem(JWT_STORAGE_KEY, parsed.token);
-          const restoredWalletAccount = parsed.walletAccount as WalletAccount;
-          const restoredSigner = createSigner(
-            restoredWalletAccount,
-            parsed.publicKeyMultibase
-          );
-          setSigner(restoredSigner);
-          // Restore wallet account for did:webvh creation (Phase 4)
-          setWalletAccount(restoredWalletAccount);
-          setPublicKeyMultibase(parsed.publicKeyMultibase);
-        } catch (err) {
-          if (!isMountedRef.current) return;
-          if (err instanceof TurnkeySessionExpiredError) {
-            console.log("[useAuth] Stored session expired");
-            handleSessionExpired();
-          } else {
-            console.error("[useAuth] Error validating session:", err);
-            // Clear potentially invalid state
-            handleSessionExpired();
+            const restoredWalletAccount = parsed.walletAccount as WalletAccount;
+            const restoredSigner = createSigner(
+              restoredWalletAccount,
+              parsed.publicKeyMultibase
+            );
+            setSigner(restoredSigner);
+            setWalletAccount(restoredWalletAccount);
+            setPublicKeyMultibase(parsed.publicKeyMultibase);
+          } catch (err) {
+            if (!isMountedRef.current) return;
+            if (err instanceof TurnkeySessionExpiredError) {
+              console.log("[useAuth] Turnkey session expired, wallet access disabled");
+            } else {
+              console.log("[useAuth] Could not restore wallet access:", err);
+            }
+            // Keep basic auth state, just without wallet/signer
           }
+        } else {
+          console.log("[useAuth] Turnkey client not available, wallet access disabled");
         }
       } catch (err) {
         console.error("[useAuth] Error restoring session:", err);
@@ -412,7 +423,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setToken(jwtToken);
 
         // Try to set up wallet access for DID signing
-        // This works if the user has an existing Turnkey session
+        // This works if the user has an existing Turnkey session and client config
         let walletData: {
           did: string;
           walletAccount: WalletAccount;
@@ -421,17 +432,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
         let newSigner: TurnkeyDIDSigner | null = null;
 
         const client = getTurnkeyClient();
-        try {
-          console.log("[useAuth] Attempting to set up wallet access...");
-          const wallets = await ensureWalletWithAccounts(client, handleSessionExpired);
-          walletData = await getOrCreateDID(wallets);
-          newSigner = createSigner(walletData.walletAccount, walletData.publicKeyMultibase);
-          console.log("[useAuth] Wallet access established, DID:", walletData.did);
-        } catch (walletErr) {
-          // Wallet access failed - user doesn't have Turnkey session
-          // This is expected in server-side auth flow
-          console.log("[useAuth] No Turnkey session available - DID signing disabled");
-          console.log("[useAuth] Wallet error:", walletErr);
+        if (client) {
+          try {
+            console.log("[useAuth] Attempting to set up wallet access...");
+            const wallets = await ensureWalletWithAccounts(client, handleSessionExpired);
+            walletData = await getOrCreateDID(wallets);
+            newSigner = createSigner(walletData.walletAccount, walletData.publicKeyMultibase);
+            console.log("[useAuth] Wallet access established, DID:", walletData.did);
+          } catch (walletErr) {
+            // Wallet access failed - user doesn't have Turnkey session
+            // This is expected in server-side auth flow
+            console.log("[useAuth] No Turnkey session available - DID signing disabled");
+            console.log("[useAuth] Wallet error:", walletErr);
+          }
+        } else {
+          console.log("[useAuth] Turnkey client not available - DID signing disabled");
         }
 
         // Create auth user object
@@ -543,6 +558,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       const client = getTurnkeyClient();
+      if (!client) {
+        console.error("[useAuth] Cannot create DID: Turnkey client not available");
+        return null;
+      }
+
       console.log("[useAuth] Creating did:webvh with domain:", domain, "slug:", slug);
 
       try {
