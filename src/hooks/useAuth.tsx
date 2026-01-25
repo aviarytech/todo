@@ -232,12 +232,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   /**
-   * Get or create DID for user. Creates did:peer DID from wallet's Ed25519 key.
-   * In Phase 1.5, this will be upgraded to use createDIDWithTurnkey for did:webvh.
+   * Get or create DID for user. Creates did:webvh DID using Turnkey signing.
+   * Phase 1.5: Creates publicly-resolvable did:webvh instead of did:peer.
    */
   const getOrCreateDID = useCallback(
     async (
-      wallets: TurnkeyWallet[]
+      wallets: TurnkeyWallet[],
+      turnkeyClient: TurnkeyClient,
+      userEmail: string
     ): Promise<{ did: string; walletAccount: WalletAccount; publicKeyMultibase: string }> => {
       // Get the required key accounts
       const ed25519Account = getKeyByCurve(wallets, "CURVE_ED25519");
@@ -248,23 +250,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
         );
       }
 
-      // For now, we create a did:peer DID using the Ed25519 key
-      // In Phase 1.5, this will be upgraded to did:webvh via createDIDWithTurnkey
-      const publicKeyMultibase = addressToMultibase(ed25519Account.address);
+      const walletAccount = ed25519Account as WalletAccount;
+      const publicKeyMultibase = addressToMultibase(walletAccount.address);
 
-      // Create a simple did:peer:2 DID from the public key
-      // Format: did:peer:2.Vz<key>.Ez<key>
-      const did = `did:peer:2.V${publicKeyMultibase}.E${publicKeyMultibase}`;
+      // Get domain from environment variable
+      const domain = import.meta.env.VITE_WEBVH_DOMAIN as string | undefined;
+      if (!domain) {
+        throw new Error("VITE_WEBVH_DOMAIN environment variable is not set");
+      }
+
+      // Create a URL-safe slug from the user email
+      // Remove @ and special characters, replace with dashes
+      const slug = `user-${userEmail.replace(/[@.]/g, "-").replace(/[^a-zA-Z0-9-]/g, "").toLowerCase()}`;
+
+      console.log("[useAuth] Creating did:webvh for user with slug:", slug);
+
+      // Create the did:webvh using Turnkey signing
+      const { did } = await createDIDWithTurnkey({
+        turnkeyClient,
+        updateKeyAccount: walletAccount,
+        authKeyPublic: walletAccount.address,
+        assertionKeyPublic: walletAccount.address,
+        updateKeyPublic: walletAccount.address,
+        domain,
+        slug,
+        onExpired: handleSessionExpired,
+      });
 
       console.log("[useAuth] Created DID:", did);
 
       return {
         did,
-        walletAccount: ed25519Account as WalletAccount,
+        walletAccount,
         publicKeyMultibase,
       };
     },
-    []
+    [handleSessionExpired]
   );
 
   /**
@@ -436,7 +457,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           try {
             console.log("[useAuth] Attempting to set up wallet access...");
             const wallets = await ensureWalletWithAccounts(client, handleSessionExpired);
-            walletData = await getOrCreateDID(wallets);
+            walletData = await getOrCreateDID(wallets, client, serverUser.email);
             newSigner = createSigner(walletData.walletAccount, walletData.publicKeyMultibase);
             console.log("[useAuth] Wallet access established, DID:", walletData.did);
           } catch (walletErr) {
