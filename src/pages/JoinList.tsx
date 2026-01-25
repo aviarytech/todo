@@ -101,6 +101,11 @@ export function JoinList() {
 
   return (
     <div className="max-w-md mx-auto text-center py-12 bg-white rounded-lg shadow p-6">
+      {/* Debug: Show DID being used */}
+      <div className="mb-4 p-2 bg-gray-100 rounded text-xs font-mono text-left">
+        <div>Your DID: {did ?? "null"}</div>
+      </div>
+
       <div className="text-5xl mb-4">+</div>
       <h2 className="text-xl font-semibold text-gray-900 mb-2">
         You're invited to join "{validation.listName}"

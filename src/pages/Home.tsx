@@ -26,6 +26,9 @@ export function Home() {
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [cachedLists, setCachedLists] = useState<OfflineList[]>([]);
 
+  // Debug: log DIDs being used
+  console.log("[Home] DIDs:", { did, legacyDid, walletDid });
+
   // Query lists for current DID, including legacyDid and walletDid for backwards compat
   const serverLists = useQuery(
     api.lists.getUserLists,
@@ -65,33 +68,59 @@ export function Home() {
   // Derive usingCache from whether we're showing cached data
   const usingCache = !isOnline && !serverLists && cachedLists.length > 0;
 
-  // Group lists by category
-  const groupedLists = useMemo<{
+  // Type for grouped lists by category
+  type GroupedLists = {
     categorized: Map<Id<"categories">, Doc<"lists">[]>;
     uncategorized: Doc<"lists">[];
-  }>(() => {
+  };
+
+  // Split lists into owned and shared, then group each by category
+  const { ownedLists, sharedLists } = useMemo<{ ownedLists: GroupedLists; sharedLists: GroupedLists }>(() => {
+    // Helper to check if a list is owned by the current user
+    // Compares against all user DIDs (canonical, legacy, wallet) for backwards compat
+    const isOwnedByUser = (list: Doc<"lists">) => {
+      const ownerDid = list.ownerDid;
+      return ownerDid === did || ownerDid === legacyDid || ownerDid === walletDid;
+    };
+
+    const emptyGroup: GroupedLists = { categorized: new Map(), uncategorized: [] };
     if (!lists) {
-      return {
-        categorized: new Map<Id<"categories">, Doc<"lists">[]>(),
-        uncategorized: [],
-      };
+      return { ownedLists: emptyGroup, sharedLists: { categorized: new Map(), uncategorized: [] } };
     }
 
-    const categorized = new Map<Id<"categories">, Doc<"lists">[]>();
-    const uncategorized: Doc<"lists">[] = [];
+    const owned: Doc<"lists">[] = [];
+    const shared: Doc<"lists">[] = [];
 
     for (const list of lists) {
-      if (list.categoryId) {
-        const existing = categorized.get(list.categoryId) ?? [];
-        existing.push(list);
-        categorized.set(list.categoryId, existing);
+      if (isOwnedByUser(list)) {
+        owned.push(list);
       } else {
-        uncategorized.push(list);
+        shared.push(list);
       }
     }
 
-    return { categorized, uncategorized };
-  }, [lists]);
+    const groupByCategory = (listsToGroup: Doc<"lists">[]): GroupedLists => {
+      const categorized = new Map<Id<"categories">, Doc<"lists">[]>();
+      const uncategorized: Doc<"lists">[] = [];
+
+      for (const list of listsToGroup) {
+        if (list.categoryId) {
+          const existing = categorized.get(list.categoryId) ?? [];
+          existing.push(list);
+          categorized.set(list.categoryId, existing);
+        } else {
+          uncategorized.push(list);
+        }
+      }
+
+      return { categorized, uncategorized };
+    };
+
+    return {
+      ownedLists: groupByCategory(owned),
+      sharedLists: groupByCategory(shared),
+    };
+  }, [lists, did, legacyDid, walletDid]);
 
   if (!did && !userLoading) {
     return null; // Login page will show instead (handled by App.tsx)
@@ -118,6 +147,15 @@ export function Home() {
             New List
           </button>
         </div>
+      </div>
+
+      {/* Debug: Show DIDs */}
+      <div className="mb-4 p-3 bg-gray-100 border border-gray-300 rounded-lg text-xs font-mono">
+        <div><strong>Debug DIDs:</strong></div>
+        <div>did: {did ?? "null"}</div>
+        <div>legacyDid: {legacyDid ?? "null"}</div>
+        <div>walletDid: {walletDid ?? "null"}</div>
+        <div>Lists found: {serverLists?.length ?? "loading..."}</div>
       </div>
 
       {/* Cached data indicator */}
@@ -164,35 +202,76 @@ export function Home() {
 
       {!isLoading && hasLists && did && (
         <div>
-          {/* Categorized lists */}
-          {categories.map((category) => {
-            const categoryLists = groupedLists.categorized.get(category._id);
-            // Hide empty categories
-            if (!categoryLists || categoryLists.length === 0) return null;
+          {/* Your Lists section (owned by user) */}
+          {(ownedLists.uncategorized.length > 0 || Array.from(ownedLists.categorized.values()).some(l => l.length > 0)) && (
+            <>
+              {/* Categorized owned lists */}
+              {categories.map((category) => {
+                const categoryLists = ownedLists.categorized.get(category._id);
+                if (!categoryLists || categoryLists.length === 0) return null;
 
-            return (
-              <CategoryHeader
-                key={category._id}
-                name={category.name}
-                listCount={categoryLists.length}
-              >
-                {categoryLists.map((list) => (
-                  <ListCard key={list._id} list={list} currentUserDid={did} />
-                ))}
-              </CategoryHeader>
-            );
-          })}
+                return (
+                  <CategoryHeader
+                    key={category._id}
+                    name={category.name}
+                    listCount={categoryLists.length}
+                  >
+                    {categoryLists.map((list) => (
+                      <ListCard key={list._id} list={list} currentUserDid={did} />
+                    ))}
+                  </CategoryHeader>
+                );
+              })}
 
-          {/* Uncategorized lists */}
-          {groupedLists.uncategorized.length > 0 && (
-            <CategoryHeader
-              name="Uncategorized"
-              listCount={groupedLists.uncategorized.length}
-            >
-              {groupedLists.uncategorized.map((list) => (
-                <ListCard key={list._id} list={list} currentUserDid={did} />
-              ))}
-            </CategoryHeader>
+              {/* Uncategorized owned lists */}
+              {ownedLists.uncategorized.length > 0 && (
+                <CategoryHeader
+                  name="Uncategorized"
+                  listCount={ownedLists.uncategorized.length}
+                >
+                  {ownedLists.uncategorized.map((list) => (
+                    <ListCard key={list._id} list={list} currentUserDid={did} />
+                  ))}
+                </CategoryHeader>
+              )}
+            </>
+          )}
+
+          {/* Shared with me section */}
+          {(sharedLists.uncategorized.length > 0 || Array.from(sharedLists.categorized.values()).some(l => l.length > 0)) && (
+            <>
+              <h2 className="text-xl font-bold text-gray-700 mt-8 mb-4">Shared with me</h2>
+
+              {/* Categorized shared lists */}
+              {categories.map((category) => {
+                const categoryLists = sharedLists.categorized.get(category._id);
+                if (!categoryLists || categoryLists.length === 0) return null;
+
+                return (
+                  <CategoryHeader
+                    key={`shared-${category._id}`}
+                    name={category.name}
+                    listCount={categoryLists.length}
+                  >
+                    {categoryLists.map((list) => (
+                      <ListCard key={list._id} list={list} currentUserDid={did} showOwner />
+                    ))}
+                  </CategoryHeader>
+                );
+              })}
+
+              {/* Uncategorized shared lists */}
+              {sharedLists.uncategorized.length > 0 && (
+                <CategoryHeader
+                  name="Uncategorized"
+                  listCount={sharedLists.uncategorized.length}
+                >
+                  {sharedLists.uncategorized.map((list) => (
+                    <ListCard key={list._id} list={list} currentUserDid={did} showOwner />
+                  ))}
+                </CategoryHeader>
+              )}
+            </>
           )}
         </div>
       )}

@@ -12,9 +12,17 @@ import type { Doc } from "../../convex/_generated/dataModel";
 interface ListCardProps {
   list: Doc<"lists">;
   currentUserDid: string;
+  /** Show owner attribution for shared lists */
+  showOwner?: boolean;
 }
 
-export function ListCard({ list, currentUserDid }: ListCardProps) {
+/** Truncate a DID for display, showing first and last parts */
+function truncateDid(did: string): string {
+  if (did.length <= 24) return did;
+  return `${did.slice(0, 12)}...${did.slice(-8)}`;
+}
+
+export function ListCard({ list, currentUserDid, showOwner }: ListCardProps) {
   const isOwner = list.ownerDid === currentUserDid;
 
   return (
@@ -32,7 +40,13 @@ export function ListCard({ list, currentUserDid }: ListCardProps) {
       </div>
 
       <p className="mt-1 text-sm text-gray-500">
-        {isOwner ? "Created by you" : "Shared with you"}
+        {isOwner ? (
+          "Created by you"
+        ) : showOwner ? (
+          <span title={list.ownerDid}>Owner: {truncateDid(list.ownerDid)}</span>
+        ) : (
+          "Shared with you"
+        )}
       </p>
     </Link>
   );

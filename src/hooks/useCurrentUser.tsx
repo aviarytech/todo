@@ -56,6 +56,14 @@ export function useCurrentUser(): CurrentUser {
 
   const isLoading = authLoading || (isAuthenticated && turnkeyUser === undefined);
 
+  // Debug: log what we're getting
+  console.log("[useCurrentUser] Debug:", {
+    isAuthenticated,
+    authUser: authUser ? { did: authUser.did, turnkeySubOrgId: authUser.turnkeySubOrgId } : null,
+    turnkeyUser: turnkeyUser ? { did: turnkeyUser.did, legacyDid: turnkeyUser.legacyDid } : turnkeyUser,
+    isLoading,
+  });
+
   // Authenticated user
   if (isAuthenticated && authUser) {
     // Prefer DID from Convex (canonical) over client-generated DID
@@ -65,6 +73,8 @@ export function useCurrentUser(): CurrentUser {
     // Wallet DID is the client-generated DID, which may be did:peer:xxx
     // Include it for backwards compatibility with records created before this fix
     const walletDid = authUser.did !== canonicalDid ? authUser.did : null;
+
+    console.log("[useCurrentUser] Returning:", { canonicalDid, walletDid });
 
     return {
       did: canonicalDid,
