@@ -26,6 +26,7 @@ import {
   updateCollaboratorRole,
   removeCollaborator,
 } from "./collaboratorsHttp";
+import { updateUserDID } from "./userHttp";
 
 // Rate limit configuration
 const RATE_LIMITS = {
@@ -234,12 +235,24 @@ const verify = httpAction(async (ctx, request) => {
       subOrgId: result.subOrgId,
     });
 
+    // Create did:webvh for the user (falls back to did:temp on failure)
+    let userDid = `did:temp:${result.subOrgId}`;
+    try {
+      const didResult = await ctx.runAction(internal.didCreation.createDIDWebVH, {
+        subOrgId: result.subOrgId,
+        email: result.email,
+      });
+      userDid = didResult.did;
+      console.log(`[authHttp] Created did:webvh: ${userDid}`);
+    } catch (err) {
+      console.error("[authHttp] DID creation failed, using temp DID:", err);
+    }
+
     // Create/update user
-    const tempDid = `did:temp:${result.subOrgId}`;
     await ctx.runMutation(api.auth.upsertUser, {
       turnkeySubOrgId: result.subOrgId,
       email: result.email,
-      did: tempDid,
+      did: userDid,
       displayName: result.email.split("@")[0],
     });
 
@@ -260,6 +273,7 @@ const verify = httpAction(async (ctx, request) => {
         user: {
           turnkeySubOrgId: result.subOrgId,
           email: result.email,
+          did: userDid,
           displayName: result.email.split("@")[0],
         },
       },
@@ -370,5 +384,9 @@ http.route({ path: "/api/collaborators/updateRole", method: "POST", handler: upd
 http.route({ path: "/api/collaborators/updateRole", method: "OPTIONS", handler: corsHandler });
 http.route({ path: "/api/collaborators/remove", method: "POST", handler: removeCollaborator });
 http.route({ path: "/api/collaborators/remove", method: "OPTIONS", handler: corsHandler });
+
+// --- User endpoints ---
+http.route({ path: "/api/user/updateDID", method: "POST", handler: updateUserDID });
+http.route({ path: "/api/user/updateDID", method: "OPTIONS", handler: corsHandler });
 
 export default http;

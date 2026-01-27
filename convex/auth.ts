@@ -35,9 +35,14 @@ export const upsertUser = mutation({
       .first();
 
     if (existingByTurnkey) {
-      // Update last login
+      // Update last login, and upgrade DID if still temporary
       await ctx.db.patch(existingByTurnkey._id, {
         lastLoginAt: Date.now(),
+        ...(args.did &&
+        !args.did.startsWith("did:temp:") &&
+        existingByTurnkey.did.startsWith("did:temp:")
+          ? { did: args.did }
+          : {}),
       });
       return existingByTurnkey._id;
     }

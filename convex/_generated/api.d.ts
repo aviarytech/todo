@@ -15,6 +15,7 @@ import type * as categories from "../categories.js";
 import type * as categoriesHttp from "../categoriesHttp.js";
 import type * as collaborators from "../collaborators.js";
 import type * as collaboratorsHttp from "../collaboratorsHttp.js";
+import type * as didCreation from "../didCreation.js";
 import type * as http from "../http.js";
 import type * as invites from "../invites.js";
 import type * as items from "../items.js";
@@ -26,6 +27,7 @@ import type * as listsHttp from "../listsHttp.js";
 import type * as migrations_migrateCollaborators from "../migrations/migrateCollaborators.js";
 import type * as publication from "../publication.js";
 import type * as rateLimits from "../rateLimits.js";
+import type * as userHttp from "../userHttp.js";
 import type * as users from "../users.js";
 
 import type {
@@ -42,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   categoriesHttp: typeof categoriesHttp;
   collaborators: typeof collaborators;
   collaboratorsHttp: typeof collaboratorsHttp;
+  didCreation: typeof didCreation;
   http: typeof http;
   invites: typeof invites;
   items: typeof items;
@@ -53,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/migrateCollaborators": typeof migrations_migrateCollaborators;
   publication: typeof publication;
   rateLimits: typeof rateLimits;
+  userHttp: typeof userHttp;
   users: typeof users;
 }>;
 

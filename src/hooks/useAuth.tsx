@@ -26,12 +26,9 @@ import {
 import {
   initializeTurnkeyClient,
   fetchUser,
-  ensureWalletWithAccounts,
-  getKeyByCurve,
   TurnkeyDIDSigner,
   TurnkeySessionExpiredError,
   createDIDWithTurnkey,
-  type TurnkeyWallet,
 } from "../lib/turnkey";
 import type { TurnkeyClient, WalletAccount } from "@turnkey/core";
 
@@ -222,73 +219,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   /**
-   * Convert address to multibase public key format.
-   * For Ed25519 keys in Solana format, the address IS the public key.
-   */
-  const addressToMultibase = (address: string): string => {
-    // For Solana addresses (Ed25519), the address is base58-encoded public key
-    // Multibase 'z' prefix indicates base58btc encoding
-    return `z${address}`;
-  };
-
-  /**
-   * Get or create DID for user. Creates did:webvh DID using Turnkey signing.
-   * Phase 1.5: Creates publicly-resolvable did:webvh instead of did:peer.
-   */
-  const getOrCreateDID = useCallback(
-    async (
-      wallets: TurnkeyWallet[],
-      turnkeyClient: TurnkeyClient,
-      userEmail: string
-    ): Promise<{ did: string; walletAccount: WalletAccount; publicKeyMultibase: string }> => {
-      // Get the required key accounts
-      const ed25519Account = getKeyByCurve(wallets, "CURVE_ED25519");
-
-      if (!ed25519Account) {
-        throw new Error(
-          "No Ed25519 account found in wallet. This should not happen after ensureWalletWithAccounts."
-        );
-      }
-
-      const walletAccount = ed25519Account as WalletAccount;
-      const publicKeyMultibase = addressToMultibase(walletAccount.address);
-
-      // Get domain from environment variable
-      const domain = import.meta.env.VITE_WEBVH_DOMAIN as string | undefined;
-      if (!domain) {
-        throw new Error("VITE_WEBVH_DOMAIN environment variable is not set");
-      }
-
-      // Create a URL-safe slug from the user email
-      // Remove @ and special characters, replace with dashes
-      const slug = `user-${userEmail.replace(/[@.]/g, "-").replace(/[^a-zA-Z0-9-]/g, "").toLowerCase()}`;
-
-      console.log("[useAuth] Creating did:webvh for user with slug:", slug);
-
-      // Create the did:webvh using Turnkey signing
-      const { did } = await createDIDWithTurnkey({
-        turnkeyClient,
-        updateKeyAccount: walletAccount,
-        authKeyPublic: walletAccount.address,
-        assertionKeyPublic: walletAccount.address,
-        updateKeyPublic: walletAccount.address,
-        domain,
-        slug,
-        onExpired: handleSessionExpired,
-      });
-
-      console.log("[useAuth] Created DID:", did);
-
-      return {
-        did,
-        walletAccount,
-        publicKeyMultibase,
-      };
-    },
-    [handleSessionExpired]
-  );
-
-  /**
    * Restore session from localStorage.
    * If Turnkey client is available, also validate and set up wallet access.
    */
@@ -443,74 +373,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
         localStorage.setItem(JWT_STORAGE_KEY, jwtToken);
         setToken(jwtToken);
 
-        // Try to set up wallet access for DID signing
-        // This works if the user has an existing Turnkey session and client config
-        let walletData: {
-          did: string;
-          walletAccount: WalletAccount;
-          publicKeyMultibase: string;
-        } | null = null;
-        let newSigner: TurnkeyDIDSigner | null = null;
-
-        const client = getTurnkeyClient();
-        if (client) {
-          try {
-            console.log("[useAuth] Attempting to set up wallet access...");
-            const wallets = await ensureWalletWithAccounts(client, handleSessionExpired);
-            walletData = await getOrCreateDID(wallets, client, serverUser.email);
-            newSigner = createSigner(walletData.walletAccount, walletData.publicKeyMultibase);
-            console.log("[useAuth] Wallet access established, DID:", walletData.did);
-          } catch (walletErr) {
-            // Wallet access failed - user doesn't have Turnkey session
-            // This is expected in server-side auth flow
-            console.log("[useAuth] No Turnkey session available - DID signing disabled");
-            console.log("[useAuth] Wallet error:", walletErr);
-          }
-        } else {
-          console.log("[useAuth] Turnkey client not available - DID signing disabled");
-        }
+        // Use DID from server response (created server-side during verification)
+        // Falls back to did:temp if the server didn't return a real DID
+        const userDid = serverUser.did || `did:temp:${serverUser.turnkeySubOrgId}`;
 
         // Create auth user object
-        // Use DID from wallet if available, otherwise use server's temp DID
         const authUser: AuthUser = {
           turnkeySubOrgId: serverUser.turnkeySubOrgId,
           email: serverUser.email,
-          did: walletData?.did ?? `did:temp:${serverUser.turnkeySubOrgId}`,
+          did: userDid,
           displayName: serverUser.displayName,
         };
 
-        // Persist auth state
+        // Persist auth state (wallet data populated on session restore if available)
         const persistedState: PersistedAuthState = {
           user: authUser,
           token: jwtToken,
-          walletAccount: walletData ? {
-            address: walletData.walletAccount.address,
-            curve: walletData.walletAccount.curve as "CURVE_SECP256K1" | "CURVE_ED25519",
-            path: walletData.walletAccount.path,
-            addressFormat: walletData.walletAccount.addressFormat,
-          } : {
+          walletAccount: {
             address: "",
             curve: "CURVE_ED25519",
             path: "",
             addressFormat: "",
           },
-          publicKeyMultibase: walletData?.publicKeyMultibase ?? "",
+          publicKeyMultibase: "",
         };
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(persistedState));
 
         // Update state
         setUser(authUser);
-        setSigner(newSigner);
-        if (walletData) {
-          setWalletAccount(walletData.walletAccount);
-          setPublicKeyMultibase(walletData.publicKeyMultibase);
-        }
         setOtpFlowState({ sessionId: null, email: null, legacyDid: null });
 
-        console.log("[useAuth] Authentication complete");
-        if (!newSigner) {
-          console.log("[useAuth] Note: DID signing is not available until Turnkey session is established");
-        }
+        console.log("[useAuth] Authentication complete, DID:", userDid);
       } catch (err) {
         console.error("[useAuth] Failed to verify OTP:", err);
         throw err;
@@ -518,13 +411,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsLoading(false);
       }
     },
-    [
-      otpFlowState,
-      getTurnkeyClient,
-      handleSessionExpired,
-      getOrCreateDID,
-      createSigner,
-    ]
+    [otpFlowState]
   );
 
   /**
