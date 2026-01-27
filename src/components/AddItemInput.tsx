@@ -1,11 +1,13 @@
 /**
  * Input component for adding new items to a list.
  * Updated for Phase 5.5: Accepts onAddItem callback for optimistic updates.
+ * Updated: Uses server-side credential signing action instead of client-side signer.
  */
 
 import { useState, type FormEvent } from "react";
+import { useAction } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
-import { signItemActionWithSigner } from "../lib/originals";
 
 interface AddItemInputProps {
   assetDid: string;
@@ -19,7 +21,8 @@ interface AddItemInputProps {
 }
 
 export function AddItemInput({ assetDid, onAddItem }: AddItemInputProps) {
-  const { did, legacyDid, getSigner } = useCurrentUser();
+  const { did, legacyDid, subOrgId } = useCurrentUser();
+  const signItemAction = useAction(api.credentialSigning.signItemAction);
 
   const [name, setName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -38,11 +41,16 @@ export function AddItemInput({ assetDid, onAddItem }: AddItemInputProps) {
       // Generate a unique item ID for the credential
       const itemId = crypto.randomUUID();
 
-      // Sign the item action credential (best-effort, non-blocking for v1)
-      const signer = getSigner();
-      if (signer) {
+      // Sign the item action credential server-side (best-effort, non-blocking for v1)
+      if (subOrgId) {
         try {
-          await signItemActionWithSigner("ItemAdded", assetDid, itemId, did, signer);
+          await signItemAction({
+            type: "ItemAdded",
+            listDid: assetDid,
+            itemId,
+            actorDid: did,
+            subOrgId,
+          });
         } catch (err) {
           console.warn("Failed to sign item action credential:", err);
           // Continue anyway - credential signing is best-effort for v1

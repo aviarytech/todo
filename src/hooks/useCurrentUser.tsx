@@ -19,6 +19,8 @@ export interface CurrentUser {
   legacyDid: string | null;
   /** Wallet-generated DID (from client-side Turnkey wallet, may differ from canonical DID) */
   walletDid: string | null;
+  /** Turnkey sub-organization ID (needed for server-side signing) */
+  subOrgId: string | null;
   /** Display name */
   displayName: string | null;
   /** Email address */
@@ -80,6 +82,7 @@ export function useCurrentUser(): CurrentUser {
       did: canonicalDid,
       legacyDid: turnkeyUser?.legacyDid ?? null,
       walletDid,
+      subOrgId: authUser.turnkeySubOrgId,
       displayName: authUser.displayName,
       email: authUser.email,
       isAuthenticated: true,
@@ -94,6 +97,7 @@ export function useCurrentUser(): CurrentUser {
     did: null,
     legacyDid: null,
     walletDid: null,
+    subOrgId: null,
     displayName: null,
     email: null,
     isAuthenticated: false,

@@ -3,13 +3,13 @@
  *
  * Shows checkbox, name, attribution, and remove button.
  * Updated for Phase 5.5: Accepts onCheck/onUncheck callbacks for optimistic updates.
+ * Updated: Uses server-side credential signing action instead of client-side signer.
  */
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
-import { signItemActionWithSigner, type ExternalSigner } from "../lib/originals";
 import { ItemAttribution } from "./ItemAttribution";
 import type { OptimisticItem } from "../hooks/useOptimisticItems";
 
@@ -19,8 +19,8 @@ interface ListItemProps {
   userDid: string;
   /** Legacy DID for migrated users */
   legacyDid?: string;
-  /** Turnkey signer for signing credentials (null if not available) */
-  signer: ExternalSigner | null;
+  /** Turnkey sub-organization ID for server-side credential signing */
+  subOrgId: string | null;
   /** Whether user can edit (owner or editor role). If false, shows read-only. */
   canEdit?: boolean;
   isDragging?: boolean;
@@ -39,7 +39,7 @@ export function ListItem({
   list,
   userDid,
   legacyDid,
-  signer,
+  subOrgId,
   canEdit: canUserEdit = true,
   isDragging = false,
   isDragOver = false,
@@ -53,8 +53,25 @@ export function ListItem({
   const checkItemMutation = useMutation(api.items.checkItem);
   const uncheckItemMutation = useMutation(api.items.uncheckItem);
   const removeItem = useMutation(api.items.removeItem);
+  const signItemAction = useAction(api.credentialSigning.signItemAction);
 
   const [isUpdating, setIsUpdating] = useState(false);
+
+  /** Sign a credential server-side (best-effort, non-blocking) */
+  const signCredential = async (type: "ItemChecked" | "ItemUnchecked" | "ItemRemoved") => {
+    if (!subOrgId) return;
+    try {
+      await signItemAction({
+        type,
+        listDid: list.assetDid,
+        itemId: item._id,
+        actorDid: userDid,
+        subOrgId,
+      });
+    } catch (err) {
+      console.warn(`Failed to sign ${type} credential:`, err);
+    }
+  };
 
   const handleToggleCheck = async () => {
     if (isUpdating) return;
@@ -64,13 +81,7 @@ export function ListItem({
     try {
       if (item.checked) {
         // Sign uncheck credential (best-effort)
-        if (signer) {
-          try {
-            await signItemActionWithSigner("ItemUnchecked", list.assetDid, item._id, userDid, signer);
-          } catch (err) {
-            console.warn("Failed to sign uncheck credential:", err);
-          }
-        }
+        await signCredential("ItemUnchecked");
 
         // Use optimistic callback if provided, otherwise fallback to direct mutation
         if (onUncheck) {
@@ -80,13 +91,7 @@ export function ListItem({
         }
       } else {
         // Sign check credential (best-effort)
-        if (signer) {
-          try {
-            await signItemActionWithSigner("ItemChecked", list.assetDid, item._id, userDid, signer);
-          } catch (err) {
-            console.warn("Failed to sign check credential:", err);
-          }
-        }
+        await signCredential("ItemChecked");
 
         // Use optimistic callback if provided, otherwise fallback to direct mutation
         if (onCheck) {
@@ -114,13 +119,7 @@ export function ListItem({
 
     try {
       // Sign remove credential (best-effort)
-      if (signer) {
-        try {
-          await signItemActionWithSigner("ItemRemoved", list.assetDid, item._id, userDid, signer);
-        } catch (err) {
-          console.warn("Failed to sign remove credential:", err);
-        }
-      }
+      await signCredential("ItemRemoved");
 
       await removeItem({ itemId: item._id, userDid, legacyDid });
     } catch (err) {

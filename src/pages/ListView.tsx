@@ -30,7 +30,7 @@ const PublishModal = lazy(() => import("../components/publish/PublishModal").the
 export function ListView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { did, legacyDid, isLoading: userLoading, getSigner } = useCurrentUser();
+  const { did, legacyDid, subOrgId, isLoading: userLoading } = useCurrentUser();
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -169,8 +169,7 @@ export function ListView() {
   const canUserInvite = canInvite(effectiveRole);
   const canUserDelete = canDeleteList(effectiveRole);
 
-  // Get the signer for credential signing
-  const signer = getSigner();
+  // subOrgId is available from useCurrentUser for server-side credential signing
 
   // Count collaborators for display
   const collaboratorCount = collaborators?.length ?? 0;
@@ -321,7 +320,7 @@ export function ListView() {
               list={list}
               userDid={did}
               legacyDid={legacyDid ?? undefined}
-              signer={signer}
+              subOrgId={subOrgId}
               canEdit={canUserEdit}
               isDragging={draggedItemId === item._id}
               isDragOver={dragOverItemId === item._id}
