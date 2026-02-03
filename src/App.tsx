@@ -10,6 +10,7 @@ import { ToastContainer } from './components/notifications/Toast'
 // Static imports for frequently used routes
 import { Home } from './pages/Home'
 import { Login } from './pages/Login'
+import { Landing } from './pages/Landing'
 
 // Lazy-loaded routes for better code splitting
 const ListView = lazy(() => import('./pages/ListView').then(m => ({ default: m.ListView })))
@@ -25,8 +26,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm p-4">
         <div className="container mx-auto flex items-center justify-between">
-          <Link to="/" className="text-xl font-bold hover:text-gray-700">
-            Poo App
+          <Link to="/app" className="flex items-center gap-2 text-xl font-bold text-amber-900 hover:text-amber-700">
+            <span>💩</span> PooApp
           </Link>
           <ProfileBadge />
         </div>
@@ -76,16 +77,19 @@ function App() {
       <Suspense fallback={<PageLoadingFallback />}>
         <Routes>
           {/* Public routes - accessible without authentication */}
-          <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+          <Route path="/login" element={isAuthenticated ? <Navigate to="/app" replace /> : <Login />} />
           <Route path="/join/:listId/:token" element={<JoinList />} />
           <Route path="/public/:did" element={<PublicList />} />
 
+          {/* Landing page for unauthenticated, redirect to app if logged in */}
+          <Route path="/" element={isAuthenticated ? <Navigate to="/app" replace /> : <Landing />} />
+
           {/* Protected routes - require authentication */}
-          <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/app" element={<ProtectedRoute><Home /></ProtectedRoute>} />
           <Route path="/list/:id" element={<ProtectedRoute><ListView /></ProtectedRoute>} />
 
-          {/* Fallback - redirect to home (AuthGuard will handle login redirect if needed) */}
-          <Route path="*" element={<ProtectedRoute><Navigate to="/" replace /></ProtectedRoute>} />
+          {/* Fallback - redirect to app (AuthGuard will handle login redirect if needed) */}
+          <Route path="*" element={<ProtectedRoute><Navigate to="/app" replace /></ProtectedRoute>} />
         </Routes>
       </Suspense>
       <ToastContainer />
