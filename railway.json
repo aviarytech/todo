@@ -1,0 +1,10 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "watchPatterns": ["src/**", "index.html", "vite.config.ts"]
+  },
+  "deploy": {
+    "restartPolicyType": "ON_FAILURE"
+  }
+}

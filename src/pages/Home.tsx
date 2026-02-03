@@ -2,32 +2,47 @@
  * Home page showing user's lists.
  *
  * Displays lists grouped by category with collapsible sections.
- * Empty categories are hidden. Uncategorized lists appear at the end.
+ * Includes search, sorting, pull-to-refresh, and improved empty states.
  */
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery } from "convex/react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useCategories } from "../hooks/useCategories";
 import { useOffline } from "../hooks/useOffline";
+import { useSettings } from "../hooks/useSettings";
 import { ListCard } from "../components/ListCard";
 import { CreateListModal } from "../components/CreateListModal";
 import { CategoryHeader } from "../components/lists/CategoryHeader";
 import { CategoryManager } from "../components/lists/CategoryManager";
+import { SearchInput } from "../components/ui/SearchInput";
+import { SortDropdown } from "../components/ui/SortDropdown";
+import { HomePageSkeleton } from "../components/ui/Skeleton";
+import { NoListsEmptyState, NoSearchResultsEmptyState } from "../components/ui/EmptyState";
+import { usePullToRefresh, PullToRefreshIndicator } from "../hooks/usePullToRefresh";
 import { cacheAllLists, getAllCachedLists, type OfflineList } from "../lib/offline";
 
 export function Home() {
   const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { isOnline } = useOffline();
+  const { listSort, haptic } = useSettings();
+  const [searchParams] = useSearchParams();
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [cachedLists, setCachedLists] = useState<OfflineList[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Debug: log DIDs being used
-  console.log("[Home] DIDs:", { did, legacyDid });
+  // Check for action param (e.g., from PWA shortcut)
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setIsCreateModalOpen(true);
+    }
+  }, [searchParams]);
 
   // Query lists for current DID, including legacyDid for backwards compat
   const serverLists = useQuery(
@@ -35,10 +50,22 @@ export function Home() {
     did ? { userDid: did, legacyDid: legacyDid ?? undefined } : "skip"
   );
 
+  // Pull-to-refresh handler
+  const handleRefresh = useCallback(async () => {
+    haptic('medium');
+    // Lists auto-refresh via Convex, but we can force a small delay for UX
+    await new Promise(resolve => setTimeout(resolve, 800));
+    haptic('success');
+  }, [haptic]);
+
+  const { isRefreshing, pullDistance, pullRef } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    threshold: 80,
+  });
+
   // Cache lists when online and data is available
   useEffect(() => {
     if (serverLists && isOnline) {
-      // Convert Doc<"lists"> to OfflineList format
       const listsToCache = serverLists.map((list) => ({
         _id: list._id,
         assetDid: list.assetDid,
@@ -59,14 +86,40 @@ export function Home() {
   }, [isOnline, serverLists]);
 
   // Use server data when available, cache when offline
-  // Cast OfflineList to Doc<"lists"> since OfflineList contains all the fields we need
-  // (missing _creationTime is not used in the UI)
   const lists = (serverLists ?? (!isOnline ? cachedLists : undefined)) as
     | Doc<"lists">[]
     | undefined;
 
-  // Derive usingCache from whether we're showing cached data
   const usingCache = !isOnline && !serverLists && cachedLists.length > 0;
+
+  // Filter and sort lists
+  const processedLists = useMemo(() => {
+    if (!lists) return undefined;
+
+    // Filter by search query
+    let filtered = lists;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = lists.filter(list => 
+        list.name.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort lists
+    return [...filtered].sort((a, b) => {
+      switch (listSort) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'oldest':
+          return a.createdAt - b.createdAt;
+        case 'newest':
+        default:
+          return b.createdAt - a.createdAt;
+      }
+    });
+  }, [lists, searchQuery, listSort]);
 
   // Type for grouped lists by category
   type GroupedLists = {
@@ -76,22 +129,20 @@ export function Home() {
 
   // Split lists into owned and shared, then group each by category
   const { ownedLists, sharedLists } = useMemo<{ ownedLists: GroupedLists; sharedLists: GroupedLists }>(() => {
-    // Helper to check if a list is owned by the current user
-    // Compares against canonical DID and legacyDid for backwards compat
     const isOwnedByUser = (list: Doc<"lists">) => {
       const ownerDid = list.ownerDid;
       return ownerDid === did || ownerDid === legacyDid;
     };
 
     const emptyGroup: GroupedLists = { categorized: new Map(), uncategorized: [] };
-    if (!lists) {
+    if (!processedLists) {
       return { ownedLists: emptyGroup, sharedLists: { categorized: new Map(), uncategorized: [] } };
     }
 
     const owned: Doc<"lists">[] = [];
     const shared: Doc<"lists">[] = [];
 
-    for (const list of lists) {
+    for (const list of processedLists) {
       if (isOwnedByUser(list)) {
         owned.push(list);
       } else {
@@ -120,90 +171,97 @@ export function Home() {
       ownedLists: groupByCategory(owned),
       sharedLists: groupByCategory(shared),
     };
-  }, [lists, did, legacyDid]);
+  }, [processedLists, did, legacyDid]);
+
+  const handleOpenCreate = () => {
+    haptic('light');
+    setIsCreateModalOpen(true);
+  };
 
   if (!did && !userLoading) {
-    return null; // Login page will show instead (handled by App.tsx)
+    return null; // Login page will show instead
   }
 
   const isLoading = lists === undefined || categoriesLoading;
   const hasLists = lists && lists.length > 0;
+  const hasFilteredResults = processedLists && processedLists.length > 0;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Your Lists</h2>
+    <div ref={pullRef} className="min-h-full">
+      {/* Pull-to-refresh indicator */}
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        threshold={80}
+        isRefreshing={isRefreshing}
+      />
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Your Lists
+        </h2>
         <div className="flex gap-2">
           <button
-            onClick={() => setIsCategoryManagerOpen(true)}
-            className="text-gray-600 px-3 py-2 rounded-md font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            onClick={() => {
+              haptic('light');
+              setIsCategoryManagerOpen(true);
+            }}
+            className="text-gray-600 dark:text-gray-400 px-3 py-2 rounded-xl font-medium hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors"
           >
-            Manage Categories
+            📁 Categories
           </button>
           <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            onClick={handleOpenCreate}
+            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-5 py-2 rounded-xl font-semibold shadow-lg shadow-amber-500/25 hover:shadow-xl hover:shadow-amber-500/30 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
           >
-            New List
+            ✨ New List
           </button>
         </div>
       </div>
 
-      {/* Debug: Show DIDs */}
-      <div className="mb-4 p-3 bg-gray-100 border border-gray-300 rounded-lg text-xs font-mono">
-        <div><strong>Debug DIDs:</strong></div>
-        <div>did: {did ?? "null"}</div>
-        <div>legacyDid: {legacyDid ?? "null"}</div>
-        <div>Lists found: {serverLists?.length ?? "loading..."}</div>
-      </div>
+      {/* Search and Sort */}
+      {hasLists && (
+        <div className="flex gap-3 mb-6 animate-slide-up">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            className="flex-1"
+          />
+          <SortDropdown />
+        </div>
+      )}
 
       {/* Cached data indicator */}
       {usingCache && (
-        <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm flex items-center gap-2">
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span>Showing cached data. Some information may be outdated.</span>
+        <div className="mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400 text-sm flex items-center gap-3 animate-slide-up">
+          <span className="text-xl">📡</span>
+          <span>You're offline. Showing cached lists — some info may be outdated.</span>
         </div>
       )}
 
-      {isLoading && (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="bg-white rounded-lg shadow p-4 animate-pulse"
-            >
-              <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Loading state */}
+      {isLoading && <HomePageSkeleton />}
 
+      {/* Empty state - no lists at all */}
       {!isLoading && !hasLists && (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <div className="text-gray-400 text-5xl mb-4">📝</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No lists yet
-          </h3>
-          <p className="text-gray-500 mb-4">
-            Create your first list to get started!
-          </p>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700"
-          >
-            Create List
-          </button>
+        <div className="animate-slide-up">
+          <NoListsEmptyState onCreateList={handleOpenCreate} />
         </div>
       )}
 
-      {!isLoading && hasLists && did && (
-        <div>
+      {/* Empty state - no search results */}
+      {!isLoading && hasLists && !hasFilteredResults && searchQuery && (
+        <div className="animate-slide-up">
+          <NoSearchResultsEmptyState query={searchQuery} />
+        </div>
+      )}
+
+      {/* Lists */}
+      {!isLoading && hasFilteredResults && did && (
+        <div className="space-y-8 animate-slide-up">
           {/* Your Lists section (owned by user) */}
           {(ownedLists.uncategorized.length > 0 || Array.from(ownedLists.categorized.values()).some(l => l.length > 0)) && (
-            <>
+            <section>
               {/* Categorized owned lists */}
               {categories.map((category) => {
                 const categoryLists = ownedLists.categorized.get(category._id);
@@ -215,9 +273,13 @@ export function Home() {
                     name={category.name}
                     listCount={categoryLists.length}
                   >
-                    {categoryLists.map((list) => (
-                      <ListCard key={list._id} list={list} currentUserDid={did} />
-                    ))}
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {categoryLists.map((list, index) => (
+                        <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                          <ListCard list={list} currentUserDid={did} />
+                        </div>
+                      ))}
+                    </div>
                   </CategoryHeader>
                 );
               })}
@@ -228,18 +290,24 @@ export function Home() {
                   name="Uncategorized"
                   listCount={ownedLists.uncategorized.length}
                 >
-                  {ownedLists.uncategorized.map((list) => (
-                    <ListCard key={list._id} list={list} currentUserDid={did} />
-                  ))}
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {ownedLists.uncategorized.map((list, index) => (
+                      <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                        <ListCard list={list} currentUserDid={did} />
+                      </div>
+                    ))}
+                  </div>
                 </CategoryHeader>
               )}
-            </>
+            </section>
           )}
 
           {/* Shared with me section */}
           {(sharedLists.uncategorized.length > 0 || Array.from(sharedLists.categorized.values()).some(l => l.length > 0)) && (
-            <>
-              <h2 className="text-xl font-bold text-gray-700 mt-8 mb-4">Shared with me</h2>
+            <section>
+              <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                <span>🤝</span> Shared with me
+              </h2>
 
               {/* Categorized shared lists */}
               {categories.map((category) => {
@@ -252,9 +320,13 @@ export function Home() {
                     name={category.name}
                     listCount={categoryLists.length}
                   >
-                    {categoryLists.map((list) => (
-                      <ListCard key={list._id} list={list} currentUserDid={did} showOwner />
-                    ))}
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {categoryLists.map((list, index) => (
+                        <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                          <ListCard list={list} currentUserDid={did} showOwner />
+                        </div>
+                      ))}
+                    </div>
                   </CategoryHeader>
                 );
               })}
@@ -265,16 +337,21 @@ export function Home() {
                   name="Uncategorized"
                   listCount={sharedLists.uncategorized.length}
                 >
-                  {sharedLists.uncategorized.map((list) => (
-                    <ListCard key={list._id} list={list} currentUserDid={did} showOwner />
-                  ))}
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {sharedLists.uncategorized.map((list, index) => (
+                      <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                        <ListCard list={list} currentUserDid={did} showOwner />
+                      </div>
+                    ))}
+                  </div>
                 </CategoryHeader>
               )}
-            </>
+            </section>
           )}
         </div>
       )}
 
+      {/* Modals */}
       {isCreateModalOpen && (
         <CreateListModal onClose={() => setIsCreateModalOpen(false)} />
       )}

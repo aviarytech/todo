@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { ConvexProvider, ConvexReactClient } from 'convex/react'
 import { AuthProvider } from './hooks/useAuth'
 import { ToastProvider } from './hooks/useToast'
+import { SettingsProvider } from './hooks/useSettings'
 import { registerServiceWorker } from './lib/sw-registration'
 import './index.css'
 import App from './App.tsx'
@@ -25,9 +26,11 @@ createRoot(document.getElementById('root')!).render(
     <ConvexProvider client={convex}>
       <AuthProvider>
         <ToastProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <SettingsProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </SettingsProvider>
         </ToastProvider>
       </AuthProvider>
     </ConvexProvider>

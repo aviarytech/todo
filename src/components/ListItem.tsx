@@ -2,8 +2,7 @@
  * Component for a single item in a list.
  *
  * Shows checkbox, name, attribution, and remove button.
- * Updated for Phase 5.5: Accepts onCheck/onUncheck callbacks for optimistic updates.
- * Updated: Uses server-side credential signing action instead of client-side signer.
+ * Features improved design, dark mode, and haptic feedback.
  */
 
 import { useState } from "react";
@@ -11,26 +10,22 @@ import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { ItemAttribution } from "./ItemAttribution";
+import { useSettings } from "../hooks/useSettings";
 import type { OptimisticItem } from "../hooks/useOptimisticItems";
 
 interface ListItemProps {
   item: OptimisticItem;
   list: Doc<"lists">;
   userDid: string;
-  /** Legacy DID for migrated users */
   legacyDid?: string;
-  /** Turnkey sub-organization ID for server-side credential signing */
   subOrgId: string | null;
-  /** Whether user can edit (owner or editor role). If false, shows read-only. */
   canEdit?: boolean;
   isDragging?: boolean;
   isDragOver?: boolean;
   onDragStart?: () => void;
   onDragOver?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
-  /** Callback for checking items - uses optimistic updates from useOptimisticItems */
   onCheck?: (itemId: Id<"items">, checkedByDid: string, legacyDid?: string) => Promise<void>;
-  /** Callback for unchecking items - uses optimistic updates from useOptimisticItems */
   onUncheck?: (itemId: Id<"items">, userDid: string, legacyDid?: string) => Promise<void>;
 }
 
@@ -49,7 +44,9 @@ export function ListItem({
   onCheck,
   onUncheck,
 }: ListItemProps) {
-  // Fallback mutations for when callbacks aren't provided (backwards compatibility)
+  const { haptic } = useSettings();
+  
+  // Fallback mutations for when callbacks aren't provided
   const checkItemMutation = useMutation(api.items.checkItem);
   const uncheckItemMutation = useMutation(api.items.uncheckItem);
   const removeItem = useMutation(api.items.removeItem);
@@ -76,24 +73,19 @@ export function ListItem({
   const handleToggleCheck = async () => {
     if (isUpdating) return;
 
+    haptic(item.checked ? 'light' : 'success');
     setIsUpdating(true);
 
     try {
       if (item.checked) {
-        // Sign uncheck credential (best-effort)
         await signCredential("ItemUnchecked");
-
-        // Use optimistic callback if provided, otherwise fallback to direct mutation
         if (onUncheck) {
           await onUncheck(item._id, userDid, legacyDid);
         } else {
           await uncheckItemMutation({ itemId: item._id, userDid, legacyDid });
         }
       } else {
-        // Sign check credential (best-effort)
         await signCredential("ItemChecked");
-
-        // Use optimistic callback if provided, otherwise fallback to direct mutation
         if (onCheck) {
           await onCheck(item._id, userDid, legacyDid);
         } else {
@@ -107,6 +99,7 @@ export function ListItem({
       }
     } catch (err) {
       console.error("Failed to toggle item:", err);
+      haptic('error');
     } finally {
       setIsUpdating(false);
     }
@@ -115,15 +108,15 @@ export function ListItem({
   const handleRemove = async () => {
     if (isUpdating) return;
 
+    haptic('medium');
     setIsUpdating(true);
 
     try {
-      // Sign remove credential (best-effort)
       await signCredential("ItemRemoved");
-
       await removeItem({ itemId: item._id, userDid, legacyDid });
     } catch (err) {
       console.error("Failed to remove item:", err);
+      haptic('error');
       setIsUpdating(false);
     }
   };
@@ -138,16 +131,28 @@ export function ListItem({
       }}
       onDragOver={canUserEdit ? onDragOver : undefined}
       onDragEnd={canUserEdit ? onDragEnd : undefined}
-      className={`flex items-center gap-3 p-4 hover:bg-gray-50 transition-all ${
-        isDragging ? "opacity-50 bg-gray-100" : ""
-      } ${isDragOver ? "border-t-2 border-blue-500" : ""} ${
-        item._isOptimistic ? "opacity-60" : ""
+      className={`flex items-center gap-3 p-4 transition-all ${
+        isDragging 
+          ? "opacity-50 bg-gray-100 dark:bg-gray-700 scale-[1.02]" 
+          : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+      } ${
+        isDragOver 
+          ? "border-t-2 border-amber-500 -mt-0.5" 
+          : ""
+      } ${
+        item._isOptimistic 
+          ? "opacity-60" 
+          : ""
+      } ${
+        item.checked
+          ? "bg-gray-50/50 dark:bg-gray-800/50"
+          : ""
       }`}
     >
       {/* Drag handle - only show if user can edit */}
       {canUserEdit && (
         <div
-          className="flex-shrink-0 w-6 h-11 flex items-center justify-center text-gray-400 cursor-grab active:cursor-grabbing"
+          className="flex-shrink-0 w-6 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 dark:hover:text-gray-500 transition-colors"
           aria-label="Drag to reorder"
         >
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -161,15 +166,15 @@ export function ListItem({
         <button
           onClick={handleToggleCheck}
           disabled={isUpdating}
-          className={`flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center transition-colors ${
+          className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
             item.checked
-              ? "bg-blue-600 text-white"
-              : "bg-gray-100 hover:bg-gray-200"
+              ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/30"
+              : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border-2 border-gray-200 dark:border-gray-600"
           } disabled:opacity-50`}
           aria-label={item.checked ? "Uncheck item" : "Check item"}
         >
           {item.checked ? (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -177,26 +182,26 @@ export function ListItem({
               />
             </svg>
           ) : (
-            <div className="w-5 h-5 rounded border-2 border-gray-300" />
+            <div className="w-5 h-5" />
           )}
         </button>
       ) : (
         // Read-only checkbox display for viewers
         <div
-          className={`flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center ${
-            item.checked ? "bg-blue-600 text-white" : "bg-gray-100"
+          className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center ${
+            item.checked 
+              ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white" 
+              : "bg-gray-100 dark:bg-gray-700"
           }`}
         >
-          {item.checked ? (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          {item.checked && (
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                 clipRule="evenodd"
               />
             </svg>
-          ) : (
-            <div className="w-5 h-5 rounded border-2 border-gray-300" />
           )}
         </div>
       )}
@@ -204,7 +209,11 @@ export function ListItem({
       {/* Item content */}
       <div className="flex-1 min-w-0">
         <p
-          className={`text-gray-900 ${item.checked ? "line-through text-gray-500" : ""}`}
+          className={`text-gray-900 dark:text-gray-100 transition-all ${
+            item.checked 
+              ? "line-through text-gray-400 dark:text-gray-500" 
+              : ""
+          }`}
         >
           {item.name}
         </p>
@@ -216,7 +225,7 @@ export function ListItem({
         <button
           onClick={handleRemove}
           disabled={isUpdating}
-          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-50"
+          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl disabled:opacity-50 transition-all active:scale-90"
           aria-label="Remove item"
         >
           <svg
