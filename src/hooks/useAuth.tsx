@@ -4,13 +4,13 @@
  * Provides authentication state and OTP flow methods. This is the primary
  * authentication mechanism for the app.
  *
- * Phase 8.4: Auth flow now uses Convex HTTP endpoints for OTP:
+ * Authentication flow uses Convex HTTP endpoints:
  * - /auth/initiate - Start OTP flow, get sessionId
- * - /auth/verify - Verify OTP, get JWT token
+ * - /auth/verify - Verify OTP, get JWT token (DID created server-side)
  * - /auth/logout - Clear auth cookie
  *
  * The JWT token is stored in localStorage and sent with API requests.
- * TurnkeyDIDSigner is still used for client-side DID signing operations.
+ * All signing operations (credentials, DIDs) are handled server-side.
  */
 
 /* eslint-disable react-refresh/only-export-components */
@@ -23,14 +23,6 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import {
-  initializeTurnkeyClient,
-  fetchUser,
-  TurnkeyDIDSigner,
-  TurnkeySessionExpiredError,
-  createDIDWithTurnkey,
-} from "../lib/turnkey";
-import type { TurnkeyClient, WalletAccount } from "@turnkey/core";
 
 /**
  * Get the Convex HTTP endpoint base URL from the Convex URL.
@@ -62,19 +54,10 @@ export interface AuthUser {
   turnkeySubOrgId: string;
   /** User's email address */
   email: string;
-  /** User's DID (created via Turnkey) */
+  /** User's DID (created server-side via Turnkey) */
   did: string;
   /** Display name (defaults to email prefix) */
   displayName: string;
-}
-
-/**
- * Result of creating a did:webvh DID
- */
-export interface CreateDIDResult {
-  did: string;
-  didDocument: unknown;
-  didLog: unknown;
 }
 
 /**
@@ -95,10 +78,6 @@ interface AuthContextValue {
   verifyOtp: (code: string) => Promise<void>;
   /** Log out and clear session */
   logout: () => Promise<void>;
-  /** Get the Turnkey DID signer for signing operations */
-  getSigner: () => TurnkeyDIDSigner | null;
-  /** Create a did:webvh DID for publishing (Phase 4) */
-  createWebvhDID: (domain: string, slug: string) => Promise<CreateDIDResult | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -120,19 +99,11 @@ interface OtpFlowState {
 
 /**
  * Auth state persisted in localStorage for session recovery.
- * Includes JWT token for API authentication and wallet data for DID signing.
  */
 interface PersistedAuthState {
   user: AuthUser;
   /** JWT token for API authentication */
   token: string;
-  walletAccount: {
-    address: string;
-    curve: "CURVE_SECP256K1" | "CURVE_ED25519";
-    path: string;
-    addressFormat: string;
-  };
-  publicKeyMultibase: string;
 }
 
 const AUTH_STORAGE_KEY = "lisa-auth-state";
@@ -141,17 +112,12 @@ const AUTH_STORAGE_KEY = "lisa-auth-state";
  * Provides auth context to child components.
  *
  * Wraps the app to provide authentication state via useAuth hook.
- * This provider runs alongside IdentityProvider during migration.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [signer, setSigner] = useState<TurnkeyDIDSigner | null>(null);
   // JWT token for API authentication
   const [token, setToken] = useState<string | null>(null);
-  // Store wallet account for did:webvh creation (Phase 4)
-  const [walletAccount, setWalletAccount] = useState<WalletAccount | null>(null);
-  const [publicKeyMultibase, setPublicKeyMultibase] = useState<string | null>(null);
 
   // Track OTP flow state (stored in component state, not exposed)
   const [otpFlowState, setOtpFlowState] = useState<OtpFlowState>({
@@ -160,67 +126,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     legacyDid: null,
   });
 
-  // Turnkey client instance - created once per session (for DID signing)
-  const turnkeyClientRef = useRef<TurnkeyClient | null>(null);
   // Track mounted state to prevent setState after unmount
   const isMountedRef = useRef(true);
 
   /**
-   * Get or create Turnkey client instance.
-   * Returns null if Turnkey client config is not available.
-   */
-  const getTurnkeyClient = useCallback((): TurnkeyClient | null => {
-    if (!turnkeyClientRef.current) {
-      try {
-        turnkeyClientRef.current = initializeTurnkeyClient();
-      } catch (err) {
-        console.log("[useAuth] Turnkey client not available (config missing):", err);
-        return null;
-      }
-    }
-    return turnkeyClientRef.current;
-  }, []);
-
-  /**
-   * Handle session expiration - clear state and redirect to login
-   */
-  const handleSessionExpired = useCallback(() => {
-    console.log("[useAuth] Session expired, clearing state");
-    setUser(null);
-    setSigner(null);
-    setToken(null);
-    setWalletAccount(null);
-    setPublicKeyMultibase(null);
-    setOtpFlowState({ sessionId: null, email: null, legacyDid: null });
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    localStorage.removeItem(JWT_STORAGE_KEY);
-    turnkeyClientRef.current = null;
-  }, []);
-
-  /**
-   * Create signer from wallet data.
-   * Returns null if Turnkey client is not available.
-   */
-  const createSigner = useCallback(
-    (
-      walletAccount: WalletAccount,
-      publicKeyMultibase: string
-    ): TurnkeyDIDSigner | null => {
-      const client = getTurnkeyClient();
-      if (!client) return null;
-      return new TurnkeyDIDSigner(
-        client,
-        walletAccount,
-        publicKeyMultibase,
-        handleSessionExpired
-      );
-    },
-    [getTurnkeyClient, handleSessionExpired]
-  );
-
-  /**
    * Restore session from localStorage.
-   * If Turnkey client is available, also validate and set up wallet access.
    */
   useEffect(() => {
     // Mark as mounted at start, unmount flag in cleanup
@@ -238,39 +148,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const parsed: PersistedAuthState = JSON.parse(storedState);
         console.log("[useAuth] Found stored session, restoring...");
 
-        // Restore basic auth state (works without Turnkey client)
+        // Restore auth state
         setUser(parsed.user);
         setToken(parsed.token);
         localStorage.setItem(JWT_STORAGE_KEY, parsed.token);
-
-        // Try to set up wallet access if Turnkey client is available
-        const client = getTurnkeyClient();
-        if (client) {
-          try {
-            await fetchUser(client, handleSessionExpired);
-            if (!isMountedRef.current) return;
-            console.log("[useAuth] Turnkey session valid, restoring wallet access");
-
-            const restoredWalletAccount = parsed.walletAccount as WalletAccount;
-            const restoredSigner = createSigner(
-              restoredWalletAccount,
-              parsed.publicKeyMultibase
-            );
-            setSigner(restoredSigner);
-            setWalletAccount(restoredWalletAccount);
-            setPublicKeyMultibase(parsed.publicKeyMultibase);
-          } catch (err) {
-            if (!isMountedRef.current) return;
-            if (err instanceof TurnkeySessionExpiredError) {
-              console.log("[useAuth] Turnkey session expired, wallet access disabled");
-            } else {
-              console.log("[useAuth] Could not restore wallet access:", err);
-            }
-            // Keep basic auth state, just without wallet/signer
-          }
-        } else {
-          console.log("[useAuth] Turnkey client not available, wallet access disabled");
-        }
       } catch (err) {
         console.error("[useAuth] Error restoring session:", err);
         localStorage.removeItem(AUTH_STORAGE_KEY);
@@ -284,7 +165,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       isMountedRef.current = false;
     };
-  }, [getTurnkeyClient, handleSessionExpired, createSigner]);
+  }, []);
 
   /**
    * Start OTP flow by sending verification code to email.
@@ -333,10 +214,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   /**
    * Verify OTP code and complete authentication.
    * Calls /auth/verify HTTP endpoint and receives JWT.
-   *
-   * Note: After server-side OTP verification, we attempt to set up
-   * wallet access for DID signing. If Turnkey session is available,
-   * the signer will work. Otherwise, signing features will be disabled.
+   * DID is created server-side during verification.
    */
   const verifyOtp = useCallback(
     async (code: string) => {
@@ -385,17 +263,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           displayName: serverUser.displayName,
         };
 
-        // Persist auth state (wallet data populated on session restore if available)
+        // Persist auth state
         const persistedState: PersistedAuthState = {
           user: authUser,
           token: jwtToken,
-          walletAccount: {
-            address: "",
-            curve: "CURVE_ED25519",
-            path: "",
-            addressFormat: "",
-          },
-          publicKeyMultibase: "",
         };
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(persistedState));
 
@@ -435,65 +306,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Clear local state
     setUser(null);
-    setSigner(null);
     setToken(null);
-    setWalletAccount(null);
-    setPublicKeyMultibase(null);
     setOtpFlowState({ sessionId: null, email: null, legacyDid: null });
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem(JWT_STORAGE_KEY);
-    // Clear the Turnkey client so a fresh one is created on next login
-    turnkeyClientRef.current = null;
   }, []);
-
-  /**
-   * Get the Turnkey DID signer for signing operations.
-   * Returns null if not authenticated.
-   */
-  const getSigner = useCallback(() => {
-    return signer;
-  }, [signer]);
-
-  /**
-   * Create a did:webvh DID for publishing.
-   * Returns null if not authenticated or missing required state.
-   */
-  const createWebvhDID = useCallback(
-    async (domain: string, slug: string): Promise<CreateDIDResult | null> => {
-      if (!walletAccount || !publicKeyMultibase) {
-        console.error("[useAuth] Cannot create DID: missing wallet data");
-        return null;
-      }
-
-      const client = getTurnkeyClient();
-      if (!client) {
-        console.error("[useAuth] Cannot create DID: Turnkey client not available");
-        return null;
-      }
-
-      console.log("[useAuth] Creating did:webvh with domain:", domain, "slug:", slug);
-
-      try {
-        const result = await createDIDWithTurnkey({
-          turnkeyClient: client,
-          updateKeyAccount: walletAccount,
-          authKeyPublic: walletAccount.address,
-          assertionKeyPublic: walletAccount.address,
-          updateKeyPublic: walletAccount.address,
-          domain,
-          slug,
-          onExpired: handleSessionExpired,
-        });
-
-        console.log("[useAuth] Created did:webvh:", result.did);
-        return result;
-      } catch (err) {
-        console.error("[useAuth] Failed to create did:webvh:", err);
-        throw err;
-      }
-    },
-    [walletAccount, publicKeyMultibase, getTurnkeyClient, handleSessionExpired]
-  );
 
   const value: AuthContextValue = {
     isAuthenticated: user !== null,
@@ -503,8 +320,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     startOtp,
     verifyOtp,
     logout,
-    getSigner,
-    createWebvhDID,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

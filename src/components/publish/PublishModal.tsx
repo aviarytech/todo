@@ -6,7 +6,7 @@
  */
 
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
@@ -21,7 +21,8 @@ interface PublishModalProps {
 const PUBLICATION_DOMAIN = "lisa.aviary.tech";
 
 export function PublishModal({ list, onClose }: PublishModalProps) {
-  const { did, createWebvhDID } = useCurrentUser();
+  const { did, subOrgId } = useCurrentUser();
+  const createListDID = useAction(api.didCreation.createListDID);
   const publishListMutation = useMutation(api.publication.publishList);
   const unpublishListMutation = useMutation(api.publication.unpublishList);
   const publicationStatus = useQuery(api.publication.getPublicationStatus, {
@@ -40,7 +41,7 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
     : null;
 
   const handlePublish = async () => {
-    if (!did) {
+    if (!did || !subOrgId) {
       setError("You must be logged in to publish a list");
       return;
     }
@@ -52,12 +53,12 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
       // Create the slug from list ID (alphanumeric only)
       const slug = `list-${list._id.replace(/[^a-zA-Z0-9-]/g, "")}`;
 
-      // Create did:webvh using Turnkey
-      const result = await createWebvhDID(PUBLICATION_DOMAIN, slug);
-
-      if (!result) {
-        throw new Error("Failed to create DID - missing authentication data");
-      }
+      // Create did:webvh using server-side action
+      const result = await createListDID({
+        subOrgId,
+        domain: PUBLICATION_DOMAIN,
+        slug,
+      });
 
       // Record publication in Convex
       await publishListMutation({
