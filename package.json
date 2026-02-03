@@ -15,8 +15,8 @@
     "env:prod": "bash -c 'export $(grep -v \"^#\" .env.local | grep -E \"^(TURNKEY_|JWT_SECRET|WEBVH_DOMAIN)\" | xargs) && for k in TURNKEY_API_PUBLIC_KEY TURNKEY_API_PRIVATE_KEY TURNKEY_ORGANIZATION_ID JWT_SECRET WEBVH_DOMAIN; do npx convex env set --prod \"$k\" \"${!k}\"; done'"
   },
   "dependencies": {
-    "@originals/auth": "^1.7.1",
-    "@originals/sdk": "^1.7.1",
+    "@originals/auth": "^1.8.2",
+    "@originals/sdk": "^1.8.2",
     "@turnkey/core": "^1.11.0",
     "convex": "^1.31.6",
     "idb": "^8.0.3",
