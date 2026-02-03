@@ -1,0 +1,15 @@
+# Signing Worker - Handles Turnkey operations for PooApp
+# Keeps heavy crypto dependencies out of Convex bundle
+
+name = "pooapp-signing"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+ENVIRONMENT = "development"
+
+# Secrets (set via wrangler secret put):
+# - TURNKEY_API_PUBLIC_KEY
+# - TURNKEY_API_PRIVATE_KEY
+# - TURNKEY_ORGANIZATION_ID
+# - SIGNING_SECRET (for authenticating requests from Convex)

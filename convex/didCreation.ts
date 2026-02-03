@@ -1,85 +1,40 @@
-"use node";
-
 /**
- * Server-side DID creation using Turnkey and OriginalsSDK.
+ * Server-side DID creation via external signing worker.
  *
- * This "use node" action creates did:webvh identities during OTP verification,
- * replacing the client-side approach that required a Turnkey auth proxy session.
+ * Uses the signing worker instead of importing @originals/auth directly,
+ * keeping the Convex bundle small.
  */
 
-import { internalAction } from "./_generated/server";
+import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { TurnkeyWebVHSigner } from "@originals/auth/server";
-import { OriginalsSDK } from "@originals/sdk";
-import { getEd25519Account } from "./turnkeyHelpers";
+import { createSigningClient } from "./signingClient";
 
 /**
- * Create a did:webvh DID for a user using their Turnkey sub-org wallet.
- *
- * Fetches the wallet accounts for the sub-org, finds the Ed25519 key,
- * and uses the OriginalsSDK to create a did:webvh identity.
+ * Create a did:webvh DID for a user using the external signing worker.
  */
-export const createDIDWebVH = internalAction({
+export const createDID = action({
   args: {
     subOrgId: v.string(),
-    email: v.string(),
   },
-  handler: async (_ctx, args): Promise<{ did: string }> => {
-    const domain = process.env.WEBVH_DOMAIN;
-    if (!domain) {
-      throw new Error("WEBVH_DOMAIN environment variable is not set");
+  handler: async (_ctx, args) => {
+    console.log(`[didCreation] Creating DID for sub-org ${args.subOrgId}`);
+
+    const signingSecret = process.env.SIGNING_SECRET;
+    const webvhDomain = process.env.WEBVH_DOMAIN;
+    
+    if (!signingSecret) {
+      throw new Error("SIGNING_SECRET not configured");
+    }
+    if (!webvhDomain) {
+      throw new Error("WEBVH_DOMAIN not configured");
     }
 
-    console.log(
-      `[didCreation] Creating did:webvh for ${args.email} (subOrg: ${args.subOrgId})`
-    );
+    const client = createSigningClient(signingSecret);
+    
+    const result = await client.createDID(args.subOrgId, webvhDomain);
 
-    const { turnkeyClient, address, verificationMethodId } =
-      await getEd25519Account(args.subOrgId);
+    console.log(`[didCreation] Created DID: ${result.did}`);
 
-    // Create URL-safe slug from email (matches client-side logic)
-    const slug = `user-${args.email
-      .replace(/[@.]/g, "-")
-      .replace(/[^a-zA-Z0-9-]/g, "")
-      .toLowerCase()}`;
-
-    // Create server-side signer
-    const signer = new TurnkeyWebVHSigner(
-      args.subOrgId,
-      address, // keyId = address for signWith
-      address, // publicKeyMultibase (matches client-side convention)
-      turnkeyClient,
-      verificationMethodId
-    );
-
-    // Create DID using OriginalsSDK (matches client-side createDIDWithTurnkey)
-    const result = await OriginalsSDK.createDIDOriginal({
-      type: "did",
-      domain,
-      signer,
-      verifier: signer,
-      updateKeys: [verificationMethodId],
-      verificationMethods: [
-        {
-          id: "#key-0",
-          type: "Multikey",
-          controller: "",
-          publicKeyMultibase: address,
-        },
-        {
-          id: "#key-1",
-          type: "Multikey",
-          controller: "",
-          publicKeyMultibase: address,
-        },
-      ],
-      paths: [slug],
-      portable: false,
-      authentication: ["#key-0"],
-      assertionMethod: ["#key-1"],
-    });
-
-    console.log(`[didCreation] Created did:webvh: ${result.did}`);
-    return { did: result.did };
+    return result;
   },
 });

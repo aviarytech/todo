@@ -1,22 +1,16 @@
-"use node";
-
 /**
- * Server-side arbitrary data signing using Turnkey.
+ * Server-side arbitrary data signing via external worker.
  *
- * General-purpose signing endpoint — NOT credential-specific.
- * Takes raw data (string), signs it with the user's Turnkey-managed
- * Ed25519 key, and returns the signature + public key.
+ * Uses the signing worker instead of importing @originals/auth directly,
+ * keeping the Convex bundle small.
  */
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { getEd25519Account } from "./turnkeyHelpers";
+import { createSigningClient } from "./signingClient";
 
 /**
- * Sign arbitrary string data using the user's Turnkey-managed Ed25519 key.
- *
- * Returns the raw Ed25519 signature (hex-encoded r‖s) and the public key
- * (base58 address from Turnkey).
+ * Sign arbitrary data using the user's Turnkey-managed keys via external worker.
  */
 export const signData = action({
   args: {
@@ -24,38 +18,19 @@ export const signData = action({
     subOrgId: v.string(),
   },
   handler: async (_ctx, args) => {
-    console.log(
-      `[dataSigning] Signing ${args.data.length} bytes of data (subOrg: ${args.subOrgId})`
-    );
+    console.log(`[dataSigning] Signing data for sub-org ${args.subOrgId}`);
 
-    const { turnkeyClient, address } = await getEd25519Account(args.subOrgId);
-
-    // Encode the data as hex for Turnkey's signRawPayload
-    const payloadHex = Buffer.from(args.data, "utf-8").toString("hex");
-
-    const result = await turnkeyClient.apiClient().signRawPayload({
-      organizationId: args.subOrgId,
-      signWith: address,
-      payload: `0x${payloadHex}`,
-      encoding: "PAYLOAD_ENCODING_HEXADECIMAL",
-      hashFunction: "HASH_FUNCTION_NO_OP",
-    });
-
-    const signResult = result.activity?.result?.signRawPayloadResult;
-    if (!signResult?.r || !signResult?.s) {
-      throw new Error("No signature returned from Turnkey");
+    const signingSecret = process.env.SIGNING_SECRET;
+    if (!signingSecret) {
+      throw new Error("SIGNING_SECRET not configured");
     }
 
-    // Concatenate r and s to form the Ed25519 signature (64 bytes)
-    const signature = signResult.r + signResult.s;
+    const client = createSigningClient(signingSecret);
+    
+    const result = await client.signData(args.data, args.subOrgId);
 
-    console.log(
-      `[dataSigning] Signed data successfully (pubkey: ${address})`
-    );
+    console.log(`[dataSigning] Data signed, public key: ${result.publicKey}`);
 
-    return {
-      signature,
-      publicKey: address,
-    };
+    return result;
   },
 });

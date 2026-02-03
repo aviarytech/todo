@@ -1,31 +1,16 @@
-"use node";
-
 /**
- * Server-side credential signing using Turnkey and OriginalsSDK.
+ * Server-side credential signing via external worker.
  *
- * This "use node" action signs verifiable credentials for item actions
- * (add, check, uncheck, remove) using the user's Turnkey-managed keys.
- * Replaces the client-side signItemActionWithSigner approach.
+ * Uses the signing worker instead of importing @originals/auth directly,
+ * keeping the Convex bundle small (no Turnkey crypto dependencies).
  */
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { TurnkeyWebVHSigner } from "@originals/auth/server";
-import { CredentialManager } from "@originals/sdk";
-import type { OriginalsConfig } from "@originals/sdk";
-import { getEd25519Account } from "./turnkeyHelpers";
-
-// SDK configuration matching src/lib/originals.ts
-const config: OriginalsConfig = {
-  network: "signet",
-  defaultKeyType: "Ed25519",
-};
+import { createSigningClient } from "./signingClient";
 
 /**
- * Sign an item action as a verifiable credential using server-side Turnkey keys.
- *
- * Follows the same Turnkey client + wallet account lookup pattern from didCreation.ts.
- * The credential is signed using TurnkeyWebVHSigner and CredentialManager.
+ * Sign an item action as a verifiable credential using the external signing worker.
  */
 export const signItemAction = action({
   args: {
@@ -45,53 +30,25 @@ export const signItemAction = action({
       `[credentialSigning] Signing ${args.type} credential for item ${args.itemId} (actor: ${args.actorDid})`
     );
 
-    const { turnkeyClient, address, verificationMethodId } =
-      await getEd25519Account(args.subOrgId);
+    const signingSecret = process.env.SIGNING_SECRET;
+    if (!signingSecret) {
+      throw new Error("SIGNING_SECRET not configured");
+    }
 
-    // Create server-side signer (same pattern as didCreation.ts)
-    const signer = new TurnkeyWebVHSigner(
-      args.subOrgId,
-      address, // keyId = address for signWith
-      address, // publicKeyMultibase
-      turnkeyClient,
-      verificationMethodId
-    );
-
-    // Create unsigned credential (matches src/lib/originals.ts signItemActionWithSigner)
-    const credentialManager = new CredentialManager(config);
-    const timestamp = new Date().toISOString();
-
-    const unsignedCredential = await credentialManager.createResourceCredential(
-      args.type === "ItemAdded" ? "ResourceCreated" : "ResourceUpdated",
-      {
-        id: `${args.listDid}#item-${args.itemId}`,
-        actionType: args.type,
-        listDid: args.listDid,
-        itemId: args.itemId,
-        actor: args.actorDid,
-        timestamp,
-      },
-      args.actorDid
-    );
-
-    // Sign using TurnkeyWebVHSigner (external signer pattern)
-    const signedCredential =
-      await credentialManager.signCredentialWithExternalSigner(
-        unsignedCredential,
-        signer
-      );
+    const client = createSigningClient(signingSecret);
+    
+    const result = await client.signItemAction({
+      type: args.type,
+      listDid: args.listDid,
+      itemId: args.itemId,
+      actorDid: args.actorDid,
+      subOrgId: args.subOrgId,
+    });
 
     console.log(
       `[credentialSigning] Signed ${args.type} credential for item ${args.itemId}`
     );
 
-    return {
-      type: args.type,
-      listDid: args.listDid,
-      itemId: args.itemId,
-      actor: args.actorDid,
-      timestamp,
-      credential: signedCredential,
-    };
+    return result;
   },
 });
