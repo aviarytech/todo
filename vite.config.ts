@@ -68,9 +68,9 @@ export default defineConfig({
           // Split vendor chunks for better caching
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'convex-vendor': ['convex'],
-          // Split @originals packages for better code splitting
+          // @originals/sdk is still used client-side for DID generation
           'originals-sdk': ['@originals/sdk'],
-          'originals-auth': ['@originals/auth'],
+          // Note: @originals/auth is only used server-side (Convex), not bundled client-side
         },
       },
     },

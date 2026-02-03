@@ -19,7 +19,7 @@ import { CategoryManager } from "../components/lists/CategoryManager";
 import { cacheAllLists, getAllCachedLists, type OfflineList } from "../lib/offline";
 
 export function Home() {
-  const { did, legacyDid, walletDid, isLoading: userLoading } = useCurrentUser();
+  const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { isOnline } = useOffline();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -27,12 +27,12 @@ export function Home() {
   const [cachedLists, setCachedLists] = useState<OfflineList[]>([]);
 
   // Debug: log DIDs being used
-  console.log("[Home] DIDs:", { did, legacyDid, walletDid });
+  console.log("[Home] DIDs:", { did, legacyDid });
 
-  // Query lists for current DID, including legacyDid and walletDid for backwards compat
+  // Query lists for current DID, including legacyDid for backwards compat
   const serverLists = useQuery(
     api.lists.getUserLists,
-    did ? { userDid: did, legacyDid: legacyDid ?? undefined, walletDid: walletDid ?? undefined } : "skip"
+    did ? { userDid: did, legacyDid: legacyDid ?? undefined } : "skip"
   );
 
   // Cache lists when online and data is available
@@ -77,10 +77,10 @@ export function Home() {
   // Split lists into owned and shared, then group each by category
   const { ownedLists, sharedLists } = useMemo<{ ownedLists: GroupedLists; sharedLists: GroupedLists }>(() => {
     // Helper to check if a list is owned by the current user
-    // Compares against all user DIDs (canonical, legacy, wallet) for backwards compat
+    // Compares against canonical DID and legacyDid for backwards compat
     const isOwnedByUser = (list: Doc<"lists">) => {
       const ownerDid = list.ownerDid;
-      return ownerDid === did || ownerDid === legacyDid || ownerDid === walletDid;
+      return ownerDid === did || ownerDid === legacyDid;
     };
 
     const emptyGroup: GroupedLists = { categorized: new Map(), uncategorized: [] };
@@ -120,7 +120,7 @@ export function Home() {
       ownedLists: groupByCategory(owned),
       sharedLists: groupByCategory(shared),
     };
-  }, [lists, did, legacyDid, walletDid]);
+  }, [lists, did, legacyDid]);
 
   if (!did && !userLoading) {
     return null; // Login page will show instead (handled by App.tsx)
@@ -154,7 +154,6 @@ export function Home() {
         <div><strong>Debug DIDs:</strong></div>
         <div>did: {did ?? "null"}</div>
         <div>legacyDid: {legacyDid ?? "null"}</div>
-        <div>walletDid: {walletDid ?? "null"}</div>
         <div>Lists found: {serverLists?.length ?? "loading..."}</div>
       </div>
 
