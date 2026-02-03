@@ -30,7 +30,7 @@ export function Login({ embedded = false }: LoginProps) {
 
   // Redirect if already authenticated (unless embedded)
   if (isAuthenticated && !embedded) {
-    navigate("/", { replace: true });
+    navigate("/app", { replace: true });
     return null;
   }
 
@@ -69,9 +69,9 @@ export function Login({ embedded = false }: LoginProps) {
     try {
       await verifyOtp(code);
       // On successful verification, useAuth will update isAuthenticated
-      // If not embedded, redirect to home; if embedded, parent handles navigation
+      // If not embedded, redirect to app; if embedded, parent handles navigation
       if (!embedded) {
-        navigate("/", { replace: true });
+        navigate("/app", { replace: true });
       }
     } catch (err) {
       console.error("Failed to verify OTP:", err);
@@ -98,12 +98,15 @@ export function Login({ embedded = false }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-          Welcome to Poo App
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center p-4">
+      <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-amber-200/50 max-w-md w-full p-8">
+        <div className="text-center mb-2">
+          <span className="text-6xl">💩</span>
+        </div>
+        <h1 className="text-2xl font-bold text-amber-900 mb-2 text-center">
+          Welcome to PooApp
         </h1>
-        <p className="text-gray-600 mb-6 text-center">
+        <p className="text-amber-800/70 mb-6 text-center">
           {step === "email"
             ? "Sign in with your email to get started"
             : `Enter the code we sent to ${email}`}
@@ -113,7 +116,7 @@ export function Login({ embedded = false }: LoginProps) {
           <form onSubmit={handleEmailSubmit}>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-amber-800 mb-1"
             >
               Email address
             </label>
@@ -123,7 +126,7 @@ export function Login({ embedded = false }: LoginProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-amber-200 rounded-xl shadow-sm text-amber-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               disabled={isLoading}
               autoFocus
               autoComplete="email"
@@ -134,7 +137,7 @@ export function Login({ embedded = false }: LoginProps) {
             <button
               type="submit"
               disabled={isLoading || !email.trim()}
-              className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-4 w-full bg-gradient-to-r from-amber-600 to-orange-500 text-white py-3 px-4 rounded-xl font-semibold hover:from-amber-500 hover:to-orange-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-500/20"
             >
               {isLoading ? "Sending code..." : "Send Code"}
             </button>
@@ -152,15 +155,15 @@ export function Login({ embedded = false }: LoginProps) {
               type="button"
               onClick={handleBackToEmail}
               disabled={isLoading}
-              className="mt-4 w-full text-gray-600 py-2 px-4 rounded-md font-medium hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
+              className="mt-4 w-full text-amber-700 py-2 px-4 rounded-xl font-medium hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              Use a different email
+              ← Use a different email
             </button>
           </div>
         )}
 
-        <p className="mt-6 text-xs text-gray-500 text-center">
-          Your keys are securely managed by Turnkey.
+        <p className="mt-6 text-xs text-amber-600/60 text-center">
+          🔐 Your keys are securely managed by Turnkey
         </p>
       </div>
     </div>
