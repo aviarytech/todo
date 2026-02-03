@@ -1,32 +1,30 @@
 # Implementation Plan
 
-**STATUS: NOT INITIALIZED — AWAITING LISA INTERVIEW**
+## Working Context (For Ralph)
 
-## Current State
-
-- No `specs/` directory exists
-- No `src/` directory exists
-- No git tags exist
-- Project requires initialization via Lisa (planning agent)
-
-## What Happens Next
-
-Ralph (builder) cannot proceed until Lisa completes the following:
-
-1. **Interview the user** to gather requirements:
-   - Vision & Purpose (what to build, who for, why)
-   - Technical Constraints (language/framework, integrations, deployment)
-   - Core Features (3-5 must-haves, explicit out-of-scope)
-   - Quality & Constraints (performance, testing philosophy)
-
-2. **Create `specs/` directory** with application specifications
-
-3. **Populate this plan** with prioritized, actionable tasks
-
-## To Initialize
-
-Run Lisa using: `./loop.sh lisa`
+_No active task. Pick the next item from "Next Up"._
 
 ---
 
-*This file will be replaced by Lisa after the interview is complete.*
+## Next Up
+- Simplify client — remove client-side Turnkey/signing, call server endpoints
+- Update useAuth.tsx to rely on server-provided DID (no client-side wallet setup)
+
+## Warnings
+
+- [WARNING] `convex/turnkeyHelpers.ts` uses raw `@turnkey/http` client access (`turnkeyClient.client.getWalletAccounts()`) because `TurnkeyHttpClient.apiClient()` doesn't expose `getWalletAccounts` yet. If @originals/auth adds this method later, switch to the wrapper.
+- [WARNING] `convex/_generated/api.d.ts` was manually edited to add `didCreation`, `credentialSigning`, and `dataSigning` modules. Run `npx convex dev` to regenerate properly.
+- [WARNING] `npx convex codegen` fails with "ModulesTooLarge" (45.32 MiB > 42.92 MiB max). The `credentialSigning` module adds to the bundle. Consider optimizing imports or using tree-shaking in @originals/sdk if deploying to Convex cloud becomes blocked.
+
+## Recently Completed
+
+- ✓ Server-side arbitrary data signing endpoint (`convex/dataSigning.ts`) — general-purpose signing action that takes `data` (string) + `subOrgId`, signs via Turnkey's `signRawPayload`, returns hex signature + public key. Also extracted shared `convex/turnkeyHelpers.ts` with `getEd25519Account()` to deduplicate wallet lookup across `dataSigning.ts`, `credentialSigning.ts`, and `didCreation.ts`.
+- ✓ Server-side credential signing action (`convex/credentialSigning.ts`) — moved `signItemActionWithSigner` to a Convex `"use node"` public action. Client components (`AddItemInput.tsx`, `ListItem.tsx`) now call `api.credentialSigning.signItemAction` via `useAction`. `subOrgId` exposed through `useCurrentUser` hook.
+- ✓ Server-side DID creation with @originals/auth 1.7.1
+
+## Backlog
+
+- Remove debug DID display from Home.tsx (cleanup)
+- Client-side fallback for offline credential operations
+- Migrate authInternal.ts from raw Web Crypto to @originals/auth/server (now that bundle works)
+- Clean up unused `signItemActionWithSigner` and `ExternalSigner` from `src/lib/originals.ts` (after client simplification is complete)

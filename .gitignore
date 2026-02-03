@@ -1,0 +1,18 @@
+# Logs
+.logs/
+
+# Archives (from ./loop.sh restart)
+.archive/
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store

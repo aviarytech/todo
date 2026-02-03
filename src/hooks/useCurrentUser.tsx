@@ -1,0 +1,108 @@
+/**
+ * Unified hook for getting current user identity.
+ *
+ * After Phase 1.7, this hook uses only Turnkey authentication via useAuth.
+ * The legacyDid field is preserved to support migrated users who previously
+ * had a localStorage identity - their old DID is stored in Convex and used
+ * for ownership checks on pre-migration lists.
+ */
+
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useAuth, type CreateDIDResult } from "./useAuth";
+import type { TurnkeyDIDSigner } from "../lib/turnkey";
+
+export interface CurrentUser {
+  /** User's canonical DID (from Convex user record, or fallback to authUser.did) */
+  did: string | null;
+  /** Legacy DID for migrated users (their old localStorage DID, stored in Convex) */
+  legacyDid: string | null;
+  /** Wallet-generated DID (from client-side Turnkey wallet, may differ from canonical DID) */
+  walletDid: string | null;
+  /** Turnkey sub-organization ID (needed for server-side signing) */
+  subOrgId: string | null;
+  /** Display name */
+  displayName: string | null;
+  /** Email address */
+  email: string | null;
+  /** Whether user is authenticated */
+  isAuthenticated: boolean;
+  /** Whether data is still loading */
+  isLoading: boolean;
+  /** Get the Turnkey signer for signing operations */
+  getSigner: () => TurnkeyDIDSigner | null;
+  /** Create a did:webvh DID for publishing (Phase 4) */
+  createWebvhDID: (domain: string, slug: string) => Promise<CreateDIDResult | null>;
+}
+
+/**
+ * Get the current user's identity from Turnkey authentication.
+ *
+ * This is the primary hook for accessing user identity throughout the app.
+ * It provides the user's DID, display name, email, and access to the
+ * Turnkey signer for credential signing operations.
+ *
+ * For migrated users, the legacyDid field contains their old localStorage DID
+ * which is used for backwards-compatible ownership checks on pre-migration lists.
+ */
+export function useCurrentUser(): CurrentUser {
+  const { isAuthenticated, user: authUser, isLoading: authLoading, getSigner, createWebvhDID } = useAuth();
+
+  // If Turnkey authenticated, fetch user record to get legacyDid
+  const turnkeyUser = useQuery(
+    api.auth.getUserByTurnkeyId,
+    isAuthenticated && authUser?.turnkeySubOrgId
+      ? { turnkeySubOrgId: authUser.turnkeySubOrgId }
+      : "skip"
+  );
+
+  const isLoading = authLoading || (isAuthenticated && turnkeyUser === undefined);
+
+  // Debug: log what we're getting
+  console.log("[useCurrentUser] Debug:", {
+    isAuthenticated,
+    authUser: authUser ? { did: authUser.did, turnkeySubOrgId: authUser.turnkeySubOrgId } : null,
+    turnkeyUser: turnkeyUser ? { did: turnkeyUser.did, legacyDid: turnkeyUser.legacyDid } : turnkeyUser,
+    isLoading,
+  });
+
+  // Authenticated user
+  if (isAuthenticated && authUser) {
+    // Prefer DID from Convex (canonical) over client-generated DID
+    // The server always stores did:temp:xxx, while the client might generate
+    // did:peer:xxx if wallet setup succeeds. Use Convex DID for consistency.
+    const canonicalDid = turnkeyUser?.did ?? authUser.did;
+    // Wallet DID is the client-generated DID, which may be did:peer:xxx
+    // Include it for backwards compatibility with records created before this fix
+    const walletDid = authUser.did !== canonicalDid ? authUser.did : null;
+
+    console.log("[useCurrentUser] Returning:", { canonicalDid, walletDid });
+
+    return {
+      did: canonicalDid,
+      legacyDid: turnkeyUser?.legacyDid ?? null,
+      walletDid,
+      subOrgId: authUser.turnkeySubOrgId,
+      displayName: authUser.displayName,
+      email: authUser.email,
+      isAuthenticated: true,
+      isLoading,
+      getSigner,
+      createWebvhDID,
+    };
+  }
+
+  // Not authenticated
+  return {
+    did: null,
+    legacyDid: null,
+    walletDid: null,
+    subOrgId: null,
+    displayName: null,
+    email: null,
+    isAuthenticated: false,
+    isLoading,
+    getSigner: () => null,
+    createWebvhDID: async () => null,
+  };
+}
