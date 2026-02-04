@@ -2,10 +2,7 @@
  * List view page showing items in a single list.
  *
  * Displays list header with actions, items, and add item input.
- * Updated for Phase 3: unlimited collaborators with roles.
- * Updated for Phase 4: publish/unpublish functionality.
- * Updated for Phase 5.5: optimistic updates for items.
- * Updated for Phase 7.5: lazy-loaded modals for bundle size optimization.
+ * Features improved design, dark mode, and better empty states.
  */
 
 import { useState, useCallback, lazy, Suspense } from "react";
@@ -17,10 +14,13 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useCollaborators } from "../hooks/useCollaborators";
 import { useOptimisticItems, type OptimisticItem } from "../hooks/useOptimisticItems";
 import { useOffline } from "../hooks/useOffline";
+import { useSettings } from "../hooks/useSettings";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
 import { CollaboratorList } from "../components/sharing/CollaboratorList";
+import { NoItemsEmptyState } from "../components/ui/EmptyState";
+import { ListViewSkeleton } from "../components/ui/Skeleton";
 
 // Lazy-loaded modals for better bundle splitting
 const DeleteListDialog = lazy(() => import("../components/DeleteListDialog").then(m => ({ default: m.DeleteListDialog })));
@@ -31,6 +31,7 @@ export function ListView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { did, legacyDid, subOrgId, isLoading: userLoading } = useCurrentUser();
+  const { haptic } = useSettings();
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -42,7 +43,7 @@ export function ListView() {
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
 
-  // Use optimistic items hook for Phase 5.5 (with offline cache fallback)
+  // Use optimistic items hook (with offline cache fallback)
   const {
     items,
     addItem,
@@ -53,18 +54,19 @@ export function ListView() {
     usingCache,
   } = useOptimisticItems(listId);
 
-  // Get user's role and collaborators (Phase 3)
+  // Get user's role and collaborators
   const { userRole, collaborators, isLoading: collabLoading } = useCollaborators(listId);
 
-  // Get publication status (Phase 4)
+  // Get publication status
   const publicationStatus = useQuery(api.publication.getPublicationStatus, { listId });
 
-  // Get online status for disabling destructive operations (Phase 5.9)
+  // Get online status for disabling destructive operations
   const { isOnline } = useOffline();
 
   const handleDragStart = useCallback((itemId: Id<"items">) => {
+    haptic('light');
     setDraggedItemId(itemId);
-  }, []);
+  }, [haptic]);
 
   const handleDragOver = useCallback(
     (e: React.DragEvent, itemId: Id<"items">) => {
@@ -83,7 +85,6 @@ export function ListView() {
       return;
     }
 
-    // Calculate new order
     const itemIds = items.map((item) => item._id);
     const draggedIndex = itemIds.indexOf(draggedItemId);
     const targetIndex = itemIds.indexOf(dragOverItemId);
@@ -93,20 +94,18 @@ export function ListView() {
       targetIndex !== -1 &&
       draggedIndex !== targetIndex
     ) {
-      // Remove from old position and insert at new position
+      haptic('medium');
       const newItemIds = [...itemIds];
       newItemIds.splice(draggedIndex, 1);
       newItemIds.splice(targetIndex, 0, draggedItemId);
-
-      // Update the order using optimistic reorderItems (queues when offline)
       await reorderItems(newItemIds, did, legacyDid ?? undefined);
     }
 
     setDraggedItemId(null);
     setDragOverItemId(null);
-  }, [draggedItemId, dragOverItemId, items, did, legacyDid, reorderItems]);
+  }, [draggedItemId, dragOverItemId, items, did, legacyDid, reorderItems, haptic]);
 
-  // Loading state (user or data)
+  // Loading state
   if (
     userLoading ||
     !did ||
@@ -114,173 +113,177 @@ export function ListView() {
     itemsLoading ||
     collabLoading
   ) {
-    return (
-      <div className="animate-pulse">
-        <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-12 bg-gray-200 rounded"></div>
-          ))}
-        </div>
-      </div>
-    );
+    return <ListViewSkeleton />;
   }
 
   if (list === null) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+      <div className="text-center py-16">
+        <div className="text-6xl mb-4">🔍</div>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
           List not found
         </h2>
-        <p className="text-gray-500 mb-4">This list may have been deleted.</p>
-        <Link to="/" className="text-blue-600 hover:text-blue-700">
+        <p className="text-gray-500 dark:text-gray-400 mb-6">
+          This list may have been deleted or you don't have access.
+        </p>
+        <Link 
+          to="/app" 
+          className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
           Back to lists
         </Link>
       </div>
     );
   }
 
-  // Check authorization using collaborators table (Phase 3)
-  // userRole will be null if not a collaborator
+  // Check authorization
   const isAuthorized = userRole !== null;
-
-  // Fallback: Also check legacy ownerDid field for unmigrated lists
   const userDids = [did, legacyDid].filter(Boolean) as string[];
   const legacyAuthorized = userDids.includes(list.ownerDid);
 
   if (!isAuthorized && !legacyAuthorized) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+      <div className="text-center py-16">
+        <div className="text-6xl mb-4">🔒</div>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
           Access denied
         </h2>
-        <p className="text-gray-500 mb-4">You don't have access to this list.</p>
-        <Link to="/" className="text-blue-600 hover:text-blue-700">
+        <p className="text-gray-500 dark:text-gray-400 mb-6">
+          You don't have permission to view this list.
+        </p>
+        <Link 
+          to="/app" 
+          className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
           Back to lists
         </Link>
       </div>
     );
   }
 
-  // Determine effective role (from collaborators table or inferred from legacy fields)
-  const effectiveRole =
-    userRole ?? (userDids.includes(list.ownerDid) ? "owner" : "editor");
+  // Determine effective role
+  const effectiveRole = userRole ?? (userDids.includes(list.ownerDid) ? "owner" : "editor");
   const canUserEdit = canEdit(effectiveRole);
   const canUserInvite = canInvite(effectiveRole);
   const canUserDelete = canDeleteList(effectiveRole);
 
-  // subOrgId is available from useCurrentUser for server-side credential signing
-
-  // Count collaborators for display
   const collaboratorCount = collaborators?.length ?? 0;
 
+  // Count checked/unchecked items
+  const checkedCount = items.filter(item => item.checked).length;
+  const totalCount = items.length;
+
   return (
-    <div>
+    <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-2 sm:gap-4 mb-6">
-        {/* Back button - min 44x44px touch target */}
+      <div className="flex items-center gap-3 sm:gap-4 mb-6">
+        {/* Back button */}
         <Link
-          to="/"
-          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+          to="/app"
+          onClick={() => haptic('light')}
+          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
           aria-label="Back to lists"
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
 
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
             {list.name}
           </h2>
-          {/* Collaborators toggle button */}
-          {collaboratorCount > 0 && (
-            <button
-              onClick={() => setShowCollaborators(!showCollaborators)}
-              className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              {collaboratorCount} collaborator{collaboratorCount !== 1 ? "s" : ""}
-              <svg
-                className={`w-3 h-3 transition-transform ${
-                  showCollaborators ? "rotate-180" : ""
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-          )}
+          
+          {/* Progress and collaborators info */}
+          <div className="flex items-center gap-3 mt-1">
+            {totalCount > 0 && (
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {checkedCount}/{totalCount} done
+              </span>
+            )}
+            
+            {collaboratorCount > 0 && (
+              <>
+                <span className="text-gray-300 dark:text-gray-600">•</span>
+                <button
+                  onClick={() => {
+                    haptic('light');
+                    setShowCollaborators(!showCollaborators);
+                  }}
+                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {collaboratorCount}
+                  <svg
+                    className={`w-3 h-3 transition-transform ${showCollaborators ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Action buttons - min 44px height for touch targets */}
+        {/* Action buttons */}
         <div className="flex items-center gap-2">
-          {/* Publish button - only show for owners (Phase 4) */}
-          {/* Disabled when offline (Phase 5.9) */}
           {canUserDelete && (
             <button
-              onClick={() => setIsPublishModalOpen(true)}
+              onClick={() => {
+                haptic('light');
+                setIsPublishModalOpen(true);
+              }}
               disabled={!isOnline}
               title={!isOnline ? "Available when online" : undefined}
-              className={`px-4 py-2.5 text-sm rounded-lg ${
+              className={`px-4 py-2.5 text-sm rounded-xl font-medium transition-all ${
                 !isOnline ? "opacity-50 cursor-not-allowed" : ""
               } ${
                 publicationStatus?.status === "active"
-                  ? "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                  ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50"
                   : "bg-purple-600 text-white hover:bg-purple-700"
               }`}
             >
-              {publicationStatus?.status === "active" ? "Published" : "Publish"}
+              {publicationStatus?.status === "active" ? "📡 Published" : "📡 Publish"}
             </button>
           )}
           {canUserInvite && (
             <button
-              onClick={() => setIsShareModalOpen(true)}
-              className="px-4 py-2.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+              onClick={() => {
+                haptic('light');
+                setIsShareModalOpen(true);
+              }}
+              className="px-4 py-2.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors"
             >
-              Share
+              🔗 Share
             </button>
           )}
-          {/* Delete button - disabled when offline (Phase 5.9) */}
           {canUserDelete && (
             <button
-              onClick={() => setIsDeleteDialogOpen(true)}
+              onClick={() => {
+                haptic('light');
+                setIsDeleteDialogOpen(true);
+              }}
               disabled={!isOnline}
               title={!isOnline ? "Available when online" : undefined}
-              className={`px-4 py-2.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 ${
+              className={`p-2.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors ${
                 !isOnline ? "opacity-50 cursor-not-allowed" : ""
               }`}
+              aria-label="Delete list"
             >
-              Delete
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </button>
           )}
         </div>
@@ -288,73 +291,90 @@ export function ListView() {
 
       {/* Collaborators panel (collapsible) */}
       {showCollaborators && (
-        <div className="mb-6 bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-900 mb-3">
-            Collaborators
+        <div className="mb-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 animate-slide-up">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <span>👥</span> Collaborators
           </h3>
-          <CollaboratorList listId={listId} onLeave={() => navigate("/")} />
+          <CollaboratorList listId={listId} onLeave={() => navigate("/app")} />
         </div>
       )}
 
       {/* Cached data indicator */}
       {usingCache && (
-        <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm flex items-center gap-2">
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span>Showing cached items. Some information may be outdated.</span>
+        <div className="mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400 text-sm flex items-center gap-3 animate-slide-up">
+          <span className="text-xl">📡</span>
+          <span>Showing cached items. Some info may be outdated.</span>
+        </div>
+      )}
+
+      {/* Progress bar */}
+      {totalCount > 0 && (
+        <div className="mb-4 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-500 ease-out"
+            style={{ width: `${(checkedCount / totalCount) * 100}%` }}
+          />
         </div>
       )}
 
       {/* Items */}
-      <div className="bg-white rounded-lg shadow divide-y divide-gray-100">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
         {items.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No items yet. Add one below!
-          </div>
+          <NoItemsEmptyState />
         ) : (
-          items.map((item: OptimisticItem) => (
-            <ListItem
-              key={item._id}
-              item={item}
-              list={list}
-              userDid={did}
-              legacyDid={legacyDid ?? undefined}
-              subOrgId={subOrgId}
-              canEdit={canUserEdit}
-              isDragging={draggedItemId === item._id}
-              isDragOver={dragOverItemId === item._id}
-              onDragStart={() => handleDragStart(item._id)}
-              onDragOver={(e) => handleDragOver(e, item._id)}
-              onDragEnd={handleDragEnd}
-              onCheck={checkItem}
-              onUncheck={uncheckItem}
-            />
-          ))
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            {items.map((item: OptimisticItem, index) => (
+              <div 
+                key={item._id} 
+                className="animate-slide-up"
+                style={{ animationDelay: `${index * 30}ms` }}
+              >
+                <ListItem
+                  item={item}
+                  list={list}
+                  userDid={did}
+                  legacyDid={legacyDid ?? undefined}
+                  subOrgId={subOrgId}
+                  canEdit={canUserEdit}
+                  isDragging={draggedItemId === item._id}
+                  isDragOver={dragOverItemId === item._id}
+                  onDragStart={() => handleDragStart(item._id)}
+                  onDragOver={(e) => handleDragOver(e, item._id)}
+                  onDragEnd={handleDragEnd}
+                  onCheck={checkItem}
+                  onUncheck={uncheckItem}
+                />
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
       {/* Add Item Input - only show if user can edit */}
       {canUserEdit && (
-        <div className="mt-4">
+        <div className="mt-4 animate-slide-up" style={{ animationDelay: '200ms' }}>
           <AddItemInput assetDid={list.assetDid} onAddItem={addItem} />
         </div>
       )}
 
       {/* Viewer notice */}
       {!canUserEdit && (
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg text-center text-gray-500 text-sm">
+        <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl text-center text-gray-500 dark:text-gray-400 text-sm flex items-center justify-center gap-2">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
           You have view-only access to this list.
         </div>
       )}
 
-      {/* Modals - lazy-loaded with Suspense for code splitting */}
+      {/* Modals - lazy-loaded with Suspense */}
       <Suspense fallback={null}>
         {isDeleteDialogOpen && (
           <DeleteListDialog
             list={list}
             onClose={() => setIsDeleteDialogOpen(false)}
-            onDeleted={() => navigate("/")}
+            onDeleted={() => navigate("/app")}
           />
         )}
 

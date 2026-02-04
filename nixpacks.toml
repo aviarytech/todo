@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["bun"]
+nixPkgs = ["bun", "nodejs_22"]
 
 [phases.install]
 cmds = ["bun install"]
@@ -8,4 +8,4 @@ cmds = ["bun install"]
 cmds = ["bun run build"]
 
 [start]
-cmd = "bun run preview"
+cmd = "bunx serve dist -s -l ${PORT:-3000}"

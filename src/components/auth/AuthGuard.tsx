@@ -5,6 +5,7 @@
  * - If loading: shows loading spinner
  * - If not authenticated: redirects to /login
  * - If authenticated: renders children
+ * - If demo mode: allows access without auth
  *
  * Used to wrap routes that require authentication.
  */
@@ -12,6 +13,7 @@
 import { type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { isDemoMode } from "../../lib/demoMode";
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -20,6 +22,11 @@ interface AuthGuardProps {
 export function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+
+  // Allow access in demo mode
+  if (isDemoMode()) {
+    return <>{children}</>;
+  }
 
   // Show loading state while checking auth
   if (isLoading) {
