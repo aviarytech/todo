@@ -20,6 +20,7 @@ export function CategoryHeader({
   defaultExpanded = true,
 }: CategoryHeaderProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const isUncategorized = name.toLowerCase() === "uncategorized";
 
   return (
     <div className="mb-6">
@@ -47,7 +48,13 @@ export function CategoryHeader({
               />
             </svg>
           </span>
-          <h3 className="text-lg font-semibold text-gray-700 group-hover:text-gray-900">
+          <h3
+            className={`text-lg font-semibold ${
+              isUncategorized
+                ? "text-gray-500 dark:text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300"
+                : "text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white"
+            }`}
+          >
             {name}
           </h3>
           <span className="text-sm text-gray-400">({listCount})</span>

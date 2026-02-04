@@ -6,10 +6,14 @@ import { AuthProvider } from './hooks/useAuth'
 import { ToastProvider } from './hooks/useToast'
 import { SettingsProvider } from './hooks/useSettings'
 import { registerServiceWorker } from './lib/sw-registration'
+import { initDarkMode } from './lib/storage'
 import './index.css'
 import App from './App.tsx'
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string)
+
+// Initialize dark mode early to avoid a flash on load
+initDarkMode();
 
 // Register service worker for offline support
 registerServiceWorker({

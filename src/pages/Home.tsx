@@ -273,7 +273,7 @@ export function Home() {
                     name={category.name}
                     listCount={categoryLists.length}
                   >
-                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 grid-cols-1">
                       {categoryLists.map((list, index) => (
                         <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                           <ListCard list={list} currentUserDid={did} />
@@ -290,7 +290,7 @@ export function Home() {
                   name="Uncategorized"
                   listCount={ownedLists.uncategorized.length}
                 >
-                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-4 grid-cols-1">
                     {ownedLists.uncategorized.map((list, index) => (
                       <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                         <ListCard list={list} currentUserDid={did} />
@@ -320,7 +320,7 @@ export function Home() {
                     name={category.name}
                     listCount={categoryLists.length}
                   >
-                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 grid-cols-1">
                       {categoryLists.map((list, index) => (
                         <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                           <ListCard list={list} currentUserDid={did} showOwner />
@@ -337,7 +337,7 @@ export function Home() {
                   name="Uncategorized"
                   listCount={sharedLists.uncategorized.length}
                 >
-                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-4 grid-cols-1">
                     {sharedLists.uncategorized.map((list, index) => (
                       <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                         <ListCard list={list} currentUserDid={did} showOwner />

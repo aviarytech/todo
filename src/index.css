@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Tailwind v4 class-based dark mode variant */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Custom animations */
 @keyframes shimmer {
   0% {

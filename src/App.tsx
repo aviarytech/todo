@@ -24,7 +24,7 @@ const PublicList = lazy(() => import('./pages/PublicList').then(m => ({ default:
  * Features dark mode support and improved styling.
  */
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
-  const { haptic, darkMode } = useSettings();
+  const { haptic, darkMode, toggleDarkMode } = useSettings();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
@@ -63,7 +63,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
             <button
               onClick={() => {
                 haptic('light');
-                document.documentElement.classList.toggle('dark');
+                toggleDarkMode();
               }}
               className="p-2.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
               aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
