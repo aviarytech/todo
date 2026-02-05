@@ -10,16 +10,56 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { TurnkeyWebVHSigner } from "@originals/auth/server";
-import { CredentialManager } from "@originals/sdk";
-import type { OriginalsConfig } from "@originals/sdk";
+import { TurnkeyWebVHSigner } from "./lib/turnkeySigner";
 import { getEd25519Account } from "./turnkeyHelpers";
 
-// SDK configuration matching src/lib/originals.ts
-const config: OriginalsConfig = {
-  network: "signet",
-  defaultKeyType: "Ed25519",
-};
+interface UnsignedCredential {
+  "@context": string[];
+  type: string[];
+  issuer: string;
+  issuanceDate: string;
+  credentialSubject: Record<string, unknown>;
+}
+
+function createResourceCredential(
+  type: "ResourceCreated" | "ResourceUpdated",
+  subject: Record<string, unknown>,
+  issuer: string
+): UnsignedCredential {
+  return {
+    "@context": ["https://www.w3.org/2018/credentials/v1"],
+    type: ["VerifiableCredential", type],
+    issuer,
+    issuanceDate: new Date().toISOString(),
+    credentialSubject: subject,
+  };
+}
+
+async function signCredentialWithExternalSigner(
+  credential: UnsignedCredential,
+  signer: TurnkeyWebVHSigner
+) {
+  const proofBase = {
+    type: "DataIntegrityProof",
+    cryptosuite: "eddsa-jcs-2022",
+    created: new Date().toISOString(),
+    verificationMethod: signer.getVerificationMethodId(),
+    proofPurpose: "assertionMethod",
+  };
+
+  const { proofValue } = await signer.sign({
+    document: credential,
+    proof: proofBase,
+  });
+
+  return {
+    ...credential,
+    proof: {
+      ...proofBase,
+      proofValue,
+    },
+  };
+}
 
 /**
  * Sign an item action as a verifiable credential using server-side Turnkey keys.
@@ -57,11 +97,10 @@ export const signItemAction = action({
       verificationMethodId
     );
 
-    // Create unsigned credential (matches src/lib/originals.ts signItemActionWithSigner)
-    const credentialManager = new CredentialManager(config);
+    // Create unsigned credential (matches src/lib/originals.ts shape)
     const timestamp = new Date().toISOString();
 
-    const unsignedCredential = await credentialManager.createResourceCredential(
+    const unsignedCredential = createResourceCredential(
       args.type === "ItemAdded" ? "ResourceCreated" : "ResourceUpdated",
       {
         id: `${args.listDid}#item-${args.itemId}`,
@@ -74,12 +113,11 @@ export const signItemAction = action({
       args.actorDid
     );
 
-    // Sign using TurnkeyWebVHSigner (external signer pattern)
-    const signedCredential =
-      await credentialManager.signCredentialWithExternalSigner(
-        unsignedCredential,
-        signer
-      );
+    // Sign with Turnkey-backed external signer.
+    const signedCredential = await signCredentialWithExternalSigner(
+      unsignedCredential,
+      signer
+    );
 
     console.log(
       `[credentialSigning] Signed ${args.type} credential for item ${args.itemId}`

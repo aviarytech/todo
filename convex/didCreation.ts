@@ -10,14 +10,14 @@
 
 import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
-import { TurnkeyWebVHSigner } from "@originals/auth/server";
-import { OriginalsSDK } from "@originals/sdk";
+import { TurnkeyWebVHSigner } from "./lib/turnkeySigner";
 import { getEd25519Account } from "./turnkeyHelpers";
+import { createDID as createWebVHDID } from "didwebvh-ts";
 
 /**
  * Internal helper to create a did:webvh DID.
  */
-async function createDID(
+async function createDIDRecord(
   subOrgId: string,
   domain: string,
   slug: string
@@ -34,9 +34,7 @@ async function createDID(
     verificationMethodId
   );
 
-  // Create DID using OriginalsSDK
-  const result = await OriginalsSDK.createDIDOriginal({
-    type: "did",
+  const result = await createWebVHDID({
     domain,
     signer,
     verifier: signer,
@@ -61,11 +59,7 @@ async function createDID(
     assertionMethod: ["#key-1"],
   });
 
-  return {
-    did: result.did,
-    didDocument: result.doc,
-    didLog: result.log,
-  };
+  return { did: result.did, didDocument: result.doc, didLog: result.log };
 }
 
 /**
@@ -93,7 +87,7 @@ export const createDIDWebVH = internalAction({
       .replace(/[^a-zA-Z0-9-]/g, "")
       .toLowerCase()}`;
 
-    const result = await createDID(args.subOrgId, domain, slug);
+    const result = await createDIDRecord(args.subOrgId, domain, slug);
 
     console.log(`[didCreation] Created user did:webvh: ${result.did}`);
     return { did: result.did };
@@ -119,7 +113,7 @@ export const createListDID = action({
       `[didCreation] Creating list did:webvh for slug: ${args.slug} (subOrg: ${args.subOrgId})`
     );
 
-    const result = await createDID(args.subOrgId, args.domain, args.slug);
+    const result = await createDIDRecord(args.subOrgId, args.domain, args.slug);
 
     console.log(`[didCreation] Created list did:webvh: ${result.did}`);
     return result;

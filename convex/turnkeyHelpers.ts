@@ -7,7 +7,7 @@
  * credentialSigning.ts, didCreation.ts, and dataSigning.ts.
  */
 
-import { createTurnkeyClient } from "@originals/auth/server";
+import { createTurnkeyClient } from "./lib/turnkeyClient";
 
 /** The shape returned by getWalletAccounts (not yet exposed by the wrapper). */
 interface WalletAccount {

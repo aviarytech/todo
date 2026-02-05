@@ -12,7 +12,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "env:dev": "bash -c 'export $(grep -v \"^#\" .env.local | grep -E \"^(TURNKEY_|JWT_SECRET|WEBVH_DOMAIN)\" | xargs) && for k in TURNKEY_API_PUBLIC_KEY TURNKEY_API_PRIVATE_KEY TURNKEY_ORGANIZATION_ID JWT_SECRET WEBVH_DOMAIN; do npx convex env set \"$k\" \"${!k}\"; done'",
-    "env:prod": "bash -c 'export $(grep -v \"^#\" .env.local | grep -E \"^(TURNKEY_|JWT_SECRET|WEBVH_DOMAIN)\" | xargs) && for k in TURNKEY_API_PUBLIC_KEY TURNKEY_API_PRIVATE_KEY TURNKEY_ORGANIZATION_ID JWT_SECRET WEBVH_DOMAIN; do npx convex env set --prod \"$k\" \"${!k}\"; done'"
+    "env:prod": "bash -c 'export $(grep -v \"^#\" .env.local | grep -E \"^(TURNKEY_|JWT_SECRET|WEBVH_DOMAIN)\" | xargs) && for k in TURNKEY_API_PUBLIC_KEY TURNKEY_API_PRIVATE_KEY TURNKEY_ORGANIZATION_ID JWT_SECRET WEBVH_DOMAIN; do npx convex env set --prod \"$k\" \"${!k}\"; done'",
+    "env:turnkey:dev": "bash ./scripts/sync-convex-turnkey-env.sh .env.local dev",
+    "env:turnkey:prod": "bash ./scripts/sync-convex-turnkey-env.sh .env.local prod"
   },
   "dependencies": {
     "@originals/auth": "^1.8.2",

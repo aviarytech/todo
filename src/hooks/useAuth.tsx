@@ -23,6 +23,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { disableDemoMode } from "../lib/demoMode";
 
 /**
  * Get the Convex HTTP endpoint base URL from the Convex URL.
@@ -310,6 +311,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setOtpFlowState({ sessionId: null, email: null, legacyDid: null });
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem(JWT_STORAGE_KEY);
+    disableDemoMode();
   }, []);
 
   const value: AuthContextValue = {
