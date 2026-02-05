@@ -3,19 +3,10 @@
 /**
  * Shared Turnkey wallet lookup helpers.
  *
- * Extracts the duplicated wallet-account resolution logic used by
- * credentialSigning.ts, didCreation.ts, and dataSigning.ts.
+ * Provides wallet-account resolution logic for DID creation flows.
  */
 
 import { createTurnkeyClient } from "./lib/turnkeyClient";
-
-/** The shape returned by getWalletAccounts (not yet exposed by the wrapper). */
-interface WalletAccount {
-  address: string;
-  curve: string;
-  path: string;
-  addressFormat: string;
-}
 
 /**
  * Look up the first Ed25519 wallet account for a Turnkey sub-org.
@@ -35,19 +26,8 @@ export async function getEd25519Account(subOrgId: string) {
     throw new Error("No wallets found for sub-org");
   }
 
-  // Access the underlying @turnkey/http client to call getWalletAccounts
-  // (TurnkeyHttpClient.apiClient() doesn't expose this method yet)
-  const rawClient = (
-    turnkeyClient as unknown as {
-      client: {
-        getWalletAccounts: (params: {
-          organizationId: string;
-          walletId: string;
-        }) => Promise<{ accounts: WalletAccount[] }>;
-      };
-    }
-  ).client;
-  const accountsResponse = await rawClient.getWalletAccounts({
+  // Use the typed SDK client directly.
+  const accountsResponse = await turnkeyClient.apiClient().getWalletAccounts({
     organizationId: subOrgId,
     walletId: wallets[0].walletId,
   });
@@ -62,8 +42,19 @@ export async function getEd25519Account(subOrgId: string) {
     throw new Error("No Ed25519 account found in wallet");
   }
 
+  const signingOrganizationId = ed25519Account.organizationId || subOrgId;
+  if (signingOrganizationId !== subOrgId) {
+    console.warn(
+      `[turnkeyHelpers] Requested org ${subOrgId} but selected account belongs to ${signingOrganizationId}. Using account organization for signing.`
+    );
+  }
   const address = ed25519Account.address;
   const verificationMethodId = `did:key:${address}`;
 
-  return { turnkeyClient, address, verificationMethodId };
+  return {
+    turnkeyClient,
+    address,
+    verificationMethodId,
+    signingOrganizationId,
+  };
 }

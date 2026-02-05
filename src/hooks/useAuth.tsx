@@ -24,6 +24,7 @@ import {
   type ReactNode,
 } from "react";
 import { disableDemoMode } from "../lib/demoMode";
+import { createUserWebVHDid } from "../lib/webvh";
 
 /**
  * Get the Convex HTTP endpoint base URL from the Convex URL.
@@ -252,9 +253,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
         localStorage.setItem(JWT_STORAGE_KEY, jwtToken);
         setToken(jwtToken);
 
-        // Use DID from server response (created server-side during verification)
-        // Falls back to did:temp if the server didn't return a real DID
-        const userDid = serverUser.did || `did:temp:${serverUser.turnkeySubOrgId}`;
+        // Start with server-provided DID. If it is not already did:webvh,
+        // create did:webvh client-side and persist it.
+        let userDid = serverUser.did || `did:temp:${serverUser.turnkeySubOrgId}`;
+        if (!userDid.startsWith("did:webvh:")) {
+          try {
+            const webvhResult = await createUserWebVHDid({
+              email: serverUser.email,
+              subOrgId: serverUser.turnkeySubOrgId,
+            });
+            userDid = webvhResult.did;
+
+            await fetch(`${httpUrl}/api/user/updateDID`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${jwtToken}`,
+              },
+              credentials: "include",
+              body: JSON.stringify({ did: userDid }),
+            });
+
+            console.log("[useAuth] Upgraded user DID to did:webvh:", userDid);
+          } catch (didErr) {
+            console.error("[useAuth] Failed to create/update did:webvh:", didErr);
+          }
+        }
 
         // Create auth user object
         const authUser: AuthUser = {

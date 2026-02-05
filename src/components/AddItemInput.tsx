@@ -4,8 +4,6 @@
  */
 
 import { useState, useRef, type FormEvent } from "react";
-import { useAction } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
 
@@ -19,10 +17,9 @@ interface AddItemInputProps {
   }) => Promise<void>;
 }
 
-export function AddItemInput({ assetDid, onAddItem }: AddItemInputProps) {
-  const { did, legacyDid, subOrgId } = useCurrentUser();
+export function AddItemInput({ onAddItem }: AddItemInputProps) {
+  const { did, legacyDid } = useCurrentUser();
   const { haptic } = useSettings();
-  const signItemAction = useAction(api.credentialSigning.signItemAction);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
@@ -40,23 +37,6 @@ export function AddItemInput({ assetDid, onAddItem }: AddItemInputProps) {
     setIsAdding(true);
 
     try {
-      const itemId = crypto.randomUUID();
-
-      // Sign the item action credential server-side (best-effort)
-      if (subOrgId) {
-        try {
-          await signItemAction({
-            type: "ItemAdded",
-            listDid: assetDid,
-            itemId,
-            actorDid: did,
-            subOrgId,
-          });
-        } catch (err) {
-          console.warn("Failed to sign item action credential:", err);
-        }
-      }
-
       await onAddItem({
         name: trimmedName,
         createdByDid: did,

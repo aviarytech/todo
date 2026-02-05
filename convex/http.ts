@@ -235,17 +235,17 @@ const verify = httpAction(async (ctx, request) => {
       subOrgId: result.subOrgId,
     });
 
-    // Create did:webvh for the user (falls back to did:temp on failure)
+    // No server-side signing during auth: derive a did:key from the user's
+    // Turnkey Ed25519 account and fall back to did:temp if lookup fails.
     let userDid = `did:temp:${result.subOrgId}`;
     try {
-      const didResult = await ctx.runAction(internal.didCreation.createDIDWebVH, {
+      const didResult = await ctx.runAction(internal.didCreation.createDIDKey, {
         subOrgId: result.subOrgId,
-        email: result.email,
       });
       userDid = didResult.did;
-      console.log(`[authHttp] Created did:webvh: ${userDid}`);
+      console.log(`[authHttp] Created did:key: ${userDid}`);
     } catch (err) {
-      console.error("[authHttp] DID creation failed, using temp DID:", err);
+      console.error("[authHttp] did:key creation failed, using temp DID:", err);
     }
 
     // Create/update user

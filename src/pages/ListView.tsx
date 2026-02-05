@@ -30,7 +30,7 @@ const PublishModal = lazy(() => import("../components/publish/PublishModal").the
 export function ListView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { did, legacyDid, subOrgId, isLoading: userLoading } = useCurrentUser();
+  const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
   const { haptic } = useSettings();
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -331,10 +331,8 @@ export function ListView() {
               >
                 <ListItem
                   item={item}
-                  list={list}
                   userDid={did}
                   legacyDid={legacyDid ?? undefined}
-                  subOrgId={subOrgId}
                   canEdit={canUserEdit}
                   isDragging={draggedItemId === item._id}
                   isDragOver={dragOverItemId === item._id}

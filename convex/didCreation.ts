@@ -22,12 +22,12 @@ async function createDIDRecord(
   domain: string,
   slug: string
 ): Promise<{ did: string; didDocument: unknown; didLog: unknown }> {
-  const { turnkeyClient, address, verificationMethodId } =
+  const { turnkeyClient, address, verificationMethodId, signingOrganizationId } =
     await getEd25519Account(subOrgId);
 
   // Create server-side signer
   const signer = new TurnkeyWebVHSigner(
-    subOrgId,
+    signingOrganizationId,
     address, // keyId = address for signWith
     address, // publicKeyMultibase (matches client-side convention)
     turnkeyClient,
@@ -91,6 +91,20 @@ export const createDIDWebVH = internalAction({
 
     console.log(`[didCreation] Created user did:webvh: ${result.did}`);
     return { did: result.did };
+  },
+});
+
+/**
+ * Create a did:key DID for a user from their Turnkey Ed25519 account.
+ * Internal action - used when server-side did:webvh signing is disabled.
+ */
+export const createDIDKey = internalAction({
+  args: {
+    subOrgId: v.string(),
+  },
+  handler: async (_ctx, args): Promise<{ did: string }> => {
+    const { verificationMethodId } = await getEd25519Account(args.subOrgId);
+    return { did: verificationMethodId };
   },
 });
 

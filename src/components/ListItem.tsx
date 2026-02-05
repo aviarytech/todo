@@ -6,19 +6,17 @@
  */
 
 import { useState } from "react";
-import { useMutation, useAction } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import type { Doc, Id } from "../../convex/_generated/dataModel";
+import type { Id } from "../../convex/_generated/dataModel";
 import { ItemAttribution } from "./ItemAttribution";
 import { useSettings } from "../hooks/useSettings";
 import type { OptimisticItem } from "../hooks/useOptimisticItems";
 
 interface ListItemProps {
   item: OptimisticItem;
-  list: Doc<"lists">;
   userDid: string;
   legacyDid?: string;
-  subOrgId: string | null;
   canEdit?: boolean;
   isDragging?: boolean;
   isDragOver?: boolean;
@@ -31,10 +29,8 @@ interface ListItemProps {
 
 export function ListItem({
   item,
-  list,
   userDid,
   legacyDid,
-  subOrgId,
   canEdit: canUserEdit = true,
   isDragging = false,
   isDragOver = false,
@@ -50,25 +46,8 @@ export function ListItem({
   const checkItemMutation = useMutation(api.items.checkItem);
   const uncheckItemMutation = useMutation(api.items.uncheckItem);
   const removeItem = useMutation(api.items.removeItem);
-  const signItemAction = useAction(api.credentialSigning.signItemAction);
 
   const [isUpdating, setIsUpdating] = useState(false);
-
-  /** Sign a credential server-side (best-effort, non-blocking) */
-  const signCredential = async (type: "ItemChecked" | "ItemUnchecked" | "ItemRemoved") => {
-    if (!subOrgId) return;
-    try {
-      await signItemAction({
-        type,
-        listDid: list.assetDid,
-        itemId: item._id,
-        actorDid: userDid,
-        subOrgId,
-      });
-    } catch (err) {
-      console.warn(`Failed to sign ${type} credential:`, err);
-    }
-  };
 
   const handleToggleCheck = async () => {
     if (isUpdating) return;
@@ -78,14 +57,12 @@ export function ListItem({
 
     try {
       if (item.checked) {
-        await signCredential("ItemUnchecked");
         if (onUncheck) {
           await onUncheck(item._id, userDid, legacyDid);
         } else {
           await uncheckItemMutation({ itemId: item._id, userDid, legacyDid });
         }
       } else {
-        await signCredential("ItemChecked");
         if (onCheck) {
           await onCheck(item._id, userDid, legacyDid);
         } else {
@@ -112,7 +89,6 @@ export function ListItem({
     setIsUpdating(true);
 
     try {
-      await signCredential("ItemRemoved");
       await removeItem({ itemId: item._id, userDid, legacyDid });
     } catch (err) {
       console.error("Failed to remove item:", err);
