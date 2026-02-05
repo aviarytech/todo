@@ -7,6 +7,10 @@
     "module": "ESNext",
     "types": ["vite/client", "node"],
     "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@originals/sdk": ["src/types/originals-sdk.d.ts"]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",
