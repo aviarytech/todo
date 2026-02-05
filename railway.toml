@@ -6,4 +6,5 @@ startCommand = "bunx serve dist -s -l $PORT"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
+
 restartPolicyMaxRetries = 3
