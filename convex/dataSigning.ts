@@ -1,16 +1,16 @@
 "use node";
 
 /**
- * Server-side arbitrary data signing using Turnkey.
+ * Server-side arbitrary data signing via pooapp-signer service.
  *
- * General-purpose signing endpoint — NOT credential-specific.
- * Takes raw data (string), signs it with the user's Turnkey-managed
- * Ed25519 key, and returns the signature + public key.
+ * Calls the external signer API instead of using Turnkey directly,
+ * avoiding Convex bundler issues with the SDK's dependencies.
  */
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { getEd25519Account } from "./turnkeyHelpers";
+
+const SIGNER_URL = process.env.SIGNER_URL || "https://pooapp-signer-production.up.railway.app";
 
 /**
  * Sign arbitrary string data using the user's Turnkey-managed Ed25519 key.
@@ -28,34 +28,26 @@ export const signData = action({
       `[dataSigning] Signing ${args.data.length} bytes of data (subOrg: ${args.subOrgId})`
     );
 
-    const { turnkeyClient, address } = await getEd25519Account(args.subOrgId);
-
-    // Encode the data as hex for Turnkey's signRawPayload
-    const payloadHex = Buffer.from(args.data, "utf-8").toString("hex");
-
-    const result = await turnkeyClient.apiClient().signRawPayload({
-      organizationId: args.subOrgId,
-      signWith: address,
-      payload: `0x${payloadHex}`,
-      encoding: "PAYLOAD_ENCODING_HEXADECIMAL",
-      hashFunction: "HASH_FUNCTION_NO_OP",
+    const response = await fetch(`${SIGNER_URL}/sign-data`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        data: args.data,
+        subOrgId: args.subOrgId,
+      }),
     });
 
-    const signResult = result.activity?.result?.signRawPayloadResult;
-    if (!signResult?.r || !signResult?.s) {
-      throw new Error("No signature returned from Turnkey");
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Signer error: ${error}`);
     }
 
-    // Concatenate r and s to form the Ed25519 signature (64 bytes)
-    const signature = signResult.r + signResult.s;
+    const result = await response.json();
 
     console.log(
-      `[dataSigning] Signed data successfully (pubkey: ${address})`
+      `[dataSigning] Signed data successfully (pubkey: ${result.publicKey})`
     );
 
-    return {
-      signature,
-      publicKey: address,
-    };
+    return result;
   },
 });

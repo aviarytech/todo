@@ -1,72 +1,16 @@
 "use node";
 
 /**
- * Server-side DID creation using Turnkey and OriginalsSDK.
+ * Server-side DID creation via pooapp-signer service.
  *
- * This "use node" action creates did:webvh identities:
- * - Internal action for OTP verification (user DID)
- * - Public action for list publication (list DID)
+ * Calls the external signer API instead of importing SDK directly,
+ * avoiding Convex bundler issues with the SDK's ESM/CJS dependencies.
  */
 
 import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
-import { TurnkeyWebVHSigner } from "@originals/auth/server";
-import { OriginalsSDK } from "@originals/sdk";
-import { getEd25519Account } from "./turnkeyHelpers";
 
-/**
- * Internal helper to create a did:webvh DID.
- */
-async function createDID(
-  subOrgId: string,
-  domain: string,
-  slug: string
-): Promise<{ did: string; didDocument: unknown; didLog: unknown }> {
-  const { turnkeyClient, address, verificationMethodId } =
-    await getEd25519Account(subOrgId);
-
-  // Create server-side signer
-  const signer = new TurnkeyWebVHSigner(
-    subOrgId,
-    address, // keyId = address for signWith
-    address, // publicKeyMultibase (matches client-side convention)
-    turnkeyClient,
-    verificationMethodId
-  );
-
-  // Create DID using OriginalsSDK
-  const result = await OriginalsSDK.createDIDOriginal({
-    type: "did",
-    domain,
-    signer,
-    verifier: signer,
-    updateKeys: [verificationMethodId],
-    verificationMethods: [
-      {
-        id: "#key-0",
-        type: "Multikey",
-        controller: "",
-        publicKeyMultibase: address,
-      },
-      {
-        id: "#key-1",
-        type: "Multikey",
-        controller: "",
-        publicKeyMultibase: address,
-      },
-    ],
-    paths: [slug],
-    portable: false,
-    authentication: ["#key-0"],
-    assertionMethod: ["#key-1"],
-  });
-
-  return {
-    did: result.did,
-    didDocument: result.doc,
-    didLog: result.log,
-  };
-}
+const SIGNER_URL = process.env.SIGNER_URL || "https://pooapp-signer-production.up.railway.app";
 
 /**
  * Create a did:webvh DID for a user during OTP verification.
@@ -78,23 +22,26 @@ export const createDIDWebVH = internalAction({
     email: v.string(),
   },
   handler: async (_ctx, args): Promise<{ did: string }> => {
-    const domain = process.env.WEBVH_DOMAIN;
-    if (!domain) {
-      throw new Error("WEBVH_DOMAIN environment variable is not set");
-    }
-
     console.log(
       `[didCreation] Creating user did:webvh for ${args.email} (subOrg: ${args.subOrgId})`
     );
 
-    // Create URL-safe slug from email
-    const slug = `user-${args.email
-      .replace(/[@.]/g, "-")
-      .replace(/[^a-zA-Z0-9-]/g, "")
-      .toLowerCase()}`;
+    const response = await fetch(`${SIGNER_URL}/create-user-did`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subOrgId: args.subOrgId,
+        email: args.email,
+      }),
+    });
 
-    const result = await createDID(args.subOrgId, domain, slug);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Signer error: ${error}`);
+    }
 
+    const result = await response.json();
+    
     console.log(`[didCreation] Created user did:webvh: ${result.did}`);
     return { did: result.did };
   },
@@ -119,8 +66,23 @@ export const createListDID = action({
       `[didCreation] Creating list did:webvh for slug: ${args.slug} (subOrg: ${args.subOrgId})`
     );
 
-    const result = await createDID(args.subOrgId, args.domain, args.slug);
+    const response = await fetch(`${SIGNER_URL}/create-list-did`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subOrgId: args.subOrgId,
+        domain: args.domain,
+        slug: args.slug,
+      }),
+    });
 
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Signer error: ${error}`);
+    }
+
+    const result = await response.json();
+    
     console.log(`[didCreation] Created list did:webvh: ${result.did}`);
     return result;
   },
