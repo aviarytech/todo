@@ -21,6 +21,7 @@ import type * as invites from "../invites.js";
 import type * as items from "../items.js";
 import type * as itemsHttp from "../itemsHttp.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_httpResponses from "../lib/httpResponses.js";
 import type * as lib_jwt from "../lib/jwt.js";
 import type * as lib_turnkeyClient from "../lib/turnkeyClient.js";
 import type * as lib_turnkeySigner from "../lib/turnkeySigner.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   items: typeof items;
   itemsHttp: typeof itemsHttp;
   "lib/auth": typeof lib_auth;
+  "lib/httpResponses": typeof lib_httpResponses;
   "lib/jwt": typeof lib_jwt;
   "lib/turnkeyClient": typeof lib_turnkeyClient;
   "lib/turnkeySigner": typeof lib_turnkeySigner;

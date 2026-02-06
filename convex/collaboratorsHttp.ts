@@ -11,33 +11,14 @@ import type { Id } from "./_generated/dataModel";
 import {
   requireAuth,
   AuthError,
-  unauthorizedResponse,
+  unauthorizedResponseWithCors,
 } from "./lib/auth";
+import { jsonResponse, errorResponse } from "./lib/httpResponses";
 
 /**
  * Helper type for user info.
  */
 type UserInfo = { did: string; legacyDid?: string } | null;
-
-/**
- * Standard JSON response helper.
- */
-function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/**
- * Standard error response helper.
- */
-function errorResponse(message: string, status = 400): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 /**
  * POST /api/collaborators/add
@@ -58,7 +39,7 @@ export const addCollaborator = httpAction(async (ctx, request) => {
       turnkeySubOrgId: auth.turnkeySubOrgId,
     }) as UserInfo;
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(request, "User not found", 404);
     }
 
     // Parse request body
@@ -71,11 +52,11 @@ export const addCollaborator = httpAction(async (ctx, request) => {
     };
 
     if (!listId || !userDid || !role) {
-      return errorResponse("listId, userDid, and role are required");
+      return errorResponse(request, "listId, userDid, and role are required");
     }
 
     if (role !== "editor" && role !== "viewer") {
-      return errorResponse("role must be 'editor' or 'viewer'");
+      return errorResponse(request, "role must be 'editor' or 'viewer'");
     }
 
     // Call the mutation with server-verified DID
@@ -87,13 +68,14 @@ export const addCollaborator = httpAction(async (ctx, request) => {
       joinedAt: Date.now(),
     });
 
-    return jsonResponse({ collaboratorId });
+    return jsonResponse(request, { collaboratorId });
   } catch (error) {
     if (error instanceof AuthError) {
-      return unauthorizedResponse(error.message);
+      return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[collaboratorsHttp] addCollaborator error:", error);
     return errorResponse(
+      request,
       error instanceof Error ? error.message : "Failed to add collaborator",
       500
     );
@@ -118,7 +100,7 @@ export const updateCollaboratorRole = httpAction(async (ctx, request) => {
       turnkeySubOrgId: auth.turnkeySubOrgId,
     }) as UserInfo;
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(request, "User not found", 404);
     }
 
     // Parse request body
@@ -130,11 +112,11 @@ export const updateCollaboratorRole = httpAction(async (ctx, request) => {
     };
 
     if (!listId || !collaboratorDid || !newRole) {
-      return errorResponse("listId, collaboratorDid, and newRole are required");
+      return errorResponse(request, "listId, collaboratorDid, and newRole are required");
     }
 
     if (newRole !== "editor" && newRole !== "viewer") {
-      return errorResponse("newRole must be 'editor' or 'viewer'");
+      return errorResponse(request, "newRole must be 'editor' or 'viewer'");
     }
 
     // Call the mutation with server-verified DID
@@ -146,13 +128,14 @@ export const updateCollaboratorRole = httpAction(async (ctx, request) => {
       legacyDid: user.legacyDid,
     });
 
-    return jsonResponse({ success: true });
+    return jsonResponse(request, { success: true });
   } catch (error) {
     if (error instanceof AuthError) {
-      return unauthorizedResponse(error.message);
+      return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[collaboratorsHttp] updateCollaboratorRole error:", error);
     return errorResponse(
+      request,
       error instanceof Error ? error.message : "Failed to update collaborator role",
       500
     );
@@ -178,7 +161,7 @@ export const removeCollaborator = httpAction(async (ctx, request) => {
       turnkeySubOrgId: auth.turnkeySubOrgId,
     }) as UserInfo;
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(request, "User not found", 404);
     }
 
     // Parse request body
@@ -189,7 +172,7 @@ export const removeCollaborator = httpAction(async (ctx, request) => {
     };
 
     if (!listId || !collaboratorDid) {
-      return errorResponse("listId and collaboratorDid are required");
+      return errorResponse(request, "listId and collaboratorDid are required");
     }
 
     // Call the mutation with server-verified DID
@@ -200,13 +183,14 @@ export const removeCollaborator = httpAction(async (ctx, request) => {
       legacyDid: user.legacyDid,
     });
 
-    return jsonResponse({ success: true });
+    return jsonResponse(request, { success: true });
   } catch (error) {
     if (error instanceof AuthError) {
-      return unauthorizedResponse(error.message);
+      return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[collaboratorsHttp] removeCollaborator error:", error);
     return errorResponse(
+      request,
       error instanceof Error ? error.message : "Failed to remove collaborator",
       500
     );

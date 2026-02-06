@@ -9,6 +9,7 @@ import {
   extractTokenFromRequest,
   type AuthTokenPayload,
 } from "./jwt";
+import { getCorsHeaders } from "./httpResponses";
 
 export type { AuthTokenPayload };
 
@@ -112,4 +113,38 @@ export function forbiddenResponse(message = "Forbidden"): Response {
       headers: { "Content-Type": "application/json" },
     }
   );
+}
+
+/**
+ * CORS-aware unauthorized response for HTTP actions.
+ *
+ * Prefer this when returning responses to browser clients.
+ */
+export function unauthorizedResponseWithCors(
+  request: Request,
+  message = "Unauthorized"
+): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status: 401,
+    headers: {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(request),
+    },
+  });
+}
+
+/**
+ * CORS-aware forbidden response for HTTP actions.
+ */
+export function forbiddenResponseWithCors(
+  request: Request,
+  message = "Forbidden"
+): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status: 403,
+    headers: {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(request),
+    },
+  });
 }

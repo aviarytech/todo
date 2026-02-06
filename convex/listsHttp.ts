@@ -11,33 +11,14 @@ import type { Id } from "./_generated/dataModel";
 import {
   requireAuth,
   AuthError,
-  unauthorizedResponse,
+  unauthorizedResponseWithCors,
 } from "./lib/auth";
+import { jsonResponse, errorResponse } from "./lib/httpResponses";
 
 /**
  * Helper type for user info.
  */
 type UserInfo = { did: string; legacyDid?: string } | null;
-
-/**
- * Standard JSON response helper.
- */
-function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/**
- * Standard error response helper.
- */
-function errorResponse(message: string, status = 400): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 /**
  * POST /api/lists/create
@@ -57,7 +38,7 @@ export const createList = httpAction(async (ctx, request) => {
       turnkeySubOrgId: auth.turnkeySubOrgId,
     }) as UserInfo;
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(request, "User not found", 404);
     }
 
     // Parse request body
@@ -69,7 +50,7 @@ export const createList = httpAction(async (ctx, request) => {
     };
 
     if (!assetDid || !name) {
-      return errorResponse("assetDid and name are required");
+      return errorResponse(request, "assetDid and name are required");
     }
 
     // Call the mutation with server-verified DID
@@ -81,13 +62,14 @@ export const createList = httpAction(async (ctx, request) => {
       createdAt: Date.now(),
     });
 
-    return jsonResponse({ listId });
+    return jsonResponse(request, { listId });
   } catch (error) {
     if (error instanceof AuthError) {
-      return unauthorizedResponse(error.message);
+      return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[listsHttp] createList error:", error);
     return errorResponse(
+      request,
       error instanceof Error ? error.message : "Failed to create list",
       500
     );
@@ -112,7 +94,7 @@ export const deleteList = httpAction(async (ctx, request) => {
       turnkeySubOrgId: auth.turnkeySubOrgId,
     }) as UserInfo;
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(request, "User not found", 404);
     }
 
     // Parse request body
@@ -120,7 +102,7 @@ export const deleteList = httpAction(async (ctx, request) => {
     const { listId } = body as { listId: string };
 
     if (!listId) {
-      return errorResponse("listId is required");
+      return errorResponse(request, "listId is required");
     }
 
     // Call the mutation with server-verified DID
@@ -130,13 +112,14 @@ export const deleteList = httpAction(async (ctx, request) => {
       legacyDid: user.legacyDid,
     });
 
-    return jsonResponse({ success: true });
+    return jsonResponse(request, { success: true });
   } catch (error) {
     if (error instanceof AuthError) {
-      return unauthorizedResponse(error.message);
+      return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[listsHttp] deleteList error:", error);
     return errorResponse(
+      request,
       error instanceof Error ? error.message : "Failed to delete list",
       500
     );

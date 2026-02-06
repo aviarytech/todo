@@ -11,33 +11,14 @@ import type { Id } from "./_generated/dataModel";
 import {
   requireAuth,
   AuthError,
-  unauthorizedResponse,
+  unauthorizedResponseWithCors,
 } from "./lib/auth";
+import { jsonResponse, errorResponse } from "./lib/httpResponses";
 
 /**
  * Helper type for user info.
  */
 type UserInfo = { did: string; legacyDid?: string } | null;
-
-/**
- * Standard JSON response helper.
- */
-function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/**
- * Standard error response helper.
- */
-function errorResponse(message: string, status = 400): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 /**
  * POST /api/items/add
@@ -57,7 +38,7 @@ export const addItem = httpAction(async (ctx, request) => {
       turnkeySubOrgId: auth.turnkeySubOrgId,
     }) as UserInfo;
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(request, "User not found", 404);
     }
 
     // Parse request body
@@ -65,7 +46,7 @@ export const addItem = httpAction(async (ctx, request) => {
     const { listId, name } = body as { listId: string; name: string };
 
     if (!listId || !name) {
-      return errorResponse("listId and name are required");
+      return errorResponse(request, "listId and name are required");
     }
 
     // Call the mutation with server-verified DID
@@ -77,13 +58,14 @@ export const addItem = httpAction(async (ctx, request) => {
       createdAt: Date.now(),
     });
 
-    return jsonResponse({ itemId });
+    return jsonResponse(request, { itemId });
   } catch (error) {
     if (error instanceof AuthError) {
-      return unauthorizedResponse(error.message);
+      return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[itemsHttp] addItem error:", error);
     return errorResponse(
+      request,
       error instanceof Error ? error.message : "Failed to add item",
       500
     );
@@ -108,7 +90,7 @@ export const checkItem = httpAction(async (ctx, request) => {
       turnkeySubOrgId: auth.turnkeySubOrgId,
     }) as UserInfo;
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(request, "User not found", 404);
     }
 
     // Parse request body
@@ -116,7 +98,7 @@ export const checkItem = httpAction(async (ctx, request) => {
     const { itemId } = body as { itemId: string };
 
     if (!itemId) {
-      return errorResponse("itemId is required");
+      return errorResponse(request, "itemId is required");
     }
 
     // Call the mutation with server-verified DID
@@ -127,13 +109,14 @@ export const checkItem = httpAction(async (ctx, request) => {
       checkedAt: Date.now(),
     });
 
-    return jsonResponse({ success: true });
+    return jsonResponse(request, { success: true });
   } catch (error) {
     if (error instanceof AuthError) {
-      return unauthorizedResponse(error.message);
+      return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[itemsHttp] checkItem error:", error);
     return errorResponse(
+      request,
       error instanceof Error ? error.message : "Failed to check item",
       500
     );
@@ -158,7 +141,7 @@ export const uncheckItem = httpAction(async (ctx, request) => {
       turnkeySubOrgId: auth.turnkeySubOrgId,
     }) as UserInfo;
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(request, "User not found", 404);
     }
 
     // Parse request body
@@ -166,7 +149,7 @@ export const uncheckItem = httpAction(async (ctx, request) => {
     const { itemId } = body as { itemId: string };
 
     if (!itemId) {
-      return errorResponse("itemId is required");
+      return errorResponse(request, "itemId is required");
     }
 
     // Call the mutation with server-verified DID
@@ -176,13 +159,14 @@ export const uncheckItem = httpAction(async (ctx, request) => {
       legacyDid: user.legacyDid,
     });
 
-    return jsonResponse({ success: true });
+    return jsonResponse(request, { success: true });
   } catch (error) {
     if (error instanceof AuthError) {
-      return unauthorizedResponse(error.message);
+      return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[itemsHttp] uncheckItem error:", error);
     return errorResponse(
+      request,
       error instanceof Error ? error.message : "Failed to uncheck item",
       500
     );
@@ -207,7 +191,7 @@ export const removeItem = httpAction(async (ctx, request) => {
       turnkeySubOrgId: auth.turnkeySubOrgId,
     }) as UserInfo;
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(request, "User not found", 404);
     }
 
     // Parse request body
@@ -215,7 +199,7 @@ export const removeItem = httpAction(async (ctx, request) => {
     const { itemId } = body as { itemId: string };
 
     if (!itemId) {
-      return errorResponse("itemId is required");
+      return errorResponse(request, "itemId is required");
     }
 
     // Call the mutation with server-verified DID
@@ -225,13 +209,14 @@ export const removeItem = httpAction(async (ctx, request) => {
       legacyDid: user.legacyDid,
     });
 
-    return jsonResponse({ success: true });
+    return jsonResponse(request, { success: true });
   } catch (error) {
     if (error instanceof AuthError) {
-      return unauthorizedResponse(error.message);
+      return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[itemsHttp] removeItem error:", error);
     return errorResponse(
+      request,
       error instanceof Error ? error.message : "Failed to remove item",
       500
     );
@@ -256,7 +241,7 @@ export const reorderItems = httpAction(async (ctx, request) => {
       turnkeySubOrgId: auth.turnkeySubOrgId,
     }) as UserInfo;
     if (!user) {
-      return errorResponse("User not found", 404);
+      return errorResponse(request, "User not found", 404);
     }
 
     // Parse request body
@@ -264,7 +249,7 @@ export const reorderItems = httpAction(async (ctx, request) => {
     const { listId, itemIds } = body as { listId: string; itemIds: string[] };
 
     if (!listId || !itemIds || !Array.isArray(itemIds)) {
-      return errorResponse("listId and itemIds array are required");
+      return errorResponse(request, "listId and itemIds array are required");
     }
 
     // Call the mutation with server-verified DID
@@ -275,13 +260,14 @@ export const reorderItems = httpAction(async (ctx, request) => {
       legacyDid: user.legacyDid,
     });
 
-    return jsonResponse({ success: true });
+    return jsonResponse(request, { success: true });
   } catch (error) {
     if (error instanceof AuthError) {
-      return unauthorizedResponse(error.message);
+      return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[itemsHttp] reorderItems error:", error);
     return errorResponse(
+      request,
       error instanceof Error ? error.message : "Failed to reorder items",
       500
     );
