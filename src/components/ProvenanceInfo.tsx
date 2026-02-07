@@ -1,11 +1,13 @@
 /**
- * ProvenanceInfo - Shows Originals DID/provenance information
+ * ProvenanceInfo - Shows Originals DID/provenance chain information
  * 
  * Displays the backing Originals identity for lists and items:
  * - List DID (assetDid), owner DID, creation timestamp
  * - Item creator, creation/modification timestamps
+ * - VC proofs for ownership and actions
+ * - Bitcoin anchor status and timeline
  * 
- * Makes the decentralized identity backing visible to users.
+ * Makes the decentralized identity and provenance chain visible to users.
  */
 
 import { useState } from "react";
@@ -41,6 +43,23 @@ function formatDate(timestamp: number): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+/**
+ * Format relative time for timeline
+ */
+function formatRelativeTime(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return formatDate(timestamp);
 }
 
 type HapticPattern = 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning';
@@ -197,7 +216,209 @@ function ProvenanceSection({
 }
 
 /**
- * Provenance info for a list - shows asset DID, owner, creation time
+ * Bitcoin anchor status badge
+ */
+function AnchorStatusBadge({ status }: { status: "pending" | "inscribed" | "confirmed" }) {
+  const statusConfig = {
+    pending: {
+      bg: "bg-yellow-100 dark:bg-yellow-900/30",
+      text: "text-yellow-700 dark:text-yellow-400",
+      icon: "⏳",
+      label: "Pending",
+    },
+    inscribed: {
+      bg: "bg-blue-100 dark:bg-blue-900/30",
+      text: "text-blue-700 dark:text-blue-400",
+      icon: "📝",
+      label: "Inscribed",
+    },
+    confirmed: {
+      bg: "bg-green-100 dark:bg-green-900/30",
+      text: "text-green-700 dark:text-green-400",
+      icon: "✅",
+      label: "Confirmed",
+    },
+  };
+
+  const config = statusConfig[status];
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+      <span>{config.icon}</span>
+      <span>{config.label}</span>
+    </span>
+  );
+}
+
+/**
+ * Bitcoin anchor row with link to block explorer
+ */
+function BitcoinAnchorRow({ anchor }: { anchor: Doc<"bitcoinAnchors"> }) {
+  const explorerUrl = anchor.txid 
+    ? `https://mempool.space/tx/${anchor.txid}`
+    : null;
+
+  return (
+    <div className="py-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          ₿ Bitcoin Anchor
+        </div>
+        <AnchorStatusBadge status={anchor.status} />
+      </div>
+      
+      {anchor.txid && (
+        <div className="mb-2">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+            Transaction ID
+          </div>
+          <div className="flex items-center gap-2">
+            <code className="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded font-mono">
+              {truncateDid(anchor.txid, 12, 8)}
+            </code>
+            {explorerUrl && (
+              <a
+                href={explorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+              >
+                View on Mempool
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {anchor.blockHeight && (
+        <div className="mb-2">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+            Block Height
+          </div>
+          <div className="text-sm text-gray-700 dark:text-gray-200">
+            #{anchor.blockHeight.toLocaleString()}
+            {anchor.confirmations !== undefined && (
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                ({anchor.confirmations} confirmations)
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="text-xs text-gray-500 dark:text-gray-400">
+        Requested {formatRelativeTime(anchor.createdAt)}
+        {anchor.confirmedAt && (
+          <span> • Confirmed {formatRelativeTime(anchor.confirmedAt)}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * VC Proof display
+ */
+function VcProofRow({ 
+  label, 
+  issuer, 
+  issuanceDate,
+  displayName,
+  haptic 
+}: { 
+  label: string; 
+  issuer: string;
+  issuanceDate: number;
+  displayName?: string | null;
+  haptic: HapticFn;
+}) {
+  return (
+    <div className="py-3">
+      <div className="flex items-center gap-2 mb-2">
+        <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
+          {label}
+        </span>
+      </div>
+      <DidRow 
+        label="Issued by" 
+        did={issuer} 
+        displayName={displayName}
+        haptic={haptic} 
+      />
+      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        Issued {formatDate(issuanceDate)}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Provenance Timeline - shows the chain of events
+ */
+function ProvenanceTimeline({ 
+  events 
+}: { 
+  events: Array<{
+    type: "created" | "vc_issued" | "anchored" | "confirmed" | "completed";
+    label: string;
+    timestamp: number;
+    actor?: string;
+    actorName?: string | null;
+  }>;
+}) {
+  // Sort events by timestamp
+  const sortedEvents = [...events].sort((a, b) => a.timestamp - b.timestamp);
+
+  const typeIcons = {
+    created: "🆕",
+    vc_issued: "📜",
+    anchored: "⚓",
+    confirmed: "✅",
+    completed: "☑️",
+  };
+
+  return (
+    <div className="py-3">
+      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
+        📅 Provenance Timeline
+      </div>
+      <div className="space-y-3">
+        {sortedEvents.map((event, idx) => (
+          <div key={idx} className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-full text-sm">
+              {typeIcons[event.type]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-gray-700 dark:text-gray-200">
+                {event.label}
+                {event.actor && (
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {" by "}
+                    <span className="font-medium text-gray-600 dark:text-gray-300">
+                      {event.actorName || truncateDid(event.actor)}
+                    </span>
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {formatDate(event.timestamp)}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Provenance info for a list - shows asset DID, owner, creation time, VCs, and Bitcoin anchors
  */
 export function ListProvenanceInfo({ list }: ListProvenanceProps) {
   const { haptic } = useSettings();
@@ -207,7 +428,58 @@ export function ListProvenanceInfo({ list }: ListProvenanceProps) {
     dids: [list.ownerDid] 
   });
   
+  // Fetch Bitcoin anchors for this list
+  const anchors = useQuery(api.bitcoinAnchors.getListAnchors, { 
+    listId: list._id 
+  });
+  
   const ownerName = userInfo?.[list.ownerDid]?.displayName ?? null;
+
+  // Build timeline events
+  const timelineEvents: Array<{
+    type: "created" | "vc_issued" | "anchored" | "confirmed" | "completed";
+    label: string;
+    timestamp: number;
+    actor?: string;
+    actorName?: string | null;
+  }> = [
+    {
+      type: "created",
+      label: "List created",
+      timestamp: list.createdAt,
+      actor: list.ownerDid,
+      actorName: ownerName,
+    },
+  ];
+
+  // Add VC issuance event if present
+  if (list.vcProof) {
+    timelineEvents.push({
+      type: "vc_issued",
+      label: "Ownership VC issued",
+      timestamp: list.vcProof.issuanceDate,
+      actor: list.vcProof.issuer,
+    });
+  }
+
+  // Add anchor events
+  anchors?.forEach((anchor) => {
+    if (anchor.inscribedAt) {
+      timelineEvents.push({
+        type: "anchored",
+        label: "Anchored to Bitcoin",
+        timestamp: anchor.inscribedAt,
+        actor: anchor.requestedByDid,
+      });
+    }
+    if (anchor.confirmedAt && anchor.status === "confirmed") {
+      timelineEvents.push({
+        type: "confirmed",
+        label: "Bitcoin anchor confirmed",
+        timestamp: anchor.confirmedAt,
+      });
+    }
+  });
 
   return (
     <ProvenanceSection title="Originals Provenance">
@@ -226,6 +498,35 @@ export function ListProvenanceInfo({ list }: ListProvenanceProps) {
         label="📅 Created" 
         timestamp={list.createdAt} 
       />
+
+      {/* Ownership VC */}
+      {list.vcProof && (
+        <VcProofRow
+          label="Ownership Verifiable Credential"
+          issuer={list.vcProof.issuer}
+          issuanceDate={list.vcProof.issuanceDate}
+          haptic={haptic}
+        />
+      )}
+
+      {/* Bitcoin Anchors */}
+      {anchors && anchors.length > 0 && (
+        <div className="py-2">
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+            ₿ Bitcoin Anchors ({anchors.length})
+          </div>
+          <div className="space-y-2">
+            {anchors.map((anchor) => (
+              <BitcoinAnchorRow key={anchor._id} anchor={anchor} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Provenance Timeline */}
+      {timelineEvents.length > 1 && (
+        <ProvenanceTimeline events={timelineEvents} />
+      )}
       
       {/* Info footer */}
       <div className="py-3">
@@ -240,6 +541,11 @@ export function ListProvenanceInfo({ list }: ListProvenanceProps) {
             Originals Protocol
           </a>
           , providing cryptographic proof of ownership and authenticity.
+          {anchors && anchors.length > 0 && (
+            <span>
+              {" "}This list has been anchored to Bitcoin for immutable timestamping.
+            </span>
+          )}
         </p>
       </div>
     </ProvenanceSection>
@@ -247,7 +553,7 @@ export function ListProvenanceInfo({ list }: ListProvenanceProps) {
 }
 
 /**
- * Provenance info for an item - shows creator, timestamps
+ * Provenance info for an item - shows creator, timestamps, VCs, and Bitcoin anchors
  */
 export function ItemProvenanceInfo({ item }: ItemProvenanceProps) {
   const { haptic } = useSettings();
@@ -258,14 +564,93 @@ export function ItemProvenanceInfo({ item }: ItemProvenanceProps) {
     didsToLookup.push(item.checkedByDid);
   }
   
+  // Add VC issuers to lookup
+  item.vcProofs?.forEach((vc) => {
+    if (!didsToLookup.includes(vc.issuer)) {
+      didsToLookup.push(vc.issuer);
+    }
+    if (!didsToLookup.includes(vc.actorDid)) {
+      didsToLookup.push(vc.actorDid);
+    }
+  });
+  
   const userInfo = useQuery(api.users.getUsersByDids, { 
     dids: didsToLookup 
+  });
+
+  // Fetch Bitcoin anchors for this item
+  const anchors = useQuery(api.bitcoinAnchors.getItemAnchors, { 
+    itemId: item._id 
   });
   
   const creatorName = userInfo?.[item.createdByDid]?.displayName ?? null;
   const checkerName = item.checkedByDid 
     ? userInfo?.[item.checkedByDid]?.displayName ?? null 
     : null;
+
+  // Build timeline events
+  const timelineEvents: Array<{
+    type: "created" | "vc_issued" | "anchored" | "confirmed" | "completed";
+    label: string;
+    timestamp: number;
+    actor?: string;
+    actorName?: string | null;
+  }> = [
+    {
+      type: "created",
+      label: "Item created",
+      timestamp: item.createdAt,
+      actor: item.createdByDid,
+      actorName: creatorName,
+    },
+  ];
+
+  // Add VC events
+  item.vcProofs?.forEach((vc) => {
+    const actorName = userInfo?.[vc.actorDid]?.displayName ?? null;
+    let label = "VC issued";
+    if (vc.action === "created") label = "Creation VC issued";
+    else if (vc.action === "completed") label = "Completion VC issued";
+    else if (vc.action === "modified") label = "Modification VC issued";
+    
+    timelineEvents.push({
+      type: "vc_issued",
+      label,
+      timestamp: vc.issuanceDate,
+      actor: vc.actorDid,
+      actorName,
+    });
+  });
+
+  // Add completion event
+  if (item.checked && item.checkedAt && item.checkedByDid) {
+    timelineEvents.push({
+      type: "completed",
+      label: "Item completed",
+      timestamp: item.checkedAt,
+      actor: item.checkedByDid,
+      actorName: checkerName,
+    });
+  }
+
+  // Add anchor events
+  anchors?.forEach((anchor) => {
+    if (anchor.inscribedAt) {
+      timelineEvents.push({
+        type: "anchored",
+        label: "Anchored to Bitcoin",
+        timestamp: anchor.inscribedAt,
+        actor: anchor.requestedByDid,
+      });
+    }
+    if (anchor.confirmedAt && anchor.status === "confirmed") {
+      timelineEvents.push({
+        type: "confirmed",
+        label: "Bitcoin anchor confirmed",
+        timestamp: anchor.confirmedAt,
+      });
+    }
+  });
 
   return (
     <ProvenanceSection title="Originals Provenance">
@@ -301,11 +686,69 @@ export function ItemProvenanceInfo({ item }: ItemProvenanceProps) {
           />
         </>
       )}
+
+      {/* Item VCs */}
+      {item.vcProofs && item.vcProofs.length > 0 && (
+        <div className="py-2">
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+            📜 Verifiable Credentials ({item.vcProofs.length})
+          </div>
+          <div className="space-y-2">
+            {item.vcProofs.map((vc, idx) => {
+              const issuerName = userInfo?.[vc.issuer]?.displayName ?? null;
+              let actionLabel = "Action VC";
+              if (vc.action === "created") actionLabel = "Creation VC";
+              else if (vc.action === "completed") actionLabel = "Completion VC";
+              else if (vc.action === "modified") actionLabel = "Modification VC";
+              
+              return (
+                <VcProofRow
+                  key={idx}
+                  label={actionLabel}
+                  issuer={vc.issuer}
+                  issuanceDate={vc.issuanceDate}
+                  displayName={issuerName}
+                  haptic={haptic}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Bitcoin Anchors */}
+      {anchors && anchors.length > 0 && (
+        <div className="py-2">
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+            ₿ Bitcoin Anchors ({anchors.length})
+          </div>
+          <div className="space-y-2">
+            {anchors.map((anchor) => (
+              <BitcoinAnchorRow key={anchor._id} anchor={anchor} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Provenance Timeline */}
+      {timelineEvents.length > 1 && (
+        <ProvenanceTimeline events={timelineEvents} />
+      )}
       
       {/* Info footer */}
       <div className="py-3">
         <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
           Item actions are attributed to decentralized identifiers (DIDs) for transparency and accountability.
+          {item.vcProofs && item.vcProofs.length > 0 && (
+            <span>
+              {" "}Each action is backed by a Verifiable Credential for cryptographic proof.
+            </span>
+          )}
+          {anchors && anchors.length > 0 && (
+            <span>
+              {" "}This item has been anchored to Bitcoin for immutable timestamping.
+            </span>
+          )}
         </p>
       </div>
     </ProvenanceSection>
