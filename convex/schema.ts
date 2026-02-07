@@ -87,6 +87,8 @@ export default defineSchema({
     ownerDid: v.string(), // Creator's DID
     categoryId: v.optional(v.id("categories")), // User's category for this list (Phase 2)
     createdAt: v.number(),
+    // Verifiable Credential proof of ownership (Phase: VC)
+    vcProof: v.optional(v.string()), // JSON-encoded VC proving list ownership
   })
     .index("by_owner", ["ownerDid"])
     .index("by_asset_did", ["assetDid"])
