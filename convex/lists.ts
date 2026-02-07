@@ -1,11 +1,60 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
+
+/**
+ * Creates a placeholder Verifiable Credential for list ownership.
+ * 
+ * This follows the W3C VC Data Model structure but without a cryptographic
+ * proof. The proof can be added later when server-side signing is implemented.
+ * 
+ * @see https://www.w3.org/TR/vc-data-model/
+ */
+function createListOwnershipVC(
+  listId: Id<"lists">,
+  assetDid: string,
+  ownerDid: string,
+  listName: string,
+  createdAt: number
+): string {
+  const issuanceDate = new Date(createdAt).toISOString();
+  
+  const vc = {
+    "@context": [
+      "https://www.w3.org/2018/credentials/v1",
+      "https://originals.tech/credentials/v1"
+    ],
+    type: ["VerifiableCredential", "ListOwnershipCredential"],
+    id: `urn:uuid:${crypto.randomUUID()}`,
+    issuer: ownerDid,
+    issuanceDate,
+    credentialSubject: {
+      id: ownerDid,
+      listId: listId.toString(),
+      assetDid,
+      listName,
+      role: "owner",
+      createdAt: issuanceDate,
+    },
+    // Placeholder proof - to be replaced with actual cryptographic signature
+    // when server-side signing via Turnkey or @originals/sdk is implemented
+    proof: {
+      type: "PlaceholderProof2024",
+      created: issuanceDate,
+      verificationMethod: `${ownerDid}#keys-1`,
+      proofPurpose: "assertionMethod",
+      proofValue: "PLACEHOLDER_SIGNATURE_TO_BE_IMPLEMENTED",
+    },
+  };
+  
+  return JSON.stringify(vc);
+}
 
 /**
  * Create a new list.
  * The list is created as an Originals asset (assetDid) by the frontend.
  * Also adds the owner to the collaborators table with "owner" role.
+ * Issues a Verifiable Credential proving ownership.
  */
 export const createList = mutation({
   args: {
@@ -24,6 +73,18 @@ export const createList = mutation({
       categoryId: args.categoryId,
       createdAt: args.createdAt,
     });
+
+    // Generate a Verifiable Credential proving list ownership
+    const vcProof = createListOwnershipVC(
+      listId,
+      args.assetDid,
+      args.ownerDid,
+      args.name,
+      args.createdAt
+    );
+
+    // Update the list with the VC proof
+    await ctx.db.patch(listId, { vcProof });
 
     // Add owner to collaborators table (Phase 3)
     await ctx.db.insert("collaborators", {
