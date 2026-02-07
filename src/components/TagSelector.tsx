@@ -1,9 +1,10 @@
 /**
  * Tag selector component for adding/removing tags from items.
- * Note: Tags functionality requires Convex backend deployment.
  */
 
 import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
 
@@ -29,6 +30,11 @@ interface TagSelectorProps {
 }
 
 export function TagSelector({
+  listId,
+  itemId,
+  selectedTagIds,
+  userDid,
+  legacyDid,
   canEdit,
 }: TagSelectorProps) {
   const { haptic } = useSettings();
@@ -36,39 +42,106 @@ export function TagSelector({
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0].value);
 
-  // Tags API not yet deployed - show placeholder
-  const tags: Doc<"tags">[] = [];
+  // Query all tags for this list
+  const tags = useQuery(api.tags.getListTags, { listId }) ?? [];
+
+  // Mutations
+  const createTag = useMutation(api.tags.createTag);
+  const addTagToItem = useMutation(api.tags.addTagToItem);
+  const removeTagFromItem = useMutation(api.tags.removeTagFromItem);
 
   const handleCreateTag = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTagName.trim() || !canEdit) return;
     haptic("medium");
-    // TODO: Implement when backend is deployed
-    setNewTagName("");
-    setShowCreateForm(false);
+    
+    try {
+      const newTagId = await createTag({
+        listId,
+        name: newTagName.trim(),
+        color: newTagColor,
+        userDid,
+        legacyDid,
+      });
+      
+      // Automatically add the new tag to the current item
+      await addTagToItem({
+        itemId,
+        tagId: newTagId,
+        userDid,
+        legacyDid,
+      });
+      
+      haptic("success");
+      setNewTagName("");
+      setShowCreateForm(false);
+    } catch (err) {
+      console.error("Failed to create tag:", err);
+      haptic("error");
+    }
+  };
+
+  const handleToggleTag = async (tagId: Id<"tags">) => {
+    if (!canEdit) return;
+    haptic("light");
+    
+    const isSelected = selectedTagIds.includes(tagId);
+    
+    try {
+      if (isSelected) {
+        await removeTagFromItem({
+          itemId,
+          tagId,
+          userDid,
+          legacyDid,
+        });
+      } else {
+        await addTagToItem({
+          itemId,
+          tagId,
+          userDid,
+          legacyDid,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to toggle tag:", err);
+      haptic("error");
+    }
   };
 
   return (
     <div className="space-y-3">
       {/* Existing tags */}
       <div className="flex flex-wrap gap-2">
-        {tags.map((tag) => (
-          <button
-            key={tag._id}
-            disabled={!canEdit}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium opacity-60"
-            style={{
-              backgroundColor: `${tag.color}20`,
-              color: tag.color,
-            }}
-          >
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: tag.color }}
-            />
-            {tag.name}
-          </button>
-        ))}
+        {tags.map((tag) => {
+          const isSelected = selectedTagIds.includes(tag._id);
+          return (
+            <button
+              key={tag._id}
+              onClick={() => handleToggleTag(tag._id)}
+              disabled={!canEdit}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                isSelected ? "ring-2 ring-offset-1" : "opacity-60 hover:opacity-100"
+              }`}
+              style={{
+                backgroundColor: `${tag.color}20`,
+                color: tag.color,
+                "--tw-ring-color": isSelected ? tag.color : undefined,
+              } as React.CSSProperties}
+            >
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: tag.color }}
+              />
+              {tag.name}
+              {isSelected && (
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+          );
+        })}
 
         {/* Add new tag button */}
         {canEdit && !showCreateForm && (
