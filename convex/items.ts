@@ -18,10 +18,16 @@ function createItemAuthorshipVC(
   creatorDid: string,
   itemName: string,
   createdAt: number
-): string {
-  const issuanceDate = new Date(createdAt).toISOString();
-  
-  const vc = {
+): {
+  type: string;
+  issuer: string;
+  issuanceDate: number;
+  action: string;
+  actorDid: string;
+  proof?: string;
+} {
+  // Build the full W3C VC for signing/verification
+  const fullVc = {
     "@context": [
       "https://www.w3.org/2018/credentials/v1",
       "https://originals.tech/credentials/v1"
@@ -29,27 +35,25 @@ function createItemAuthorshipVC(
     type: ["VerifiableCredential", "ItemAuthorshipCredential"],
     id: `urn:uuid:${crypto.randomUUID()}`,
     issuer: creatorDid,
-    issuanceDate,
+    issuanceDate: new Date(createdAt).toISOString(),
     credentialSubject: {
       id: creatorDid,
       itemId: itemId.toString(),
       listId: listId.toString(),
       itemName,
       action: "created",
-      createdAt: issuanceDate,
-    },
-    // Placeholder proof - to be replaced with actual cryptographic signature
-    // when server-side signing via Turnkey or @originals/sdk is implemented
-    proof: {
-      type: "PlaceholderProof2024",
-      created: issuanceDate,
-      verificationMethod: `${creatorDid}#keys-1`,
-      proofPurpose: "assertionMethod",
-      proofValue: "PLACEHOLDER_SIGNATURE_TO_BE_IMPLEMENTED",
     },
   };
-  
-  return JSON.stringify(vc);
+
+  // Return the structured VC object for storage
+  return {
+    type: "ItemAuthorshipCredential",
+    issuer: creatorDid,
+    issuanceDate: createdAt,
+    action: "created",
+    actorDid: creatorDid,
+    proof: JSON.stringify(fullVc),
+  };
 }
 
 /**
@@ -67,10 +71,16 @@ function createItemCompletionVC(
   completerDid: string,
   itemName: string,
   checkedAt: number
-): string {
-  const issuanceDate = new Date(checkedAt).toISOString();
-  
-  const vc = {
+): {
+  type: string;
+  issuer: string;
+  issuanceDate: number;
+  action: string;
+  actorDid: string;
+  proof?: string;
+} {
+  // Build the full W3C VC for signing/verification
+  const fullVc = {
     "@context": [
       "https://www.w3.org/2018/credentials/v1",
       "https://originals.tech/credentials/v1"
@@ -78,27 +88,25 @@ function createItemCompletionVC(
     type: ["VerifiableCredential", "ItemCompletionCredential"],
     id: `urn:uuid:${crypto.randomUUID()}`,
     issuer: completerDid,
-    issuanceDate,
+    issuanceDate: new Date(checkedAt).toISOString(),
     credentialSubject: {
       id: completerDid,
       itemId: itemId.toString(),
       listId: listId.toString(),
       itemName,
       action: "completed",
-      completedAt: issuanceDate,
-    },
-    // Placeholder proof - to be replaced with actual cryptographic signature
-    // when server-side signing via Turnkey or @originals/sdk is implemented
-    proof: {
-      type: "PlaceholderProof2024",
-      created: issuanceDate,
-      verificationMethod: `${completerDid}#keys-1`,
-      proofPurpose: "assertionMethod",
-      proofValue: "PLACEHOLDER_SIGNATURE_TO_BE_IMPLEMENTED",
     },
   };
-  
-  return JSON.stringify(vc);
+
+  // Return the structured VC object for storage
+  return {
+    type: "ItemCompletionCredential",
+    issuer: completerDid,
+    issuanceDate: checkedAt,
+    action: "completed",
+    actorDid: completerDid,
+    proof: JSON.stringify(fullVc),
+  };
 }
 
 /**
@@ -365,8 +373,10 @@ export const checkItem = mutation({
       args.checkedAt
     );
 
-    // Append completion VC to existing proofs
-    const existingProofs = item.vcProofs ?? [];
+    // Append completion VC to existing proofs (filter out any legacy string-format proofs)
+    const existingProofs = (item.vcProofs ?? []).filter(
+      (p): p is NonNullable<typeof item.vcProofs>[number] => typeof p === "object" && p !== null
+    );
     const updatedProofs = [...existingProofs, completionVC];
 
     // Mark the current item as checked and add completion VC
