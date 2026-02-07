@@ -5,13 +5,14 @@
 
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useSettings } from '../hooks/useSettings';
 
 export function ProfileBadge() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
+  const { did } = useCurrentUser();
   const { haptic } = useSettings();
 
-  const did = user?.did;
   if (!did) return null;
 
   // Get first 8 and last 4 chars of DID for display

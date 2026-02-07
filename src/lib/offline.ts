@@ -35,6 +35,15 @@ export interface OfflineItem {
   createdAt: number;
   checkedAt?: number;
   order?: number;
+  // Enhanced fields
+  description?: string;
+  dueDate?: number;
+  url?: string;
+  recurrence?: {
+    frequency: "daily" | "weekly" | "monthly";
+    interval?: number;
+    nextDue?: number;
+  };
   // Timestamp when cached locally
   _cachedAt: number;
 }

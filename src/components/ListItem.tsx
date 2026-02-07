@@ -3,15 +3,19 @@
  *
  * Shows checkbox, name, attribution, and remove button.
  * Features improved design, dark mode, and haptic feedback.
+ * Supports notes, due dates, URLs, and recurrence.
  */
 
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { ItemAttribution } from "./ItemAttribution";
 import { useSettings } from "../hooks/useSettings";
 import type { OptimisticItem } from "../hooks/useOptimisticItems";
+
+// Lazy load the details modal
+const ItemDetailsModal = lazy(() => import("./ItemDetailsModal").then(m => ({ default: m.ItemDetailsModal })));
 
 interface ListItemProps {
   item: OptimisticItem;
@@ -48,6 +52,15 @@ export function ListItem({
   const removeItem = useMutation(api.items.removeItem);
 
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  
+  // Format due date for display
+  const dueDateStr = item.dueDate 
+    ? new Date(item.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    : null;
+  
+  // Check if overdue
+  const isOverdue = item.dueDate && !item.checked && item.dueDate < Date.now();
 
   const handleToggleCheck = async () => {
     if (isUpdating) return;
@@ -182,19 +195,50 @@ export function ListItem({
         </div>
       )}
 
-      {/* Item content */}
-      <div className="flex-1 min-w-0">
-        <p
-          className={`text-xs text-gray-900 dark:text-gray-100 transition-all ${
-            item.checked 
-              ? "line-through text-gray-400 dark:text-gray-500" 
-              : ""
-          }`}
-        >
-          {item.name}
-        </p>
-        <ItemAttribution item={item} />
-      </div>
+      {/* Item content - clickable to open details */}
+      <button
+        onClick={() => {
+          haptic('light');
+          setShowDetails(true);
+        }}
+        className="flex-1 min-w-0 text-left hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded px-1 -mx-1 transition-colors"
+      >
+        <div className="flex items-center gap-1.5">
+          <p
+            className={`text-xs text-gray-900 dark:text-gray-100 transition-all truncate ${
+              item.checked 
+                ? "line-through text-gray-400 dark:text-gray-500" 
+                : ""
+            }`}
+          >
+            {item.name}
+          </p>
+          {/* Indicators for extras */}
+          {item.url && (
+            <span className="text-blue-500 flex-shrink-0" title="Has link">🔗</span>
+          )}
+          {item.recurrence && (
+            <span className="text-purple-500 flex-shrink-0" title={`Repeats ${item.recurrence.frequency}`}>🔁</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <ItemAttribution item={item} />
+          {/* Due date badge */}
+          {dueDateStr && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+              isOverdue 
+                ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+            }`}>
+              📅 {dueDateStr}
+            </span>
+          )}
+          {/* Notes indicator */}
+          {item.description && (
+            <span className="text-[10px] text-gray-400 flex-shrink-0" title="Has notes">📝</span>
+          )}
+        </div>
+      </button>
 
       {/* Remove button - only show if user can edit */}
       {canUserEdit && (
@@ -218,6 +262,19 @@ export function ListItem({
             />
           </svg>
         </button>
+      )}
+
+      {/* Details Modal */}
+      {showDetails && (
+        <Suspense fallback={null}>
+          <ItemDetailsModal
+            item={item}
+            userDid={userDid}
+            legacyDid={legacyDid}
+            canEdit={canUserEdit}
+            onClose={() => setShowDetails(false)}
+          />
+        </Suspense>
       )}
     </div>
   );

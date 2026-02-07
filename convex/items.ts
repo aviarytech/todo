@@ -58,6 +58,15 @@ export const addItem = mutation({
     createdByDid: v.string(),
     legacyDid: v.optional(v.string()),
     createdAt: v.number(),
+    // Optional enhanced fields
+    description: v.optional(v.string()),
+    dueDate: v.optional(v.number()),
+    url: v.optional(v.string()),
+    recurrence: v.optional(v.object({
+      frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+      interval: v.optional(v.number()),
+      nextDue: v.optional(v.number()),
+    })),
   },
   handler: async (ctx, args) => {
     // Verify the list exists
@@ -98,7 +107,66 @@ export const addItem = mutation({
       checkedAt: undefined,
       order: maxOrder + 1,
       updatedAt: now,
+      // Enhanced fields
+      description: args.description,
+      dueDate: args.dueDate,
+      url: args.url,
+      recurrence: args.recurrence,
     });
+  },
+});
+
+/**
+ * Update an item's details (name, description, due date, url, recurrence).
+ * Supports legacy DID for migrated users.
+ */
+export const updateItem = mutation({
+  args: {
+    itemId: v.id("items"),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+    // Fields that can be updated
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    dueDate: v.optional(v.number()),
+    url: v.optional(v.string()),
+    recurrence: v.optional(v.object({
+      frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+      interval: v.optional(v.number()),
+      nextDue: v.optional(v.number()),
+    })),
+    clearDueDate: v.optional(v.boolean()),
+    clearRecurrence: v.optional(v.boolean()),
+    clearUrl: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+
+    const canEdit = await canUserEditList(ctx, item.listId, args.userDid, args.legacyDid);
+    if (!canEdit) {
+      throw new Error("Not authorized to update this item");
+    }
+
+    const updates: Record<string, unknown> = {
+      updatedAt: Date.now(),
+    };
+
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
+    if (args.url !== undefined) updates.url = args.url;
+    if (args.recurrence !== undefined) updates.recurrence = args.recurrence;
+    
+    // Clear fields if requested
+    if (args.clearDueDate) updates.dueDate = undefined;
+    if (args.clearRecurrence) updates.recurrence = undefined;
+    if (args.clearUrl) updates.url = undefined;
+
+    await ctx.db.patch(args.itemId, updates);
+    return args.itemId;
   },
 });
 
