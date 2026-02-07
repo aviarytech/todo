@@ -120,6 +120,13 @@ export default defineSchema({
     parentId: v.optional(v.id("items")),
     // Attachments - stored file IDs
     attachments: v.optional(v.array(v.id("_storage"))),
+    // VC proofs for authorship and completion (Phase: VC integration)
+    vcProofs: v.optional(v.array(v.object({
+      type: v.union(v.literal("ItemCreated"), v.literal("ItemCompleted")),
+      credential: v.string(), // JSON-stringified VerifiableCredential
+      issuedAt: v.number(),
+      issuerDid: v.string(),
+    }))),
   })
     .index("by_list", ["listId"])
     .index("by_parent", ["parentId"])
