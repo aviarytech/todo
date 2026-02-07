@@ -7,7 +7,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery } from "convex/react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -208,6 +208,13 @@ export function Home() {
           Your Lists
         </h2>
         <div className="flex gap-2">
+          <Link
+            to="/priority"
+            onClick={() => haptic('light')}
+            className="text-gray-600 dark:text-gray-400 px-3 py-2 rounded-xl font-medium hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors"
+          >
+            🎯 Focus
+          </Link>
           <button
             onClick={() => {
               haptic('light');

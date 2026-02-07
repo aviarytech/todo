@@ -626,3 +626,90 @@ export const getItemsWithDueDates = query({
     return filtered.sort((a, b) => (a.dueDate ?? 0) - (b.dueDate ?? 0));
   },
 });
+
+/**
+ * Get all high-priority items across all lists the user has access to.
+ * Used for Priority Focus mode.
+ */
+export const getHighPriorityItems = query({
+  args: {
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // DIDs to check: current DID and optionally legacy DID
+    const didsToCheck = [args.userDid];
+    if (args.legacyDid) {
+      didsToCheck.push(args.legacyDid);
+    }
+
+    // First, get all list IDs the user has access to
+    const listIds = new Set<Id<"lists">>();
+
+    // Check collaborators table
+    for (const did of didsToCheck) {
+      const collabs = await ctx.db
+        .query("collaborators")
+        .withIndex("by_user", (q) => q.eq("userDid", did))
+        .collect();
+
+      for (const collab of collabs) {
+        listIds.add(collab.listId);
+      }
+    }
+
+    // Also check legacy ownerDid field
+    for (const did of didsToCheck) {
+      const ownedLists = await ctx.db
+        .query("lists")
+        .withIndex("by_owner", (q) => q.eq("ownerDid", did))
+        .collect();
+
+      for (const list of ownedLists) {
+        listIds.add(list._id);
+      }
+    }
+
+    // Now fetch high-priority items from all accessible lists
+    const highPriorityItems: Array<{
+      item: Awaited<ReturnType<typeof ctx.db.get<"items">>>;
+      listName: string;
+      listId: Id<"lists">;
+    }> = [];
+
+    for (const listId of listIds) {
+      const list = await ctx.db.get(listId);
+      if (!list) continue;
+
+      const items = await ctx.db
+        .query("items")
+        .withIndex("by_list", (q) => q.eq("listId", listId))
+        .collect();
+
+      // Filter for high priority, unchecked items without a parent (top-level only)
+      const highPriority = items.filter(
+        (item) => item.priority === "high" && !item.checked && !item.parentId
+      );
+
+      for (const item of highPriority) {
+        highPriorityItems.push({
+          item,
+          listName: list.name,
+          listId: list._id,
+        });
+      }
+    }
+
+    // Sort by due date (soonest first), then by creation date
+    return highPriorityItems.sort((a, b) => {
+      // Items with due dates come first
+      if (a.item?.dueDate && !b.item?.dueDate) return -1;
+      if (!a.item?.dueDate && b.item?.dueDate) return 1;
+      if (a.item?.dueDate && b.item?.dueDate) {
+        return a.item.dueDate - b.item.dueDate;
+      }
+      // Then by creation date (oldest first for backlog items)
+      return (a.item?.createdAt ?? 0) - (b.item?.createdAt ?? 0);
+    });
+  },
+});

@@ -95,3 +95,57 @@ export function HomePageSkeleton() {
     </div>
   );
 }
+
+/**
+ * Skeleton for priority item rows.
+ */
+function PriorityItemSkeleton() {
+  return (
+    <div className="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+      <Skeleton className="w-5 h-5 rounded-md flex-shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+        <div className="flex gap-3">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Skeleton for the Priority Focus page.
+ */
+export function PriorityFocusSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      {/* First group */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-8" />
+        </div>
+        <div className="space-y-2">
+          <PriorityItemSkeleton />
+          <PriorityItemSkeleton />
+        </div>
+      </section>
+      {/* Second group */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-8" />
+        </div>
+        <div className="space-y-2">
+          <PriorityItemSkeleton />
+        </div>
+      </section>
+    </div>
+  );
+}
