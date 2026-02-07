@@ -107,7 +107,7 @@ export function ListItem({
       }}
       onDragOver={canUserEdit ? onDragOver : undefined}
       onDragEnd={canUserEdit ? onDragEnd : undefined}
-      className={`flex items-center gap-3 p-4 transition-all ${
+      className={`flex items-center gap-2 px-3 py-2.5 transition-all ${
         isDragging 
           ? "opacity-50 bg-gray-100 dark:bg-gray-700 scale-[1.02]" 
           : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
@@ -128,29 +128,29 @@ export function ListItem({
       {/* Drag handle - only show if user can edit */}
       {canUserEdit && (
         <div
-          className="flex-shrink-0 w-6 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 dark:hover:text-gray-500 transition-colors"
+          className="flex-shrink-0 w-5 h-8 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 dark:hover:text-gray-500 transition-colors"
           aria-label="Drag to reorder"
         >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z" />
           </svg>
         </div>
       )}
 
-      {/* Checkbox - min 44x44px touch target */}
+      {/* Checkbox - compact size */}
       {canUserEdit ? (
         <button
           onClick={handleToggleCheck}
           disabled={isUpdating}
-          className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
+          className={`flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all active:scale-90 ${
             item.checked
-              ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/30"
-              : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border-2 border-gray-200 dark:border-gray-600"
+              ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-sm shadow-green-500/30"
+              : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
           } disabled:opacity-50`}
           aria-label={item.checked ? "Uncheck item" : "Check item"}
         >
           {item.checked ? (
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -158,20 +158,20 @@ export function ListItem({
               />
             </svg>
           ) : (
-            <div className="w-5 h-5" />
+            <div className="w-2 h-2" />
           )}
         </button>
       ) : (
         // Read-only checkbox display for viewers
         <div
-          className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center ${
+          className={`flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center ${
             item.checked 
               ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white" 
               : "bg-gray-100 dark:bg-gray-700"
           }`}
         >
           {item.checked && (
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -185,7 +185,7 @@ export function ListItem({
       {/* Item content */}
       <div className="flex-1 min-w-0">
         <p
-          className={`text-gray-900 dark:text-gray-100 transition-all ${
+          className={`text-xs text-gray-900 dark:text-gray-100 transition-all ${
             item.checked 
               ? "line-through text-gray-400 dark:text-gray-500" 
               : ""
@@ -201,11 +201,11 @@ export function ListItem({
         <button
           onClick={handleRemove}
           disabled={isUpdating}
-          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl disabled:opacity-50 transition-all active:scale-90"
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50 transition-all active:scale-90"
           aria-label="Remove item"
         >
           <svg
-            className="w-5 h-5"
+            className="w-4 h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

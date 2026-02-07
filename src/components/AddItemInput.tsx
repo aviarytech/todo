@@ -65,17 +65,12 @@ export function AddItemInput({ onAddItem }: AddItemInputProps) {
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Add an item..."
+          placeholder="Add item..."
           className="w-full px-4 py-3.5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all disabled:opacity-50"
           disabled={isAdding}
         />
         
-        {/* Character hint (optional - shows when typing) */}
-        {name.length > 0 && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-gray-500">
-            Press Enter
-          </span>
-        )}
+{/* Removed "Press Enter" hint per user feedback */}
       </div>
       
       <button
