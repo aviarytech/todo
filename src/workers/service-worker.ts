@@ -2,7 +2,8 @@
 
 declare const self: ServiceWorkerGlobalScope;
 
-const CACHE_NAME = 'lisa-v1';
+// Bump this on breaking changes to force cache invalidation
+const CACHE_NAME = 'lisa-v2';
 
 // Install event: cache the app shell
 self.addEventListener('install', (event) => {
@@ -47,6 +48,12 @@ self.addEventListener('fetch', (event) => {
 
   // Skip chrome-extension and other non-http(s) requests
   if (!request.url.startsWith('http')) {
+    return;
+  }
+
+  // Don't cache hashed assets - Vite's content hashing handles browser caching
+  // Caching these causes issues when deployments have interdependent bundles
+  if (request.url.includes('/assets/') && /\.[a-f0-9]{8,}\.(js|css)/.test(request.url)) {
     return;
   }
 
