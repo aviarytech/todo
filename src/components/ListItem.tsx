@@ -25,6 +25,7 @@ interface ListItemProps {
   canEdit?: boolean;
   isDragging?: boolean;
   isDragOver?: boolean;
+  isFocused?: boolean;
   onDragStart?: () => void;
   onDragOver?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
@@ -45,6 +46,7 @@ export function ListItem({
   canEdit: canUserEdit = true,
   isDragging = false,
   isDragOver = false,
+  isFocused = false,
   onDragStart,
   onDragOver,
   onDragEnd,
@@ -183,6 +185,10 @@ export function ListItem({
       } ${
         isSelected
           ? "bg-amber-50 dark:bg-amber-900/30 ring-2 ring-amber-400 dark:ring-amber-600"
+          : ""
+      } ${
+        isFocused && !isSelected
+          ? "bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-400 dark:ring-blue-600"
           : ""
       } ${
         isSelectMode

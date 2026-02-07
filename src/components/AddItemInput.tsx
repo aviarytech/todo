@@ -3,7 +3,7 @@
  * Features improved design, dark mode, and haptic feedback.
  */
 
-import { useState, useRef, type FormEvent } from "react";
+import { useState, useRef, type FormEvent, forwardRef, useImperativeHandle } from "react";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
 
@@ -17,10 +17,13 @@ interface AddItemInputProps {
   }) => Promise<void>;
 }
 
-export function AddItemInput({ onAddItem }: AddItemInputProps) {
+export const AddItemInput = forwardRef<HTMLInputElement, AddItemInputProps>(function AddItemInput({ onAddItem }, ref) {
   const { did, legacyDid } = useCurrentUser();
   const { haptic } = useSettings();
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Expose the input ref to parent components
+  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
   const [name, setName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -96,4 +99,4 @@ export function AddItemInput({ onAddItem }: AddItemInputProps) {
       </button>
     </form>
   );
-}
+});
