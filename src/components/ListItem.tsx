@@ -6,7 +6,7 @@
  * Supports notes, due dates, URLs, and recurrence.
  */
 
-import { useState, lazy, Suspense } from "react";
+import { useState, useRef, lazy, Suspense } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -27,6 +27,7 @@ interface ListItemProps {
   onDragStart?: () => void;
   onDragOver?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
+  onTouchStart?: (e: React.TouchEvent, itemId: string, element: HTMLElement) => void;
   onCheck?: (itemId: Id<"items">, checkedByDid: string, legacyDid?: string) => Promise<void>;
   onUncheck?: (itemId: Id<"items">, userDid: string, legacyDid?: string) => Promise<void>;
 }
@@ -41,6 +42,7 @@ export function ListItem({
   onDragStart,
   onDragOver,
   onDragEnd,
+  onTouchStart,
   onCheck,
   onUncheck,
 }: ListItemProps) {
@@ -53,6 +55,7 @@ export function ListItem({
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const itemRef = useRef<HTMLDivElement>(null);
   
   // Format due date for display
   const dueDateStr = item.dueDate 
@@ -112,6 +115,7 @@ export function ListItem({
 
   return (
     <div
+      ref={itemRef}
       draggable={canUserEdit}
       onDragStart={(e) => {
         if (!canUserEdit) return;
@@ -120,7 +124,7 @@ export function ListItem({
       }}
       onDragOver={canUserEdit ? onDragOver : undefined}
       onDragEnd={canUserEdit ? onDragEnd : undefined}
-      className={`flex items-center gap-2 px-3 py-2.5 transition-all ${
+      className={`flex items-center gap-2 px-3 py-2.5 transition-all touch-manipulation ${
         isDragging 
           ? "opacity-50 bg-gray-100 dark:bg-gray-700 scale-[1.02]" 
           : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
@@ -141,10 +145,15 @@ export function ListItem({
       {/* Drag handle - only show if user can edit */}
       {canUserEdit && (
         <div
-          className="flex-shrink-0 w-5 h-8 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 dark:hover:text-gray-500 transition-colors"
+          className="flex-shrink-0 w-6 h-10 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 dark:hover:text-gray-500 transition-colors touch-none select-none"
           aria-label="Drag to reorder"
+          onTouchStart={(e) => {
+            if (itemRef.current && onTouchStart) {
+              onTouchStart(e, item._id, itemRef.current);
+            }
+          }}
         >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
             <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z" />
           </svg>
         </div>
@@ -204,6 +213,17 @@ export function ListItem({
         className="flex-1 min-w-0 text-left hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded px-1 -mx-1 transition-colors"
       >
         <div className="flex items-center gap-1.5">
+          {/* Priority indicator */}
+          {item.priority && !item.checked && (
+            <span 
+              className={`flex-shrink-0 w-2 h-2 rounded-full ${
+                item.priority === "high" ? "bg-red-500" :
+                item.priority === "medium" ? "bg-yellow-500" :
+                "bg-blue-500"
+              }`}
+              title={`${item.priority} priority`}
+            />
+          )}
           <p
             className={`text-xs text-gray-900 dark:text-gray-100 transition-all truncate ${
               item.checked 

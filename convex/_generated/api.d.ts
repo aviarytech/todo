@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as attachments from "../attachments.js";
 import type * as auth from "../auth.js";
 import type * as authInternal from "../authInternal.js";
 import type * as authSessions from "../authSessions.js";
@@ -20,6 +21,7 @@ import type * as http from "../http.js";
 import type * as invites from "../invites.js";
 import type * as items from "../items.js";
 import type * as itemsHttp from "../itemsHttp.js";
+import type * as notifications from "../notifications.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_httpResponses from "../lib/httpResponses.js";
 import type * as lib_jwt from "../lib/jwt.js";
