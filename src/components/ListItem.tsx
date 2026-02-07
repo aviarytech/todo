@@ -14,6 +14,7 @@ import { ItemAttribution } from "./ItemAttribution";
 import { useSettings } from "../hooks/useSettings";
 import type { OptimisticItem } from "../hooks/useOptimisticItems";
 import { useSubItemProgress } from "./SubItems";
+import { ItemVerificationBadge } from "./VerificationBadge";
 
 // Lazy load the details modal
 const ItemDetailsModal = lazy(() => import("./ItemDetailsModal").then(m => ({ default: m.ItemDetailsModal })));
@@ -324,6 +325,11 @@ export function ListItem({
         </div>
         <div className="flex items-center gap-2">
           <ItemAttribution item={item} />
+          {/* Verification badge - shows VC status for item authorship */}
+          <ItemVerificationBadge
+            hasVC={!!item.createdByDid}
+            did={item.createdByDid}
+          />
           {/* Due date badge */}
           {dueDateStr && (
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${

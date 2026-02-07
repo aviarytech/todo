@@ -194,6 +194,11 @@ export default defineSchema({
     status: v.union(v.literal("active"), v.literal("unpublished")),
     didDocument: v.optional(v.string()), // Cached DID document JSON
     didLog: v.optional(v.string()), // DID log for verification
+    // Bitcoin anchor tracking
+    anchorStatus: v.optional(v.union(v.literal("pending"), v.literal("verified"), v.literal("none"))),
+    anchorTxId: v.optional(v.string()), // Bitcoin transaction ID
+    anchorBlockHeight: v.optional(v.number()), // Block height where anchor was confirmed
+    anchorTimestamp: v.optional(v.number()), // When anchor was confirmed
   })
     .index("by_list", ["listId"])
     .index("by_webvh_did", ["webvhDid"])
