@@ -208,4 +208,33 @@ export default defineSchema({
   })
     .index("by_item", ["itemId"])
     .index("by_user", ["userDid"]),
+
+  // Bitcoin anchors table - list state anchored to Bitcoin signet (Phase 5)
+  bitcoinAnchors: defineTable({
+    listId: v.id("lists"),
+    stateHash: v.string(), // SHA-256 hash of list state at anchor time
+    network: v.union(v.literal("signet"), v.literal("mainnet"), v.literal("regtest")),
+    status: v.union(
+      v.literal("pending"), // Anchor requested, awaiting inscription
+      v.literal("inscribed"), // Successfully inscribed on Bitcoin
+      v.literal("confirmed"), // Inscription confirmed (1+ blocks)
+      v.literal("failed") // Inscription failed
+    ),
+    // Bitcoin transaction data (populated after inscription)
+    txid: v.optional(v.string()), // Bitcoin transaction ID
+    inscriptionId: v.optional(v.string()), // Ordinals inscription ID
+    blockHeight: v.optional(v.number()), // Block height when confirmed
+    confirmations: v.optional(v.number()), // Number of confirmations
+    // Metadata
+    anchoredByDid: v.string(), // User who triggered the anchor
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    // Error info for failed anchors
+    error: v.optional(v.string()),
+    // Snapshot of what was anchored (for verification)
+    stateSnapshot: v.optional(v.string()), // JSON of list state at anchor time
+  })
+    .index("by_list", ["listId"])
+    .index("by_status", ["status"])
+    .index("by_list_created", ["listId", "createdAt"]),
 });
