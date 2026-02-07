@@ -257,6 +257,12 @@ export function ListItem({
           {item.description && (
             <span className="text-[10px] text-gray-400 flex-shrink-0" title="Has notes">📝</span>
           )}
+          {/* Attachments indicator */}
+          {item.attachments && item.attachments.length > 0 && (
+            <span className="text-[10px] text-gray-400 flex-shrink-0 flex items-center gap-0.5" title={`${item.attachments.length} attachment${item.attachments.length > 1 ? 's' : ''}`}>
+              📎 {item.attachments.length}
+            </span>
+          )}
         </div>
       </button>
 
