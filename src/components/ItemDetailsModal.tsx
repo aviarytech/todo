@@ -14,6 +14,7 @@ import { SubItems } from "./SubItems";
 import { Attachments } from "./Attachments";
 import { Comments } from "./Comments";
 import { Panel } from "./ui/Panel";
+import { ItemProvenanceInfo } from "./ProvenanceInfo";
 
 interface ItemDetailsModalProps {
   item: Doc<"items">;
@@ -308,6 +309,11 @@ export function ItemDetailsModal({
             legacyDid={legacyDid}
             canEdit={canEdit}
           />
+        </div>
+
+        {/* Originals Provenance Info */}
+        <div>
+          <ItemProvenanceInfo item={item} />
         </div>
       </div>
     </Panel>
