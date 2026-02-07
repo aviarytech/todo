@@ -63,7 +63,7 @@ export function ListCard({ list, currentUserDid, showOwner }: ListCardProps) {
           {/* List name and badges */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 sm:truncate group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
                 {list.name}
               </h3>
               {/* Verification badge showing VC status */}

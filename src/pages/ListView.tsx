@@ -517,7 +517,7 @@ export function ListView() {
         {/* Title and info - takes remaining space */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 line-clamp-2 sm:truncate">
               {list.name}
             </h2>
             {/* Verification badge for list */}
