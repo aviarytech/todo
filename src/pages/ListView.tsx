@@ -323,7 +323,16 @@ export function ListView() {
           <NoItemsEmptyState />
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {items.map((item: OptimisticItem, index) => (
+            {[...items].sort((a, b) => {
+              // Sort unchecked items above checked items
+              if (a.checked !== b.checked) {
+                return a.checked ? 1 : -1;
+              }
+              // Keep original order within each group
+              const orderA = a.order ?? a.createdAt;
+              const orderB = b.order ?? b.createdAt;
+              return orderA - orderB;
+            }).map((item: OptimisticItem, index) => (
               <div 
                 key={item._id} 
                 className="animate-slide-up"
