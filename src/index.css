@@ -71,6 +71,24 @@
   }
 }
 
+@keyframes panel-open {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes panel-close {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
 @keyframes slide-in-right {
   0% {
     opacity: 0;
@@ -142,6 +160,14 @@
 
 .animate-pulse-ring {
   animation: pulse-ring 2s ease-in-out infinite;
+}
+
+.animate-panel-open {
+  animation: panel-open 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.animate-panel-close {
+  animation: panel-close 0.2s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
 /* Custom scrollbar */
