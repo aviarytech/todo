@@ -142,15 +142,15 @@ export function ListItem({
         <button
           onClick={handleToggleCheck}
           disabled={isUpdating}
-          className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-90 ${
+          className={`flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all active:scale-90 ${
             item.checked
-              ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-md shadow-green-500/30"
-              : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border-2 border-gray-200 dark:border-gray-600"
+              ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-sm shadow-green-500/30"
+              : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
           } disabled:opacity-50`}
           aria-label={item.checked ? "Uncheck item" : "Check item"}
         >
           {item.checked ? (
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -158,20 +158,20 @@ export function ListItem({
               />
             </svg>
           ) : (
-            <div className="w-3 h-3" />
+            <div className="w-2 h-2" />
           )}
         </button>
       ) : (
         // Read-only checkbox display for viewers
         <div
-          className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center ${
+          className={`flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center ${
             item.checked 
               ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white" 
               : "bg-gray-100 dark:bg-gray-700"
           }`}
         >
           {item.checked && (
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -185,7 +185,7 @@ export function ListItem({
       {/* Item content */}
       <div className="flex-1 min-w-0">
         <p
-          className={`text-sm text-gray-900 dark:text-gray-100 transition-all ${
+          className={`text-xs text-gray-900 dark:text-gray-100 transition-all ${
             item.checked 
               ? "line-through text-gray-400 dark:text-gray-500" 
               : ""
