@@ -122,6 +122,9 @@ export default defineSchema({
     parentId: v.optional(v.id("items")),
     // Attachments - stored file IDs
     attachments: v.optional(v.array(v.id("_storage"))),
+    // Verifiable Credential proofs (Phase: VC)
+    // Array of JSON-encoded VCs proving item authorship and completion
+    vcProofs: v.optional(v.array(v.string())),
   })
     .index("by_list", ["listId"])
     .index("by_parent", ["parentId"])

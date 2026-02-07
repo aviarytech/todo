@@ -4,6 +4,104 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
 /**
+ * Creates a Verifiable Credential for item authorship (creation).
+ * 
+ * This follows the W3C VC Data Model structure with a placeholder proof.
+ * The proof can be replaced with a cryptographic signature when server-side
+ * signing is implemented.
+ * 
+ * @see https://www.w3.org/TR/vc-data-model/
+ */
+function createItemAuthorshipVC(
+  itemId: Id<"items">,
+  listId: Id<"lists">,
+  creatorDid: string,
+  itemName: string,
+  createdAt: number
+): string {
+  const issuanceDate = new Date(createdAt).toISOString();
+  
+  const vc = {
+    "@context": [
+      "https://www.w3.org/2018/credentials/v1",
+      "https://originals.tech/credentials/v1"
+    ],
+    type: ["VerifiableCredential", "ItemAuthorshipCredential"],
+    id: `urn:uuid:${crypto.randomUUID()}`,
+    issuer: creatorDid,
+    issuanceDate,
+    credentialSubject: {
+      id: creatorDid,
+      itemId: itemId.toString(),
+      listId: listId.toString(),
+      itemName,
+      action: "created",
+      createdAt: issuanceDate,
+    },
+    // Placeholder proof - to be replaced with actual cryptographic signature
+    // when server-side signing via Turnkey or @originals/sdk is implemented
+    proof: {
+      type: "PlaceholderProof2024",
+      created: issuanceDate,
+      verificationMethod: `${creatorDid}#keys-1`,
+      proofPurpose: "assertionMethod",
+      proofValue: "PLACEHOLDER_SIGNATURE_TO_BE_IMPLEMENTED",
+    },
+  };
+  
+  return JSON.stringify(vc);
+}
+
+/**
+ * Creates a Verifiable Credential for item completion.
+ * 
+ * This follows the W3C VC Data Model structure with a placeholder proof.
+ * The proof can be replaced with a cryptographic signature when server-side
+ * signing is implemented.
+ * 
+ * @see https://www.w3.org/TR/vc-data-model/
+ */
+function createItemCompletionVC(
+  itemId: Id<"items">,
+  listId: Id<"lists">,
+  completerDid: string,
+  itemName: string,
+  checkedAt: number
+): string {
+  const issuanceDate = new Date(checkedAt).toISOString();
+  
+  const vc = {
+    "@context": [
+      "https://www.w3.org/2018/credentials/v1",
+      "https://originals.tech/credentials/v1"
+    ],
+    type: ["VerifiableCredential", "ItemCompletionCredential"],
+    id: `urn:uuid:${crypto.randomUUID()}`,
+    issuer: completerDid,
+    issuanceDate,
+    credentialSubject: {
+      id: completerDid,
+      itemId: itemId.toString(),
+      listId: listId.toString(),
+      itemName,
+      action: "completed",
+      completedAt: issuanceDate,
+    },
+    // Placeholder proof - to be replaced with actual cryptographic signature
+    // when server-side signing via Turnkey or @originals/sdk is implemented
+    proof: {
+      type: "PlaceholderProof2024",
+      created: issuanceDate,
+      verificationMethod: `${completerDid}#keys-1`,
+      proofPurpose: "assertionMethod",
+      proofValue: "PLACEHOLDER_SIGNATURE_TO_BE_IMPLEMENTED",
+    },
+  };
+  
+  return JSON.stringify(vc);
+}
+
+/**
  * Helper to check if a user can edit a list (owner or editor).
  * Checks collaborators table first, then falls back to legacy fields.
  */
@@ -108,7 +206,7 @@ export const addItem = mutation({
     );
 
     const now = Date.now();
-    return await ctx.db.insert("items", {
+    const itemId = await ctx.db.insert("items", {
       listId: args.listId,
       name: args.name,
       checked: false,
@@ -126,6 +224,20 @@ export const addItem = mutation({
       priority: args.priority,
       parentId: args.parentId,
     });
+
+    // Issue Verifiable Credential proving item authorship
+    const authorshipVC = createItemAuthorshipVC(
+      itemId,
+      args.listId,
+      args.createdByDid,
+      args.name,
+      args.createdAt
+    );
+
+    // Store the VC proof on the item
+    await ctx.db.patch(itemId, { vcProofs: [authorshipVC] });
+
+    return itemId;
   },
 });
 
@@ -244,12 +356,26 @@ export const checkItem = mutation({
 
     const now = Date.now();
 
-    // Mark the current item as checked
+    // Issue Verifiable Credential proving item completion
+    const completionVC = createItemCompletionVC(
+      args.itemId,
+      item.listId,
+      args.checkedByDid,
+      item.name,
+      args.checkedAt
+    );
+
+    // Append completion VC to existing proofs
+    const existingProofs = item.vcProofs ?? [];
+    const updatedProofs = [...existingProofs, completionVC];
+
+    // Mark the current item as checked and add completion VC
     await ctx.db.patch(args.itemId, {
       checked: true,
       checkedByDid: args.checkedByDid,
       checkedAt: args.checkedAt,
       updatedAt: now,
+      vcProofs: updatedProofs,
     });
 
     // If item has recurrence, create a new unchecked copy with next due date
