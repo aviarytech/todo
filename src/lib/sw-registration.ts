@@ -10,9 +10,81 @@ export interface SWRegistrationConfig {
   onError?: (error: Error) => void;
 }
 
+/**
+ * Detect stale asset errors (MIME type errors from 404s returning HTML)
+ * and force a full refresh when detected
+ */
+function setupStaleAssetDetection(): void {
+  // Listen for script loading errors
+  window.addEventListener('error', (event) => {
+    if (event.target instanceof HTMLScriptElement) {
+      const src = event.target.src;
+      // If a hashed asset fails to load, it's likely a stale cache issue
+      if (src && src.includes('/assets/') && /[-\.][a-f0-9]{8,}\.js/.test(src)) {
+        console.error('[SW] Stale asset detected, forcing refresh:', src);
+        forceFullRefresh();
+      }
+    }
+  }, true); // Use capture phase to catch errors before they bubble
+
+  // Also catch dynamic import failures (common with Vite code splitting)
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    if (reason instanceof Error) {
+      // Check for MIME type errors or failed dynamic imports
+      const isModuleError = 
+        reason.message.includes('MIME type') ||
+        reason.message.includes('Failed to fetch dynamically imported module') ||
+        reason.message.includes('failed to load');
+      
+      if (isModuleError) {
+        console.error('[SW] Module load error, forcing refresh:', reason.message);
+        forceFullRefresh();
+      }
+    }
+  });
+}
+
+/**
+ * Force a full refresh: clear all caches and reload
+ */
+async function forceFullRefresh(): Promise<void> {
+  // Prevent multiple refreshes
+  if (sessionStorage.getItem('poo-app-refreshing')) {
+    return;
+  }
+  sessionStorage.setItem('poo-app-refreshing', 'true');
+
+  try {
+    // Clear all caches
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map((name) => caches.delete(name)));
+      console.log('[SW] All caches cleared');
+    }
+
+    // Unregister service worker
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((r) => r.unregister()));
+      console.log('[SW] Service worker unregistered');
+    }
+
+    // Hard reload to get fresh assets
+    window.location.reload();
+  } catch (error) {
+    console.error('[SW] Force refresh failed:', error);
+    // Last resort: just reload
+    window.location.reload();
+  }
+}
+
 export async function registerServiceWorker(
   config: SWRegistrationConfig = {}
 ): Promise<ServiceWorkerRegistration | undefined> {
+  // Set up stale asset detection first
+  setupStaleAssetDetection();
+
   if (!('serviceWorker' in navigator)) {
     console.log('Service workers not supported');
     return undefined;
@@ -25,10 +97,25 @@ export async function registerServiceWorker(
     return undefined;
   }
 
+  // Clear the refresh flag on successful load
+  sessionStorage.removeItem('poo-app-refreshing');
+
   try {
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
+      // Force update check on every page load
+      updateViaCache: 'none',
     });
+
+    // Check for updates immediately
+    registration.update().catch(() => {
+      // Ignore update check errors
+    });
+
+    // Check for updates periodically (every 5 minutes)
+    setInterval(() => {
+      registration.update().catch(() => {});
+    }, 5 * 60 * 1000);
 
     // Check for updates periodically
     registration.addEventListener('updatefound', () => {
@@ -38,26 +125,36 @@ export async function registerServiceWorker(
       installingWorker.addEventListener('statechange', () => {
         if (installingWorker.state === 'installed') {
           if (navigator.serviceWorker.controller) {
-            // New update available
-            console.log('New service worker available');
+            // New update available - activate it immediately
+            console.log('[SW] New service worker available, activating...');
+            installingWorker.postMessage('skipWaiting');
             config.onUpdate?.(registration);
           } else {
             // First install
-            console.log('Service worker installed');
+            console.log('[SW] Service worker installed');
             config.onSuccess?.(registration);
           }
         }
       });
     });
 
+    // Handle controller change (new SW took over)
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      console.log('[SW] New controller, reloading for fresh assets');
+      window.location.reload();
+    });
+
     // Log current SW state
     if (registration.active) {
-      console.log('Service worker active');
+      console.log('[SW] Service worker active');
     }
 
     return registration;
   } catch (error) {
-    console.error('Service worker registration failed:', error);
+    console.error('[SW] Service worker registration failed:', error);
     config.onError?.(error as Error);
     return undefined;
   }
@@ -76,11 +173,11 @@ export async function unregisterServiceWorker(): Promise<boolean> {
     const registration = await navigator.serviceWorker.ready;
     const success = await registration.unregister();
     if (success) {
-      console.log('Service worker unregistered');
+      console.log('[SW] Service worker unregistered');
     }
     return success;
   } catch (error) {
-    console.error('Failed to unregister service worker:', error);
+    console.error('[SW] Failed to unregister service worker:', error);
     return false;
   }
 }
@@ -91,4 +188,12 @@ export async function unregisterServiceWorker(): Promise<boolean> {
 export function skipWaitingAndReload(): void {
   navigator.serviceWorker.controller?.postMessage('skipWaiting');
   window.location.reload();
+}
+
+/**
+ * Force clear all caches and reload
+ * Exposed for manual debugging
+ */
+export async function clearAllCachesAndReload(): Promise<void> {
+  await forceFullRefresh();
 }

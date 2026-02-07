@@ -3,46 +3,43 @@
 declare const self: ServiceWorkerGlobalScope;
 
 // Bump this on breaking changes to force cache invalidation
-const CACHE_NAME = 'lisa-v2';
+const CACHE_NAME = 'lisa-v3';
 
-// Install event: cache the app shell
+// Install event: activate immediately without caching anything
+// Fresh HTML is fetched on every navigation to avoid stale asset references
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      // Cache the main entry point - Vite will handle asset caching via hash URLs
-      return cache.addAll(['/']);
-    })
-  );
-  // Activate immediately
-  self.skipWaiting();
+  // Skip waiting to activate immediately
+  event.waitUntil(self.skipWaiting());
 });
 
-// Activate event: clean up old caches
+// Activate event: clean up ALL old caches and take control
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    })
+    Promise.all([
+      // Delete all old caches
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((name) => name !== CACHE_NAME)
+            .map((name) => {
+              console.log('[SW] Deleting old cache:', name);
+              return caches.delete(name);
+            })
+        );
+      }),
+      // Take control of all pages immediately
+      self.clients.claim(),
+    ])
   );
-  // Take control of all pages immediately
-  self.clients.claim();
 });
 
-// Fetch event: cache-first for static assets, skip Convex API
+// Fetch event: network-first for navigation, cache static assets carefully
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  const url = new URL(request.url);
 
   // Skip non-GET requests
   if (request.method !== 'GET') {
-    return;
-  }
-
-  // CRITICAL: Never cache Convex API calls
-  if (request.url.includes('convex.cloud')) {
     return;
   }
 
@@ -51,37 +48,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Don't cache hashed assets - Vite's content hashing handles browser caching
-  // Caching these causes issues when deployments have interdependent bundles
-  if (request.url.includes('/assets/') && /\.[a-f0-9]{8,}\.(js|css)/.test(request.url)) {
+  // CRITICAL: Never intercept Convex API calls
+  if (request.url.includes('convex.cloud')) {
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Return cached response and update cache in background
-        event.waitUntil(
-          fetch(request)
-            .then((response) => {
-              if (response.ok) {
-                caches.open(CACHE_NAME).then((cache) => {
-                  cache.put(request, response);
-                });
-              }
-            })
-            .catch(() => {
-              // Network failed, but we already returned cached response
-            })
-        );
-        return cachedResponse;
-      }
+  // CRITICAL: Never cache hashed assets - let browser handle them
+  // These have content hashes and immutable caching headers from the CDN
+  if (url.pathname.startsWith('/assets/') && /[-\.][a-f0-9]{8,}\.(js|css|woff2?)$/.test(url.pathname)) {
+    return;
+  }
 
-      // Not in cache, fetch from network
-      return fetch(request)
+  // Navigation requests (HTML pages): NETWORK-FIRST
+  // This is critical to avoid serving stale HTML that references old asset hashes
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
         .then((response) => {
-          // Cache successful same-origin responses
-          if (response.ok && new URL(request.url).origin === self.location.origin) {
+          // Cache successful responses for offline fallback
+          if (response.ok) {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(request, responseClone);
@@ -90,28 +75,62 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(async () => {
-          // Network failed and not in cache
-          // For navigation requests, return the cached root page
-          if (request.mode === 'navigate') {
-            const cachedRoot = await caches.match('/');
-            if (cachedRoot) {
-              return cachedRoot;
-            }
+          // Network failed - try cache
+          const cachedResponse = await caches.match(request);
+          if (cachedResponse) {
+            return cachedResponse;
           }
-          // For other requests, return a generic offline response
+          // Fall back to root for SPA routing
+          const cachedRoot = await caches.match('/');
+          if (cachedRoot) {
+            return cachedRoot;
+          }
+          // Ultimate fallback
           return new Response('Offline', {
             status: 503,
             statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/plain' },
           });
+        })
+    );
+    return;
+  }
+
+  // Static assets (images, fonts, etc): cache-first for same-origin only
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+
+        return fetch(request).then((response) => {
+          // Only cache successful responses
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
         });
-    })
-  );
+      })
+    );
+    return;
+  }
+
+  // Everything else: just fetch normally
 });
 
 // Handle messages from the main thread
 self.addEventListener('message', (event) => {
   if (event.data === 'skipWaiting') {
     self.skipWaiting();
+  }
+  if (event.data === 'clearCaches') {
+    caches.keys().then((names) => {
+      names.forEach((name) => caches.delete(name));
+    });
   }
 });
 
