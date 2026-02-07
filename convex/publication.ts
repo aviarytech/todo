@@ -206,6 +206,10 @@ export const getPublicationStatus = query({
       publishedAt: pub.publishedAt,
       status: pub.status,
       publishedByDid: pub.publishedByDid,
+      anchorStatus: pub.anchorStatus ?? "none",
+      anchorTxId: pub.anchorTxId,
+      anchorBlockHeight: pub.anchorBlockHeight,
+      anchorTimestamp: pub.anchorTimestamp,
     };
   },
 });

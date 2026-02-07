@@ -28,6 +28,7 @@ import { ListViewSkeleton } from "../components/ui/Skeleton";
 import { CalendarView } from "../components/CalendarView";
 import { BatchOperations } from "../components/BatchOperations";
 import { HeaderActionsMenu } from "../components/HeaderActionsMenu";
+import { ListVerificationBadge, type VerificationState } from "../components/VerificationBadge";
 
 // Lazy-loaded modals for better bundle splitting
 const DeleteListDialog = lazy(() => import("../components/DeleteListDialog").then(m => ({ default: m.DeleteListDialog })));
@@ -515,9 +516,19 @@ export function ListView() {
 
         {/* Title and info - takes remaining space */}
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
-            {list.name}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
+              {list.name}
+            </h2>
+            {/* Verification badge for list */}
+            <ListVerificationBadge
+              hasVC={!!list.assetDid}
+              anchorStatus={(publicationStatus?.anchorStatus as VerificationState) ?? "none"}
+              did={list.assetDid}
+              anchorBlockHeight={publicationStatus?.anchorBlockHeight}
+              anchorTxId={publicationStatus?.anchorTxId}
+            />
+          </div>
           
           {/* Progress and collaborators info */}
           <div className="flex items-center gap-2 text-xs sm:text-sm">
