@@ -1,9 +1,11 @@
 /**
  * Modal for viewing and editing item details.
  * Supports notes, due dates, URLs/links, and recurrence settings.
+ * Uses React Portal to render at document body level for proper visibility.
  */
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
@@ -94,7 +96,7 @@ export function ItemDetailsModal({
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto"
       onClick={onClose}
@@ -282,6 +284,7 @@ export function ItemDetailsModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
