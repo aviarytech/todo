@@ -39,7 +39,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           >
             <span className="text-2xl">💩</span>
             <span className="bg-gradient-to-r from-amber-700 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent">
-              PooApp
+              Poo App
             </span>
           </Link>
           

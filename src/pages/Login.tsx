@@ -12,7 +12,6 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { OtpInput } from "../components/auth/OtpInput";
-import { enableDemoMode, isDemoMode } from "../lib/demoMode";
 
 type LoginStep = "email" | "otp";
 
@@ -29,16 +28,11 @@ export function Login({ embedded = false }: LoginProps) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect if already authenticated or in demo mode (unless embedded)
-  if ((isAuthenticated || isDemoMode()) && !embedded) {
+  // Redirect if already authenticated (unless embedded)
+  if (isAuthenticated && !embedded) {
     navigate("/app", { replace: true });
     return null;
   }
-
-  const handleDemoMode = () => {
-    enableDemoMode();
-    navigate("/app", { replace: true });
-  };
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -110,7 +104,7 @@ export function Login({ embedded = false }: LoginProps) {
           <span className="text-6xl">💩</span>
         </div>
         <h1 className="text-2xl font-bold text-amber-900 mb-2 text-center">
-          Welcome to PooApp
+          Welcome to Poo App
         </h1>
         <p className="text-amber-800/70 mb-6 text-center">
           {step === "email"
@@ -171,16 +165,6 @@ export function Login({ embedded = false }: LoginProps) {
         <p className="mt-6 text-xs text-amber-600/60 text-center">
           🔐 Your keys are securely managed by Turnkey
         </p>
-
-        <div className="mt-4 pt-4 border-t border-amber-200">
-          <button
-            type="button"
-            onClick={handleDemoMode}
-            className="w-full text-amber-600/80 py-2 px-4 rounded-xl text-sm hover:text-amber-800 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-all"
-          >
-            Skip login (Demo Mode) →
-          </button>
-        </div>
       </div>
     </div>
   );

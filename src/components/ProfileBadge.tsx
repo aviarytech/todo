@@ -5,35 +5,25 @@
 
 import { useAuth } from '../hooks/useAuth';
 import { useSettings } from '../hooks/useSettings';
-import { isDemoMode } from '../lib/demoMode';
 
 export function ProfileBadge() {
   const { user, logout } = useAuth();
   const { haptic } = useSettings();
-  const demoMode = isDemoMode();
 
   const did = user?.did;
-  if (!did && !demoMode) return null;
+  if (!did) return null;
 
   // Get first 8 and last 4 chars of DID for display
-  const displayDid = demoMode ? 'demo-user' : did;
-  const shortDid = displayDid && displayDid.length > 16 
-    ? `${displayDid.slice(0, 8)}...${displayDid.slice(-4)}`
-    : displayDid || 'User';
+  const shortDid = did.length > 16 
+    ? `${did.slice(0, 8)}...${did.slice(-4)}`
+    : did;
 
   return (
     <div className="flex items-center gap-2">
-      {/* Demo mode indicator */}
-      {demoMode && (
-        <span className="px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-semibold rounded-full border border-purple-200 dark:border-purple-800">
-          Demo
-        </span>
-      )}
-      
       {/* DID badge */}
       <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-        <span className="text-xs font-mono text-gray-600 dark:text-gray-400" title={did || 'Demo User'}>
+        <span className="text-xs font-mono text-gray-600 dark:text-gray-400" title={did}>
           {shortDid}
         </span>
       </div>

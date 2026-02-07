@@ -126,7 +126,7 @@ export function Settings({ onClose }: SettingsProps) {
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-3xl">💩</span>
                 <div>
-                  <p className="font-bold text-gray-900 dark:text-gray-100">PooApp</p>
+                  <p className="font-bold text-gray-900 dark:text-gray-100">Poo App</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Version 1.0.0</p>
                 </div>
               </div>

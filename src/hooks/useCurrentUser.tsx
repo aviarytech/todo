@@ -8,7 +8,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "./useAuth";
-import { isDemoMode } from "../lib/demoMode";
 
 export interface CurrentUser {
   /** User's canonical DID (from Convex user record, or fallback to authUser.did) */
@@ -38,19 +37,6 @@ export interface CurrentUser {
  */
 export function useCurrentUser(): CurrentUser {
   const { isAuthenticated, user: authUser, isLoading: authLoading } = useAuth();
-
-  // Demo mode: return mock user data
-  if (isDemoMode()) {
-    return {
-      did: "did:demo:user",
-      legacyDid: null,
-      subOrgId: "demo-sub-org",
-      displayName: "Demo User",
-      email: "demo@example.com",
-      isAuthenticated: true,
-      isLoading: false,
-    };
-  }
 
   // If Turnkey authenticated, fetch user record to get legacyDid
   const turnkeyUser = useQuery(

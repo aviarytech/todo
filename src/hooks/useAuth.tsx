@@ -23,7 +23,6 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { disableDemoMode } from "../lib/demoMode";
 import { createUserWebVHDid } from "../lib/webvh";
 
 /**
@@ -342,7 +341,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setOtpFlowState({ sessionId: null, email: null, legacyDid: null });
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem(JWT_STORAGE_KEY);
-    disableDemoMode();
   }, []);
 
   const value: AuthContextValue = {
