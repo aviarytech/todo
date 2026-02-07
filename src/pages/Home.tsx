@@ -16,6 +16,7 @@ import { useOffline } from "../hooks/useOffline";
 import { useSettings } from "../hooks/useSettings";
 import { ListCard } from "../components/ListCard";
 import { CreateListModal } from "../components/CreateListModal";
+import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { CategoryHeader } from "../components/lists/CategoryHeader";
 import { CategoryManager } from "../components/lists/CategoryManager";
 import { SearchInput } from "../components/ui/SearchInput";
@@ -33,6 +34,7 @@ export function Home() {
   const [searchParams] = useSearchParams();
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [cachedLists, setCachedLists] = useState<OfflineList[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,7 +42,7 @@ export function Home() {
   // Check for action param (e.g., from PWA shortcut)
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
-      setIsCreateModalOpen(true);
+      setIsTemplatePickerOpen(true);
     }
   }, [searchParams]);
 
@@ -175,6 +177,11 @@ export function Home() {
 
   const handleOpenCreate = () => {
     haptic('light');
+    setIsTemplatePickerOpen(true);
+  };
+
+  const handleCreateBlank = () => {
+    setIsTemplatePickerOpen(false);
     setIsCreateModalOpen(true);
   };
 
@@ -352,6 +359,13 @@ export function Home() {
       )}
 
       {/* Modals */}
+      {isTemplatePickerOpen && (
+        <TemplatePickerModal 
+          onClose={() => setIsTemplatePickerOpen(false)}
+          onCreateBlank={handleCreateBlank}
+        />
+      )}
+
       {isCreateModalOpen && (
         <CreateListModal onClose={() => setIsCreateModalOpen(false)} />
       )}

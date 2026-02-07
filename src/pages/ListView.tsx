@@ -31,6 +31,7 @@ const DeleteListDialog = lazy(() => import("../components/DeleteListDialog").the
 const ShareModal = lazy(() => import("../components/ShareModal").then(m => ({ default: m.ShareModal })));
 const PublishModal = lazy(() => import("../components/publish/PublishModal").then(m => ({ default: m.PublishModal })));
 const ItemDetailsModal = lazy(() => import("../components/ItemDetailsModal").then(m => ({ default: m.ItemDetailsModal })));
+const SaveAsTemplateModal = lazy(() => import("../components/SaveAsTemplateModal").then(m => ({ default: m.SaveAsTemplateModal })));
 
 type ViewMode = "list" | "calendar";
 
@@ -44,6 +45,7 @@ export function ListView() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
@@ -353,6 +355,25 @@ export function ListView() {
               🔗 Share
             </button>
           )}
+          {/* Save as Template button */}
+          {canUserEdit && (
+            <button
+              onClick={() => {
+                haptic('light');
+                setIsSaveTemplateModalOpen(true);
+              }}
+              disabled={!isOnline}
+              title={!isOnline ? "Available when online" : "Save as template"}
+              className={`p-2.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors ${
+                !isOnline ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              aria-label="Save as template"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+              </svg>
+            </button>
+          )}
           {canUserDelete && (
             <button
               onClick={() => {
@@ -496,6 +517,14 @@ export function ListView() {
 
         {isPublishModalOpen && (
           <PublishModal list={list} onClose={() => setIsPublishModalOpen(false)} />
+        )}
+
+        {isSaveTemplateModalOpen && (
+          <SaveAsTemplateModal
+            listId={listId}
+            listName={list.name}
+            onClose={() => setIsSaveTemplateModalOpen(false)}
+          />
         )}
 
         {selectedCalendarItem && (
