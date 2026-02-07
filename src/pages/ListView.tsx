@@ -499,7 +499,7 @@ export function ListView() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 sm:gap-4 mb-6">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-6">
         {/* Back button */}
         <Link
           to="/app"
@@ -553,46 +553,47 @@ export function ListView() {
           </div>
         </div>
 
-        {/* View toggle */}
-        <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-          <button
-            onClick={() => {
-              haptic('light');
-              setViewMode("list");
-            }}
-            className={`p-2 rounded-md transition-all ${
-              viewMode === "list"
-                ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            }`}
-            aria-label="List view"
-            title="List view"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-          </button>
-          <button
-            onClick={() => {
-              haptic('light');
-              setViewMode("calendar");
-            }}
-            className={`p-2 rounded-md transition-all ${
-              viewMode === "calendar"
-                ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            }`}
-            aria-label="Calendar view"
-            title="Calendar view"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </button>
-        </div>
+        {/* View toggle and action buttons - wrap together on mobile */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* View toggle */}
+          <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <button
+              onClick={() => {
+                haptic('light');
+                setViewMode("list");
+              }}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === "list"
+                  ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              }`}
+              aria-label="List view"
+              title="List view"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </button>
+            <button
+              onClick={() => {
+                haptic('light');
+                setViewMode("calendar");
+              }}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === "calendar"
+                  ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              }`}
+              aria-label="Calendar view"
+              title="Calendar view"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
+          </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-2">
+          {/* Action buttons */}
           {/* Keyboard shortcuts button - hidden on mobile */}
           <button
             onClick={() => {
@@ -605,6 +606,7 @@ export function ListView() {
           >
             <span className="text-sm">⌨️</span>
           </button>
+          {/* Publish button - icon only on mobile */}
           {canUserDelete && (
             <button
               onClick={() => {
@@ -612,27 +614,33 @@ export function ListView() {
                 setIsPublishModalOpen(true);
               }}
               disabled={!isOnline}
-              title={!isOnline ? "Available when online" : undefined}
-              className={`px-4 py-2.5 text-sm rounded-xl font-medium transition-all ${
+              title={!isOnline ? "Available when online" : "Publish"}
+              className={`p-2.5 sm:px-4 sm:py-2.5 text-sm rounded-xl font-medium transition-all ${
                 !isOnline ? "opacity-50 cursor-not-allowed" : ""
               } ${
                 publicationStatus?.status === "active"
                   ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50"
                   : "bg-purple-600 text-white hover:bg-purple-700"
               }`}
+              aria-label={publicationStatus?.status === "active" ? "Published" : "Publish"}
             >
-              {publicationStatus?.status === "active" ? "📡 Published" : "📡 Publish"}
+              <span className="sm:hidden">📡</span>
+              <span className="hidden sm:inline">{publicationStatus?.status === "active" ? "📡 Published" : "📡 Publish"}</span>
             </button>
           )}
+          {/* Share button - icon only on mobile */}
           {canUserInvite && (
             <button
               onClick={() => {
                 haptic('light');
                 setIsShareModalOpen(true);
               }}
-              className="px-4 py-2.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors"
+              className="p-2.5 sm:px-4 sm:py-2.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors"
+              aria-label="Share"
+              title="Share"
             >
-              🔗 Share
+              <span className="sm:hidden">🔗</span>
+              <span className="hidden sm:inline">🔗 Share</span>
             </button>
           )}
           {/* Save as Template button */}
@@ -661,7 +669,7 @@ export function ListView() {
                 setIsDeleteDialogOpen(true);
               }}
               disabled={!isOnline}
-              title={!isOnline ? "Available when online" : undefined}
+              title={!isOnline ? "Available when online" : "Delete list"}
               className={`p-2.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors ${
                 !isOnline ? "opacity-50 cursor-not-allowed" : ""
               }`}
