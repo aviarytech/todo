@@ -218,7 +218,7 @@ function ProvenanceSection({
 /**
  * Bitcoin anchor status badge
  */
-function AnchorStatusBadge({ status }: { status: "pending" | "inscribed" | "confirmed" }) {
+function AnchorStatusBadge({ status }: { status: "pending" | "inscribed" | "confirmed" | "failed" }) {
   const statusConfig = {
     pending: {
       bg: "bg-yellow-100 dark:bg-yellow-900/30",
@@ -231,6 +231,12 @@ function AnchorStatusBadge({ status }: { status: "pending" | "inscribed" | "conf
       text: "text-blue-700 dark:text-blue-400",
       icon: "📝",
       label: "Inscribed",
+    },
+    failed: {
+      bg: "bg-red-100 dark:bg-red-900/30",
+      text: "text-red-700 dark:text-red-400",
+      icon: "❌",
+      label: "Failed",
     },
     confirmed: {
       bg: "bg-green-100 dark:bg-green-900/30",
