@@ -103,6 +103,15 @@ export default defineSchema({
     checkedAt: v.optional(v.number()),
     order: v.optional(v.number()), // Position in list (lower = higher in list)
     updatedAt: v.optional(v.number()), // Timestamp of last update (Phase 5.8 conflict resolution)
+    // New fields for enhanced items
+    description: v.optional(v.string()), // Notes/details for the item
+    dueDate: v.optional(v.number()), // Due date timestamp
+    url: v.optional(v.string()), // Link to PR, URL, or reference
+    recurrence: v.optional(v.object({
+      frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+      interval: v.optional(v.number()), // Every N days/weeks/months (default 1)
+      nextDue: v.optional(v.number()), // Next occurrence timestamp
+    })),
   }).index("by_list", ["listId"]),
 
   // Invites table - for sharing lists with partners

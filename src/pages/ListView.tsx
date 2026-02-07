@@ -317,6 +317,13 @@ export function ListView() {
         </div>
       )}
 
+      {/* Add Item Input - at top of list, only show if user can edit */}
+      {canUserEdit && (
+        <div className="mb-4 animate-slide-up">
+          <AddItemInput assetDid={list.assetDid} onAddItem={addItem} />
+        </div>
+      )}
+
       {/* Items */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
         {items.length === 0 ? (
@@ -356,13 +363,6 @@ export function ListView() {
           </div>
         )}
       </div>
-
-      {/* Add Item Input - only show if user can edit */}
-      {canUserEdit && (
-        <div className="mt-4 animate-slide-up" style={{ animationDelay: '200ms' }}>
-          <AddItemInput assetDid={list.assetDid} onAddItem={addItem} />
-        </div>
-      )}
 
       {/* Viewer notice */}
       {!canUserEdit && (

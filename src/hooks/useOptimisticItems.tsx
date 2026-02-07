@@ -71,6 +71,11 @@ export function useOptimisticItems(listId: Id<"lists">) {
         createdAt: item.createdAt,
         checkedAt: item.checkedAt,
         order: item.order,
+        // Enhanced fields
+        description: item.description,
+        dueDate: item.dueDate,
+        url: item.url,
+        recurrence: item.recurrence,
       }));
       cacheItems(itemsToCache);
     }
