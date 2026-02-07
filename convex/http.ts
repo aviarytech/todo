@@ -27,6 +27,12 @@ import {
   removeCollaborator,
 } from "./collaboratorsHttp";
 import { updateUserDID } from "./userHttp";
+import {
+  getUserLists as agentGetUserLists,
+  agentListHandler,
+  agentItemHandler,
+  corsHandler as agentCorsHandler,
+} from "./agentApi";
 
 // Rate limit configuration
 const RATE_LIMITS = {
@@ -388,5 +394,31 @@ http.route({ path: "/api/collaborators/remove", method: "OPTIONS", handler: cors
 // --- User endpoints ---
 http.route({ path: "/api/user/updateDID", method: "POST", handler: updateUserDID });
 http.route({ path: "/api/user/updateDID", method: "OPTIONS", handler: corsHandler });
+
+// ============================================================================
+// Agent API endpoints (RESTful API for programmatic access)
+// All endpoints require JWT authentication via Authorization header.
+// ============================================================================
+
+// --- Agent List endpoints ---
+// GET /api/agent/lists - Get all lists for the authenticated user
+http.route({ path: "/api/agent/lists", method: "GET", handler: agentGetUserLists });
+http.route({ path: "/api/agent/lists", method: "OPTIONS", handler: agentCorsHandler });
+
+// Note: Convex httpRouter doesn't support path parameters like :id
+// So we use prefix matching and parse the ID in the handler
+
+// GET  /api/agent/lists/:id        - Get a specific list with items
+// GET  /api/agent/lists/:id/items  - Get items for a list  
+// POST /api/agent/lists/:id/items  - Add item to a list
+http.route({ pathPrefix: "/api/agent/lists/", method: "GET", handler: agentListHandler });
+http.route({ pathPrefix: "/api/agent/lists/", method: "POST", handler: agentListHandler });
+http.route({ pathPrefix: "/api/agent/lists/", method: "OPTIONS", handler: agentCorsHandler });
+
+// PATCH  /api/agent/items/:id - Update an item (check/uncheck/edit)
+// DELETE /api/agent/items/:id - Delete an item
+http.route({ pathPrefix: "/api/agent/items/", method: "PATCH", handler: agentItemHandler });
+http.route({ pathPrefix: "/api/agent/items/", method: "DELETE", handler: agentItemHandler });
+http.route({ pathPrefix: "/api/agent/items/", method: "OPTIONS", handler: agentCorsHandler });
 
 export default http;
