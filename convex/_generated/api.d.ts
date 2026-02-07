@@ -16,6 +16,7 @@ import type * as categories from "../categories.js";
 import type * as categoriesHttp from "../categoriesHttp.js";
 import type * as collaborators from "../collaborators.js";
 import type * as collaboratorsHttp from "../collaboratorsHttp.js";
+import type * as comments from "../comments.js";
 import type * as didCreation from "../didCreation.js";
 import type * as http from "../http.js";
 import type * as invites from "../invites.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   categoriesHttp: typeof categoriesHttp;
   collaborators: typeof collaborators;
   collaboratorsHttp: typeof collaboratorsHttp;
+  comments: typeof comments;
   didCreation: typeof didCreation;
   http: typeof http;
   invites: typeof invites;
