@@ -1,3 +1,9 @@
+/**
+ * Poo App Database Schema
+ * 
+ * Core tables for the collaborative list-sharing app with DID-based identity.
+ */
+
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
