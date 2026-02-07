@@ -188,8 +188,35 @@ export const updateItem = mutation({
 });
 
 /**
+ * Calculate the next due date based on recurrence settings.
+ */
+function calculateNextDueDate(
+  currentDueDate: number | undefined,
+  frequency: "daily" | "weekly" | "monthly",
+  interval: number = 1
+): number {
+  // Start from current due date or now if not set
+  const baseDate = new Date(currentDueDate ?? Date.now());
+  
+  switch (frequency) {
+    case "daily":
+      baseDate.setDate(baseDate.getDate() + interval);
+      break;
+    case "weekly":
+      baseDate.setDate(baseDate.getDate() + (7 * interval));
+      break;
+    case "monthly":
+      baseDate.setMonth(baseDate.getMonth() + interval);
+      break;
+  }
+  
+  return baseDate.getTime();
+}
+
+/**
  * Check (mark as complete) an item.
  * Supports legacy DID for migrated users.
+ * If the item has recurrence settings, creates a new unchecked copy with the next due date.
  */
 export const checkItem = mutation({
   args: {
@@ -215,12 +242,55 @@ export const checkItem = mutation({
       throw new Error("Not authorized to check items in this list");
     }
 
+    const now = Date.now();
+
+    // Mark the current item as checked
     await ctx.db.patch(args.itemId, {
       checked: true,
       checkedByDid: args.checkedByDid,
       checkedAt: args.checkedAt,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
+
+    // If item has recurrence, create a new unchecked copy with next due date
+    if (item.recurrence) {
+      const nextDueDate = calculateNextDueDate(
+        item.dueDate,
+        item.recurrence.frequency,
+        item.recurrence.interval ?? 1
+      );
+
+      // Get min order to add new item at the top
+      const existingItems = await ctx.db
+        .query("items")
+        .withIndex("by_list", (q) => q.eq("listId", item.listId))
+        .collect();
+      const sameParentItems = existingItems.filter(i => i.parentId === item.parentId);
+      const minOrder = sameParentItems.reduce(
+        (min, i) => Math.min(min, i.order ?? 0),
+        0
+      );
+
+      // Create the new recurring item
+      await ctx.db.insert("items", {
+        listId: item.listId,
+        name: item.name,
+        checked: false,
+        createdByDid: args.checkedByDid, // The user who checked becomes creator of new item
+        createdAt: now,
+        order: minOrder - 1,
+        updatedAt: now,
+        // Copy over all the enhanced fields
+        description: item.description,
+        dueDate: nextDueDate,
+        url: item.url,
+        recurrence: item.recurrence, // Keep the same recurrence settings
+        priority: item.priority,
+        tags: item.tags,
+        parentId: item.parentId,
+        // Don't copy attachments - those belong to the original item
+      });
+    }
   },
 });
 
@@ -380,6 +450,7 @@ export const getSubItems = query({
 
 /**
  * Batch check multiple items at once.
+ * Handles recurring items by creating new copies with next due dates.
  */
 export const batchCheckItems = mutation({
   args: {
@@ -410,6 +481,44 @@ export const batchCheckItems = mutation({
         checkedAt,
         updatedAt: checkedAt,
       });
+
+      // If item has recurrence, create a new unchecked copy with next due date
+      if (item.recurrence) {
+        const nextDueDate = calculateNextDueDate(
+          item.dueDate,
+          item.recurrence.frequency,
+          item.recurrence.interval ?? 1
+        );
+
+        // Get min order to add new item at the top
+        const existingItems = await ctx.db
+          .query("items")
+          .withIndex("by_list", (q) => q.eq("listId", item.listId))
+          .collect();
+        const sameParentItems = existingItems.filter(i => i.parentId === item.parentId);
+        const minOrder = sameParentItems.reduce(
+          (min, i) => Math.min(min, i.order ?? 0),
+          0
+        );
+
+        // Create the new recurring item
+        await ctx.db.insert("items", {
+          listId: item.listId,
+          name: item.name,
+          checked: false,
+          createdByDid: args.checkedByDid,
+          createdAt: checkedAt,
+          order: minOrder - 1,
+          updatedAt: checkedAt,
+          description: item.description,
+          dueDate: nextDueDate,
+          url: item.url,
+          recurrence: item.recurrence,
+          priority: item.priority,
+          tags: item.tags,
+          parentId: item.parentId,
+        });
+      }
     }
   },
 });
