@@ -112,7 +112,60 @@ export default defineSchema({
       interval: v.optional(v.number()), // Every N days/weeks/months (default 1)
       nextDue: v.optional(v.number()), // Next occurrence timestamp
     })),
-  }).index("by_list", ["listId"]),
+    // Priority levels (high/medium/low)
+    priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
+    // Tags - array of tag IDs
+    tags: v.optional(v.array(v.id("tags"))),
+    // Parent item ID for sub-items
+    parentId: v.optional(v.id("items")),
+    // Attachments - stored file IDs
+    attachments: v.optional(v.array(v.id("_storage"))),
+  })
+    .index("by_list", ["listId"])
+    .index("by_parent", ["parentId"])
+    .index("by_due_date", ["listId", "dueDate"]),
+
+  // Tags table - for categorizing items
+  tags: defineTable({
+    listId: v.id("lists"),
+    name: v.string(),
+    color: v.string(), // Hex color code
+    createdByDid: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_list", ["listId"])
+    .index("by_list_name", ["listId", "name"]),
+
+  // List templates table - save lists as reusable templates
+  listTemplates: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    ownerDid: v.string(),
+    items: v.array(v.object({
+      name: v.string(),
+      description: v.optional(v.string()),
+      priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
+      order: v.number(),
+    })),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    isPublic: v.optional(v.boolean()), // Allow others to use this template
+  })
+    .index("by_owner", ["ownerDid"])
+    .index("by_public", ["isPublic"]),
+
+  // Push notification subscriptions
+  pushSubscriptions: defineTable({
+    userDid: v.string(),
+    endpoint: v.string(),
+    keys: v.object({
+      p256dh: v.string(),
+      auth: v.string(),
+    }),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userDid"])
+    .index("by_endpoint", ["endpoint"]),
 
   // Invites table - for sharing lists with partners
   invites: defineTable({

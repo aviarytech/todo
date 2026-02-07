@@ -5,7 +5,7 @@
  * Features improved design, dark mode, and better empty states.
  */
 
-import { useState, useCallback, lazy, Suspense } from "react";
+import { useState, useCallback, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -15,6 +15,7 @@ import { useCollaborators } from "../hooks/useCollaborators";
 import { useOptimisticItems, type OptimisticItem } from "../hooks/useOptimisticItems";
 import { useOffline } from "../hooks/useOffline";
 import { useSettings } from "../hooks/useSettings";
+import { useTouchDrag } from "../hooks/useTouchDrag";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
@@ -39,6 +40,7 @@ export function ListView() {
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
+  const itemsContainerRef = useRef<HTMLDivElement>(null);
 
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
@@ -104,6 +106,29 @@ export function ListView() {
     setDraggedItemId(null);
     setDragOverItemId(null);
   }, [draggedItemId, dragOverItemId, items, did, legacyDid, reorderItems, haptic]);
+
+  // Touch drag reorder handler
+  const handleTouchReorder = useCallback(async (draggedId: string, targetId: string) => {
+    if (items.length === 0 || !did) return;
+
+    const itemIds = items.map((item) => item._id);
+    const draggedIndex = itemIds.indexOf(draggedId as Id<"items">);
+    const targetIndex = itemIds.indexOf(targetId as Id<"items">);
+
+    if (draggedIndex !== -1 && targetIndex !== -1 && draggedIndex !== targetIndex) {
+      haptic('medium');
+      const newItemIds = [...itemIds];
+      newItemIds.splice(draggedIndex, 1);
+      newItemIds.splice(targetIndex, 0, draggedId as Id<"items">);
+      await reorderItems(newItemIds, did, legacyDid ?? undefined);
+    }
+  }, [items, did, legacyDid, reorderItems, haptic]);
+
+  // Touch drag hook for mobile support
+  const touchDrag = useTouchDrag({
+    onReorder: handleTouchReorder,
+    containerRef: itemsContainerRef,
+  });
 
   // Loading state
   if (
@@ -329,7 +354,12 @@ export function ListView() {
         {items.length === 0 ? (
           <NoItemsEmptyState />
         ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+          <div 
+            ref={itemsContainerRef}
+            className="divide-y divide-gray-100 dark:divide-gray-700"
+            onTouchMove={touchDrag.handleTouchMove}
+            onTouchEnd={touchDrag.handleTouchEnd}
+          >
             {[...items].sort((a, b) => {
               // Sort unchecked items above checked items
               if (a.checked !== b.checked) {
@@ -342,6 +372,7 @@ export function ListView() {
             }).map((item: OptimisticItem, index) => (
               <div 
                 key={item._id} 
+                data-item-id={item._id}
                 className="animate-slide-up"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
@@ -350,11 +381,12 @@ export function ListView() {
                   userDid={did}
                   legacyDid={legacyDid ?? undefined}
                   canEdit={canUserEdit}
-                  isDragging={draggedItemId === item._id}
-                  isDragOver={dragOverItemId === item._id}
+                  isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
+                  isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
                   onDragStart={() => handleDragStart(item._id)}
                   onDragOver={(e) => handleDragOver(e, item._id)}
                   onDragEnd={handleDragEnd}
+                  onTouchStart={touchDrag.handleTouchStart}
                   onCheck={checkItem}
                   onUncheck={uncheckItem}
                 />

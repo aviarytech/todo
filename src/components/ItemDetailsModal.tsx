@@ -8,6 +8,8 @@ import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
+import { TagSelector } from "./TagSelector";
+import { SubItems } from "./SubItems";
 
 interface ItemDetailsModalProps {
   item: Doc<"items">;
@@ -18,6 +20,13 @@ interface ItemDetailsModalProps {
 }
 
 type RecurrenceFrequency = "daily" | "weekly" | "monthly";
+type Priority = "high" | "medium" | "low" | "";
+
+const PRIORITY_COLORS = {
+  high: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700",
+  medium: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700",
+  low: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700",
+};
 
 export function ItemDetailsModal({
   item,
@@ -39,6 +48,7 @@ export function ItemDetailsModal({
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<RecurrenceFrequency>(
     item.recurrence?.frequency ?? "daily"
   );
+  const [priority, setPriority] = useState<Priority>(item.priority ?? "");
   const [isSaving, setIsSaving] = useState(false);
 
   // Close on escape
@@ -68,9 +78,11 @@ export function ItemDetailsModal({
         recurrence: hasRecurrence
           ? { frequency: recurrenceFrequency, interval: 1 }
           : undefined,
+        priority: priority || undefined,
         clearDueDate: !dueDate && !!item.dueDate,
         clearUrl: !url && !!item.url,
         clearRecurrence: !hasRecurrence && !!item.recurrence,
+        clearPriority: !priority && !!item.priority,
       });
       haptic("success");
       onClose();
@@ -84,16 +96,19 @@ export function ItemDetailsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md animate-slide-up"
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md animate-slide-up my-auto max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+          <h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {canEdit ? "Edit Item" : "Item Details"}
           </h2>
           <button
@@ -152,6 +167,32 @@ export function ItemDetailsModal({
             />
           </div>
 
+          {/* Priority */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+              🚨 Priority
+            </label>
+            <div className="flex gap-2">
+              {(["", "low", "medium", "high"] as Priority[]).map((p) => (
+                <button
+                  key={p || "none"}
+                  type="button"
+                  onClick={() => canEdit && setPriority(p)}
+                  disabled={!canEdit}
+                  className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
+                    priority === p
+                      ? p
+                        ? PRIORITY_COLORS[p]
+                        : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-500"
+                      : "bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  } disabled:opacity-50`}
+                >
+                  {p ? p.charAt(0).toUpperCase() + p.slice(1) : "None"}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Due Date */}
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
@@ -191,11 +232,40 @@ export function ItemDetailsModal({
               </select>
             )}
           </div>
+
+          {/* Tags */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+              🏷️ Tags
+            </label>
+            <TagSelector
+              listId={item.listId}
+              itemId={item._id}
+              selectedTagIds={item.tags ?? []}
+              userDid={userDid}
+              legacyDid={legacyDid}
+              canEdit={canEdit}
+            />
+          </div>
+
+          {/* Sub-items */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+              📦 Sub-items / Checklist
+            </label>
+            <SubItems
+              parentId={item._id}
+              listId={item.listId}
+              userDid={userDid}
+              legacyDid={legacyDid}
+              canEdit={canEdit}
+            />
+          </div>
         </div>
 
         {/* Footer */}
         {canEdit && (
-          <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"

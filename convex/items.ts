@@ -67,6 +67,8 @@ export const addItem = mutation({
       interval: v.optional(v.number()),
       nextDue: v.optional(v.number()),
     })),
+    priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
+    parentId: v.optional(v.id("items")), // For sub-items
   },
   handler: async (ctx, args) => {
     // Verify the list exists
@@ -86,13 +88,22 @@ export const addItem = mutation({
       throw new Error("Not authorized to add items to this list");
     }
 
-    // Get max order to add new item at the end
+    // If it's a sub-item, verify parent exists and belongs to same list
+    if (args.parentId) {
+      const parent = await ctx.db.get(args.parentId);
+      if (!parent || parent.listId !== args.listId) {
+        throw new Error("Parent item not found or belongs to different list");
+      }
+    }
+
+    // Get min order to add new item at the top (for items with same parent)
     const existingItems = await ctx.db
       .query("items")
       .withIndex("by_list", (q) => q.eq("listId", args.listId))
       .collect();
-    const maxOrder = existingItems.reduce(
-      (max, item) => Math.max(max, item.order ?? 0),
+    const sameParentItems = existingItems.filter(i => i.parentId === args.parentId);
+    const minOrder = sameParentItems.reduce(
+      (min, item) => Math.min(min, item.order ?? 0),
       0
     );
 
@@ -105,19 +116,21 @@ export const addItem = mutation({
       checkedByDid: undefined,
       createdAt: args.createdAt,
       checkedAt: undefined,
-      order: maxOrder + 1,
+      order: minOrder - 1,
       updatedAt: now,
       // Enhanced fields
       description: args.description,
       dueDate: args.dueDate,
       url: args.url,
       recurrence: args.recurrence,
+      priority: args.priority,
+      parentId: args.parentId,
     });
   },
 });
 
 /**
- * Update an item's details (name, description, due date, url, recurrence).
+ * Update an item's details (name, description, due date, url, recurrence, priority).
  * Supports legacy DID for migrated users.
  */
 export const updateItem = mutation({
@@ -135,9 +148,11 @@ export const updateItem = mutation({
       interval: v.optional(v.number()),
       nextDue: v.optional(v.number()),
     })),
+    priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
     clearDueDate: v.optional(v.boolean()),
     clearRecurrence: v.optional(v.boolean()),
     clearUrl: v.optional(v.boolean()),
+    clearPriority: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const item = await ctx.db.get(args.itemId);
@@ -159,11 +174,13 @@ export const updateItem = mutation({
     if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
     if (args.url !== undefined) updates.url = args.url;
     if (args.recurrence !== undefined) updates.recurrence = args.recurrence;
+    if (args.priority !== undefined) updates.priority = args.priority;
     
     // Clear fields if requested
     if (args.clearDueDate) updates.dueDate = undefined;
     if (args.clearRecurrence) updates.recurrence = undefined;
     if (args.clearUrl) updates.url = undefined;
+    if (args.clearPriority) updates.priority = undefined;
 
     await ctx.db.patch(args.itemId, updates);
     return args.itemId;
@@ -345,5 +362,158 @@ export const getItemForSync = query({
   args: { itemId: v.id("items") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.itemId);
+  },
+});
+
+/**
+ * Get sub-items for a parent item.
+ */
+export const getSubItems = query({
+  args: { parentId: v.id("items") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("items")
+      .withIndex("by_parent", (q) => q.eq("parentId", args.parentId))
+      .collect();
+  },
+});
+
+/**
+ * Batch check multiple items at once.
+ */
+export const batchCheckItems = mutation({
+  args: {
+    itemIds: v.array(v.id("items")),
+    checkedByDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const checkedAt = Date.now();
+    let listId: Id<"lists"> | null = null;
+
+    for (const itemId of args.itemIds) {
+      const item = await ctx.db.get(itemId);
+      if (!item) continue;
+
+      // Verify authorization once per list
+      if (listId !== item.listId) {
+        listId = item.listId;
+        const canEdit = await canUserEditList(ctx, item.listId, args.checkedByDid, args.legacyDid);
+        if (!canEdit) {
+          throw new Error("Not authorized to check items in this list");
+        }
+      }
+
+      await ctx.db.patch(itemId, {
+        checked: true,
+        checkedByDid: args.checkedByDid,
+        checkedAt,
+        updatedAt: checkedAt,
+      });
+    }
+  },
+});
+
+/**
+ * Batch uncheck multiple items at once.
+ */
+export const batchUncheckItems = mutation({
+  args: {
+    itemIds: v.array(v.id("items")),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    let listId: Id<"lists"> | null = null;
+
+    for (const itemId of args.itemIds) {
+      const item = await ctx.db.get(itemId);
+      if (!item) continue;
+
+      if (listId !== item.listId) {
+        listId = item.listId;
+        const canEdit = await canUserEditList(ctx, item.listId, args.userDid, args.legacyDid);
+        if (!canEdit) {
+          throw new Error("Not authorized to uncheck items in this list");
+        }
+      }
+
+      await ctx.db.patch(itemId, {
+        checked: false,
+        checkedByDid: undefined,
+        checkedAt: undefined,
+        updatedAt: now,
+      });
+    }
+  },
+});
+
+/**
+ * Batch delete multiple items at once.
+ */
+export const batchDeleteItems = mutation({
+  args: {
+    itemIds: v.array(v.id("items")),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let listId: Id<"lists"> | null = null;
+
+    for (const itemId of args.itemIds) {
+      const item = await ctx.db.get(itemId);
+      if (!item) continue;
+
+      if (listId !== item.listId) {
+        listId = item.listId;
+        const canEdit = await canUserEditList(ctx, item.listId, args.userDid, args.legacyDid);
+        if (!canEdit) {
+          throw new Error("Not authorized to delete items in this list");
+        }
+      }
+
+      // Also delete any sub-items
+      const subItems = await ctx.db
+        .query("items")
+        .withIndex("by_parent", (q) => q.eq("parentId", itemId))
+        .collect();
+      
+      for (const subItem of subItems) {
+        await ctx.db.delete(subItem._id);
+      }
+
+      await ctx.db.delete(itemId);
+    }
+  },
+});
+
+/**
+ * Get items with due dates for calendar view.
+ */
+export const getItemsWithDueDates = query({
+  args: { 
+    listId: v.id("lists"),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const items = await ctx.db
+      .query("items")
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
+      .collect();
+
+    // Filter items with due dates
+    let filtered = items.filter((item) => item.dueDate !== undefined);
+
+    // Apply date range filter if provided
+    if (args.startDate !== undefined) {
+      filtered = filtered.filter((item) => item.dueDate! >= args.startDate!);
+    }
+    if (args.endDate !== undefined) {
+      filtered = filtered.filter((item) => item.dueDate! <= args.endDate!);
+    }
+
+    return filtered.sort((a, b) => (a.dueDate ?? 0) - (b.dueDate ?? 0));
   },
 });

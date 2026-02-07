@@ -108,6 +108,12 @@ export function useOptimisticItems(listId: Id<"lists">) {
       createdAt: number;
     }) => {
       const tempId = `temp-${Date.now()}` as Id<"items">;
+      // Calculate min order to put new item at top
+      const currentItems = serverItems ?? [];
+      const minOrder = currentItems.reduce(
+        (min, item) => Math.min(min, item.order ?? 0),
+        0
+      );
       const optimistic: OptimisticItem = {
         _id: tempId,
         _creationTime: Date.now(),
@@ -116,10 +122,12 @@ export function useOptimisticItems(listId: Id<"lists">) {
         checked: false,
         createdByDid: args.createdByDid,
         createdAt: args.createdAt,
+        order: minOrder - 1, // Add at top
         _isOptimistic: true,
       };
 
-      setOptimisticItems((prev) => [...prev, optimistic]);
+      // Add to beginning of optimistic items for immediate top placement
+      setOptimisticItems((prev) => [optimistic, ...prev]);
 
       if (isOnline) {
         try {
