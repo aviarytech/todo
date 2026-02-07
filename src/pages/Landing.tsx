@@ -67,9 +67,14 @@ export function Landing() {
             </span>
           </h1>
 
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-amber-800/70 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-amber-800/70 max-w-2xl mx-auto mb-6 sm:mb-8 leading-relaxed px-2">
             The world's most <em>productive</em> todo app. Turn your bathroom breaks 
             into breakthrough moments. 🚽✨
+          </p>
+
+          {/* Join the movement CTA */}
+          <p className="text-lg sm:text-xl md:text-2xl font-bold text-amber-900 mb-8 sm:mb-10 px-2">
+            🚀 Join the movement. One flush at a time.
           </p>
 
           {/* CTA Buttons - full width on mobile, touch-friendly */}
