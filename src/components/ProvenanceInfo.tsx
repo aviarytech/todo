@@ -244,12 +244,6 @@ function AnchorStatusBadge({ status }: { status: "pending" | "inscribed" | "conf
       icon: "✅",
       label: "Confirmed",
     },
-    failed: {
-      bg: "bg-red-100 dark:bg-red-900/30",
-      text: "text-red-700 dark:text-red-400",
-      icon: "❌",
-      label: "Failed",
-    },
   };
 
   const config = statusConfig[status];
