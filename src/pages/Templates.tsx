@@ -1,35 +1,110 @@
 /**
  * Templates page - manage and use list templates.
- * Note: Templates functionality requires Convex backend deployment.
+ * Shows built-in templates and user's saved templates.
  */
 
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Id, Doc } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
+import { createListAsset } from "../lib/originals";
+import { BUILTIN_TEMPLATES, type BuiltinTemplate } from "../lib/builtinTemplates";
 
-interface TemplateItem {
-  name: string;
-  description?: string;
-  priority?: "high" | "medium" | "low";
-  order: number;
-}
-
-interface Template {
-  _id: string;
-  name: string;
-  description?: string;
-  items: TemplateItem[];
-  isPublic?: boolean;
-  ownerDid: string;
-}
+type Template = Doc<"listTemplates">;
 
 export function Templates() {
   const { did, isLoading: userLoading } = useCurrentUser();
   const { haptic } = useSettings();
+  const navigate = useNavigate();
+  const [isCreating, setIsCreating] = useState<string | null>(null);
 
-  // Templates API not yet deployed - show placeholder
-  const userTemplates: Template[] = [];
-  const publicTemplates: Template[] = [];
+  // Fetch templates from API
+  const userTemplates = useQuery(
+    api.templates.getUserTemplates,
+    did ? { userDid: did } : "skip"
+  ) ?? [];
+  
+  const publicTemplates = useQuery(api.templates.getPublicTemplates) ?? [];
+
+  // Mutations
+  const createList = useMutation(api.lists.createList);
+  const addItem = useMutation(api.items.addItem);
+  const deleteTemplate = useMutation(api.templates.deleteTemplate);
+  const createListFromTemplate = useMutation(api.templates.createListFromTemplate);
+
+  const handleUseBuiltin = async (template: BuiltinTemplate) => {
+    if (!did) return;
+    
+    setIsCreating(template.id);
+    haptic('medium');
+
+    try {
+      const listAsset = await createListAsset(template.name, did);
+      const listId = await createList({
+        assetDid: listAsset.assetDid,
+        name: template.name,
+        ownerDid: did,
+        createdAt: Date.now(),
+      });
+
+      const now = Date.now();
+      for (const item of template.items) {
+        await addItem({
+          listId,
+          name: item.name,
+          createdByDid: did,
+          createdAt: now,
+          priority: item.priority,
+          description: item.description,
+        });
+      }
+
+      haptic('success');
+      navigate(`/list/${listId}`);
+    } catch (err) {
+      console.error("Failed to create from template:", err);
+      haptic('error');
+      setIsCreating(null);
+    }
+  };
+
+  const handleUseSaved = async (template: Template) => {
+    if (!did) return;
+    
+    setIsCreating(template._id);
+    haptic('medium');
+
+    try {
+      const listId = await createListFromTemplate({
+        templateId: template._id,
+        listName: template.name,
+        userDid: did,
+      });
+
+      haptic('success');
+      navigate(`/list/${listId}`);
+    } catch (err) {
+      console.error("Failed to create from saved template:", err);
+      haptic('error');
+      setIsCreating(null);
+    }
+  };
+
+  const handleDelete = async (templateId: Id<"listTemplates">) => {
+    if (!did) return;
+    
+    haptic('medium');
+    try {
+      await deleteTemplate({ templateId, userDid: did });
+      haptic('success');
+    } catch (err) {
+      console.error("Failed to delete template:", err);
+      haptic('error');
+    }
+  };
 
   if (userLoading || !did) {
     return (
@@ -58,6 +133,23 @@ export function Templates() {
         </h1>
       </div>
 
+      {/* Built-in Templates */}
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          Quick Start Templates
+        </h2>
+        <div className="space-y-3">
+          {BUILTIN_TEMPLATES.map((template) => (
+            <BuiltinTemplateCard
+              key={template.id}
+              template={template}
+              isCreating={isCreating === template.id}
+              onUse={() => handleUseBuiltin(template)}
+            />
+          ))}
+        </div>
+      </section>
+
       {/* My Templates */}
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
@@ -78,8 +170,9 @@ export function Templates() {
                 key={template._id}
                 template={template}
                 isOwner
-                onUse={() => haptic("light")}
-                onDelete={() => haptic("light")}
+                isCreating={isCreating === template._id}
+                onUse={() => handleUseSaved(template)}
+                onDelete={() => handleDelete(template._id)}
               />
             ))}
           </div>
@@ -87,7 +180,7 @@ export function Templates() {
       </section>
 
       {/* Public Templates */}
-      {publicTemplates.length > 0 && (
+      {publicTemplates.filter((t) => t.ownerDid !== did).length > 0 && (
         <section>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Public Templates
@@ -100,7 +193,8 @@ export function Templates() {
                   key={template._id}
                   template={template}
                   isOwner={false}
-                  onUse={() => haptic("light")}
+                  isCreating={isCreating === template._id}
+                  onUse={() => handleUseSaved(template)}
                 />
               ))}
           </div>
@@ -110,38 +204,80 @@ export function Templates() {
   );
 }
 
+interface BuiltinTemplateCardProps {
+  template: BuiltinTemplate;
+  isCreating: boolean;
+  onUse: () => void;
+}
+
+function BuiltinTemplateCard({ template, isCreating, onUse }: BuiltinTemplateCardProps) {
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">{template.emoji}</span>
+          <div>
+            <h3 className="font-medium text-gray-900 dark:text-gray-100">
+              {template.name}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {template.description}
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+              {template.items.length} item{template.items.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+        
+        <button
+          onClick={onUse}
+          disabled={isCreating}
+          className="px-3 py-1.5 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors disabled:opacity-50"
+        >
+          {isCreating ? "Creating..." : "Use"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface TemplateCardProps {
   template: Template;
   isOwner: boolean;
+  isCreating: boolean;
   onUse: () => void;
   onDelete?: () => void;
 }
 
-function TemplateCard({ template, isOwner, onUse, onDelete }: TemplateCardProps) {
+function TemplateCard({ template, isOwner, isCreating, onUse, onDelete }: TemplateCardProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="flex items-start justify-between">
-        <div>
-          <h3 className="font-medium text-gray-900 dark:text-gray-100">
-            {template.name}
-          </h3>
-          {template.description && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {template.description}
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">📄</span>
+          <div>
+            <h3 className="font-medium text-gray-900 dark:text-gray-100">
+              {template.name}
+            </h3>
+            {template.description && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {template.description}
+              </p>
+            )}
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+              {template.items.length} item{template.items.length !== 1 ? "s" : ""}
+              {template.isPublic && " • Public"}
             </p>
-          )}
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-            {template.items.length} item{template.items.length !== 1 ? "s" : ""}
-            {template.isPublic && " • Public"}
-          </p>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
           <button
             onClick={onUse}
-            className="px-3 py-1.5 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors"
+            disabled={isCreating}
+            className="px-3 py-1.5 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors disabled:opacity-50"
           >
-            Use
+            {isCreating ? "Creating..." : "Use"}
           </button>
           {isOwner && onDelete && (
             <button
