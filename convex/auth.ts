@@ -35,14 +35,15 @@ export const upsertUser = mutation({
       .first();
 
     if (existingByTurnkey) {
-      // Update last login, and upgrade DID if still temporary
+      // Update last login, and upgrade DID if provided DID is "better"
+      // Upgrade order: did:temp -> did:key -> did:webvh
+      const shouldUpgradeDid = args.did && 
+        args.did.startsWith("did:webvh:") && 
+        !existingByTurnkey.did.startsWith("did:webvh:");
+      
       await ctx.db.patch(existingByTurnkey._id, {
         lastLoginAt: Date.now(),
-        ...(args.did &&
-        !args.did.startsWith("did:temp:") &&
-        existingByTurnkey.did.startsWith("did:temp:")
-          ? { did: args.did }
-          : {}),
+        ...(shouldUpgradeDid ? { did: args.did } : {}),
       });
       return existingByTurnkey._id;
     }
