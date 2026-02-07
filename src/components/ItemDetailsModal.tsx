@@ -12,6 +12,7 @@ import type { Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
 import { TagSelector } from "./TagSelector";
 import { SubItems } from "./SubItems";
+import { Attachments } from "./Attachments";
 
 interface ItemDetailsModalProps {
   item: Doc<"items">;
@@ -258,6 +259,19 @@ export function ItemDetailsModal({
             <SubItems
               parentId={item._id}
               listId={item.listId}
+              userDid={userDid}
+              legacyDid={legacyDid}
+              canEdit={canEdit}
+            />
+          </div>
+
+          {/* Attachments */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+              📷 Attachments
+            </label>
+            <Attachments
+              itemId={item._id}
               userDid={userDid}
               legacyDid={legacyDid}
               canEdit={canEdit}
