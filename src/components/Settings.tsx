@@ -4,7 +4,10 @@
 
 import { Link } from 'react-router-dom';
 import { useSettings } from '../hooks/useSettings';
+import { useNotifications } from '../hooks/useNotifications';
+import { useAuth } from '../hooks/useAuth';
 import { supportsHaptics } from '../lib/haptics';
+import { supportsPushNotifications } from '../lib/notifications';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface SettingsProps {
@@ -13,6 +16,15 @@ interface SettingsProps {
 
 export function Settings({ onClose }: SettingsProps) {
   const { darkMode, toggleDarkMode, hapticsEnabled, setHapticsEnabled, haptic } = useSettings();
+  const { user } = useAuth();
+  const {
+    permission: notificationPermission,
+    isEnabled: notificationsEnabled,
+    isLoading: notificationsLoading,
+    reminderMinutes,
+    toggleNotifications,
+    setReminderMinutes,
+  } = useNotifications({ userDid: user?.did ?? null });
   const dialogRef = useFocusTrap<HTMLDivElement>({ onEscape: onClose });
 
   const handleToggle = (current: boolean, setter: (v: boolean) => void) => {
@@ -114,6 +126,89 @@ export function Settings({ onClose }: SettingsProps) {
                   />
                 </button>
               </div>
+            </section>
+          )}
+
+          {/* Notifications Section */}
+          {supportsPushNotifications() && (
+            <section>
+              <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+                Notifications
+              </h3>
+              
+              {/* Push Notifications Toggle */}
+              <div className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🔔</span>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Push Notifications</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {notificationPermission === 'denied' 
+                        ? 'Blocked in browser settings'
+                        : notificationsEnabled 
+                          ? 'Get notified when items are due' 
+                          : 'Enable notifications for due dates'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    haptic('light');
+                    await toggleNotifications();
+                  }}
+                  disabled={notificationsLoading || notificationPermission === 'denied'}
+                  className={`relative w-14 h-8 rounded-full transition-colors ${
+                    notificationsEnabled ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-600'
+                  } ${notificationsLoading || notificationPermission === 'denied' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  role="switch"
+                  aria-checked={notificationsEnabled}
+                >
+                  <div
+                    className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
+                      notificationsEnabled ? 'translate-x-7' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Reminder Time */}
+              {notificationsEnabled && (
+                <div className="py-3">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-2xl">⏰</span>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">Reminder Time</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        How early to remind you before due date
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 ml-11">
+                    {[
+                      { value: 15, label: '15m' },
+                      { value: 30, label: '30m' },
+                      { value: 60, label: '1h' },
+                      { value: 120, label: '2h' },
+                      { value: 1440, label: '1d' },
+                    ].map(({ value, label }) => (
+                      <button
+                        key={value}
+                        onClick={() => {
+                          haptic('light');
+                          setReminderMinutes(value);
+                        }}
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                          reminderMinutes === value
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
