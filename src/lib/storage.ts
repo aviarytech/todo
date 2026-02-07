@@ -7,6 +7,8 @@ const STORAGE_KEYS = {
   LIST_SORT: 'pooapp:listSort',
   HAPTICS_ENABLED: 'pooapp:hapticsEnabled',
   ONBOARDING_COMPLETE: 'pooapp:onboardingComplete',
+  NOTIFICATIONS_ENABLED: 'pooapp:notificationsEnabled',
+  REMINDER_MINUTES: 'pooapp:reminderMinutes',
 } as const;
 
 export type SortOption = 'name-asc' | 'name-desc' | 'newest' | 'oldest';
@@ -88,4 +90,36 @@ export function isOnboardingComplete(): boolean {
  */
 export function completeOnboarding(): void {
   localStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
+}
+
+/**
+ * Get notifications enabled preference.
+ */
+export function getNotificationsEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  const stored = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS_ENABLED);
+  return stored === 'true';
+}
+
+/**
+ * Set notifications enabled preference.
+ */
+export function setNotificationsEnabled(enabled: boolean): void {
+  localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS_ENABLED, String(enabled));
+}
+
+/**
+ * Get reminder time in minutes before due date.
+ */
+export function getReminderMinutes(): number {
+  if (typeof window === 'undefined') return 60;
+  const stored = localStorage.getItem(STORAGE_KEYS.REMINDER_MINUTES);
+  return stored ? parseInt(stored, 10) : 60;
+}
+
+/**
+ * Set reminder time in minutes before due date.
+ */
+export function setReminderMinutes(minutes: number): void {
+  localStorage.setItem(STORAGE_KEYS.REMINDER_MINUTES, String(minutes));
 }

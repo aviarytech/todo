@@ -115,4 +115,62 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// Handle push notifications
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    const title = data.title || '💩 Poo App';
+    const options = {
+      body: data.body || 'You have a notification',
+      icon: '/pwa-192x192.png',
+      badge: '/pwa-192x192.png',
+      tag: data.tag || 'poo-notification',
+      data: {
+        url: data.url || '/',
+        itemId: data.itemId,
+        listId: data.listId,
+      },
+      requireInteraction: data.requireInteraction || false,
+      vibrate: [100, 50, 100],
+    } as NotificationOptions & { vibrate?: number[] };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch {
+    // Fallback for plain text push
+    const body = event.data.text();
+    event.waitUntil(
+      self.registration.showNotification('💩 Poo App', {
+        body,
+        icon: '/pwa-192x192.png',
+      })
+    );
+  }
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/app';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Try to focus an existing window
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          if ('navigate' in client) {
+            (client as WindowClient).navigate(urlToOpen);
+          }
+          return;
+        }
+      }
+      // Open a new window if none exists
+      return self.clients.openWindow(urlToOpen);
+    })
+  );
+});
+
 export {};

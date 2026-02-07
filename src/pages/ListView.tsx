@@ -5,7 +5,7 @@
  * Features improved design, dark mode, and better empty states.
  */
 
-import { useState, useCallback, useRef, lazy, Suspense } from "react";
+import React, { useState, useCallback, useRef, lazy, Suspense, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -16,6 +16,7 @@ import { useOptimisticItems, type OptimisticItem } from "../hooks/useOptimisticI
 import { useOffline } from "../hooks/useOffline";
 import { useSettings } from "../hooks/useSettings";
 import { useTouchDrag } from "../hooks/useTouchDrag";
+import { useNotifications } from "../hooks/useNotifications";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
@@ -33,6 +34,7 @@ export function ListView() {
   const navigate = useNavigate();
   const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
   const { haptic } = useSettings();
+  const { scheduleItemsNotifications, isEnabled: notificationsEnabled } = useNotifications({ userDid: did });
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -64,6 +66,19 @@ export function ListView() {
 
   // Get online status for disabling destructive operations
   const { isOnline } = useOffline();
+
+  // Schedule notifications for items with due dates
+  // Note: The actual items array type from useOptimisticItems includes Doc<"items"> properties
+  useEffect(() => {
+    if (notificationsEnabled && items.length > 0) {
+      // Filter items that have dueDate and pass them to the scheduler
+      const itemsWithDueDates = items.filter(item => 'dueDate' in item && item.dueDate);
+      if (itemsWithDueDates.length > 0) {
+        // Cast to the expected type - items from the query have the full Doc<"items"> shape
+        scheduleItemsNotifications(itemsWithDueDates as unknown as import("../../convex/_generated/dataModel").Doc<"items">[]);
+      }
+    }
+  }, [items, notificationsEnabled, scheduleItemsNotifications]);
 
   const handleDragStart = useCallback((itemId: Id<"items">) => {
     haptic('light');
