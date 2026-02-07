@@ -43,7 +43,11 @@ export const upsertUser = mutation({
       
       await ctx.db.patch(existingByTurnkey._id, {
         lastLoginAt: Date.now(),
-        ...(shouldUpgradeDid ? { did: args.did } : {}),
+        ...(shouldUpgradeDid ? { 
+          did: args.did,
+          // Store old DID as legacy so items/lists are still accessible
+          legacyDid: existingByTurnkey.did,
+        } : {}),
       });
       return existingByTurnkey._id;
     }
