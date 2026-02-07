@@ -87,8 +87,17 @@ export default defineSchema({
     ownerDid: v.string(), // Creator's DID
     categoryId: v.optional(v.id("categories")), // User's category for this list (Phase 2)
     createdAt: v.number(),
-    // Verifiable Credential proof of ownership (Phase: VC)
-    vcProof: v.optional(v.string()), // JSON-encoded VC proving list ownership
+    // VC proof for list ownership (Phase 6 - Provenance Chain)
+    vcProof: v.optional(v.object({
+      type: v.string(), // e.g., "VerifiableCredential"
+      issuer: v.string(), // DID of issuer
+      issuanceDate: v.number(), // When VC was issued
+      credentialSubject: v.object({
+        id: v.string(), // Subject DID (list assetDid)
+        ownerDid: v.string(), // Owner DID
+      }),
+      proof: v.optional(v.string()), // JWT or linked data proof
+    })),
   })
     .index("by_owner", ["ownerDid"])
     .index("by_asset_did", ["assetDid"])
@@ -122,9 +131,15 @@ export default defineSchema({
     parentId: v.optional(v.id("items")),
     // Attachments - stored file IDs
     attachments: v.optional(v.array(v.id("_storage"))),
-    // Verifiable Credential proofs (Phase: VC)
-    // Array of JSON-encoded VCs proving item authorship and completion
-    vcProofs: v.optional(v.array(v.string())),
+    // VC proofs for item actions (Phase 6 - Provenance Chain)
+    vcProofs: v.optional(v.array(v.object({
+      type: v.string(), // e.g., "ItemCreation", "ItemCompletion"
+      issuer: v.string(), // DID of issuer
+      issuanceDate: v.number(), // When action VC was issued
+      action: v.string(), // "created", "completed", "modified"
+      actorDid: v.string(), // Who performed the action
+      proof: v.optional(v.string()), // JWT or linked data proof
+    }))),
   })
     .index("by_list", ["listId"])
     .index("by_parent", ["parentId"])
@@ -214,11 +229,16 @@ export default defineSchema({
     .index("by_item", ["itemId"])
     .index("by_user", ["userDid"]),
 
-  // Bitcoin anchors table - list state anchored to Bitcoin signet (Phase 5)
+  // Bitcoin anchors table - list/item state anchored to Bitcoin signet (Phase 5 + 6)
   bitcoinAnchors: defineTable({
-    listId: v.id("lists"),
-    stateHash: v.string(), // SHA-256 hash of list state at anchor time
-    network: v.union(v.literal("signet"), v.literal("mainnet"), v.literal("regtest")),
+    // Reference to what is being anchored (list or item)
+    listId: v.optional(v.id("lists")),
+    itemId: v.optional(v.id("items")),
+    // State hash and snapshot
+    contentHash: v.string(), // SHA-256 hash of list/item state at anchor time
+    stateSnapshot: v.optional(v.string()), // JSON of state at anchor time (for verification)
+    // Network and status
+    network: v.optional(v.union(v.literal("signet"), v.literal("mainnet"), v.literal("regtest"))),
     status: v.union(
       v.literal("pending"), // Anchor requested, awaiting inscription
       v.literal("inscribed"), // Successfully inscribed on Bitcoin
@@ -231,15 +251,17 @@ export default defineSchema({
     blockHeight: v.optional(v.number()), // Block height when confirmed
     confirmations: v.optional(v.number()), // Number of confirmations
     // Metadata
-    anchoredByDid: v.string(), // User who triggered the anchor
+    requestedByDid: v.string(), // User who triggered the anchor
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
+    inscribedAt: v.optional(v.number()), // When inscribed to mempool
+    confirmedAt: v.optional(v.number()), // When confirmed on-chain
     // Error info for failed anchors
     error: v.optional(v.string()),
-    // Snapshot of what was anchored (for verification)
-    stateSnapshot: v.optional(v.string()), // JSON of list state at anchor time
   })
     .index("by_list", ["listId"])
+    .index("by_item", ["itemId"])
     .index("by_status", ["status"])
+    .index("by_txid", ["txid"])
     .index("by_list_created", ["listId", "createdAt"]),
 });

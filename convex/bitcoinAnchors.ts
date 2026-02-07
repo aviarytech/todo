@@ -102,10 +102,10 @@ export const createAnchorRecord = mutation({
   handler: async (ctx, args) => {
     return await ctx.db.insert("bitcoinAnchors", {
       listId: args.listId,
-      stateHash: args.stateHash,
+      contentHash: args.stateHash,
       network: BITCOIN_NETWORK,
       status: "pending",
-      anchoredByDid: args.anchoredByDid,
+      requestedByDid: args.anchoredByDid,
       createdAt: Date.now(),
       stateSnapshot: args.stateSnapshot,
     });
@@ -131,10 +131,14 @@ export const updateAnchorStatus = mutation({
     error: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { anchorId, ...updates } = args;
+    const { anchorId, status, ...updates } = args;
+    const now = Date.now();
     await ctx.db.patch(anchorId, {
+      status,
       ...updates,
-      updatedAt: Date.now(),
+      updatedAt: now,
+      ...(status === "inscribed" ? { inscribedAt: now } : {}),
+      ...(status === "confirmed" ? { confirmedAt: now } : {}),
     });
   },
 });
@@ -278,6 +282,36 @@ export const getListAnchors = query({
 });
 
 /**
+ * Get all Bitcoin anchors for a specific item
+ */
+export const getItemAnchors = query({
+  args: { itemId: v.id("items") },
+  handler: async (ctx, { itemId }) => {
+    const anchors = await ctx.db
+      .query("bitcoinAnchors")
+      .withIndex("by_item", (q) => q.eq("itemId", itemId))
+      .collect();
+    
+    return anchors;
+  },
+});
+
+/**
+ * Get anchor by transaction ID
+ */
+export const getAnchorByTxid = query({
+  args: { txid: v.string() },
+  handler: async (ctx, { txid }) => {
+    const anchor = await ctx.db
+      .query("bitcoinAnchors")
+      .withIndex("by_txid", (q) => q.eq("txid", txid))
+      .first();
+    
+    return anchor;
+  },
+});
+
+/**
  * Get the latest anchor for a list.
  */
 export const getLatestAnchor = query({
@@ -292,24 +326,17 @@ export const getLatestAnchor = query({
 });
 
 /**
- * Verify list state against an anchor.
- * Computes current state hash and compares to anchored hash.
+ * Get all pending anchors (for background processing)
  */
-export const verifyAnchor = action({
-  args: {
-    anchorId: v.id("bitcoinAnchors"),
-  },
-  handler: async (ctx, args): Promise<{ valid: boolean; currentHash: string; anchoredHash: string; match: boolean }> => {
-    // Get the anchor record
-    const anchors = await ctx.runQuery(api.bitcoinAnchors.getListAnchors, {
-      listId: args.anchorId as unknown as Id<"lists">, // Type hack - we need to fetch by anchor ID
-    });
-
-    // Actually, we need a direct query - let's get all pending/inscribed and find our anchor
-    // This is a workaround since we can't query by _id directly in an action
-    // In practice, we'd have a dedicated query for this
-
-    throw new Error("verifyAnchor requires additional query implementation for anchor lookup by ID");
+export const getPendingAnchors = query({
+  args: {},
+  handler: async (ctx) => {
+    const anchors = await ctx.db
+      .query("bitcoinAnchors")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+    
+    return anchors;
   },
 });
 
@@ -340,6 +367,10 @@ export const verifyAnchorState = action({
       throw new Error("Anchor not found");
     }
 
+    if (!anchor.listId) {
+      throw new Error("Anchor has no associated list");
+    }
+
     // Get current list state
     const data = await ctx.runQuery(api.bitcoinAnchors.getListDataForAnchor, {
       listId: anchor.listId,
@@ -357,8 +388,8 @@ export const verifyAnchorState = action({
     return {
       valid: anchor.status === "inscribed" || anchor.status === "confirmed",
       currentHash,
-      anchoredHash: anchor.stateHash,
-      stateChanged: currentHash !== anchor.stateHash,
+      anchoredHash: anchor.contentHash,
+      stateChanged: currentHash !== anchor.contentHash,
     };
   },
 });

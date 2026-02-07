@@ -10,6 +10,7 @@
 
 import type * as attachments from "../attachments.js";
 import type * as auth from "../auth.js";
+import type * as bitcoinAnchors from "../bitcoinAnchors.js";
 import type * as authInternal from "../authInternal.js";
 import type * as authSessions from "../authSessions.js";
 import type * as categories from "../categories.js";
@@ -48,6 +49,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   attachments: typeof attachments;
   auth: typeof auth;
+  bitcoinAnchors: typeof bitcoinAnchors;
   authInternal: typeof authInternal;
   authSessions: typeof authSessions;
   categories: typeof categories;
