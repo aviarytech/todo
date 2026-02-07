@@ -31,6 +31,11 @@ interface ListItemProps {
   onTouchStart?: (e: React.TouchEvent, itemId: string, element: HTMLElement) => void;
   onCheck?: (itemId: Id<"items">, checkedByDid: string, legacyDid?: string) => Promise<void>;
   onUncheck?: (itemId: Id<"items">, userDid: string, legacyDid?: string) => Promise<void>;
+  // Selection mode props
+  isSelectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
+  onLongPress?: () => void;
 }
 
 export function ListItem({
@@ -46,6 +51,10 @@ export function ListItem({
   onTouchStart,
   onCheck,
   onUncheck,
+  isSelectMode = false,
+  isSelected = false,
+  onToggleSelect,
+  onLongPress,
 }: ListItemProps) {
   const { haptic } = useSettings();
   
@@ -57,9 +66,32 @@ export function ListItem({
   const [isUpdating, setIsUpdating] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const itemRef = useRef<HTMLDivElement>(null);
+  const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Get sub-item progress (only for top-level items)
   const subItemProgress = useSubItemProgress(item._id);
+
+  // Long-press handling for entering select mode
+  const handlePointerDown = () => {
+    if (!canUserEdit || isSelectMode) return;
+    longPressTimeoutRef.current = setTimeout(() => {
+      onLongPress?.();
+    }, 500); // 500ms long press
+  };
+
+  const handlePointerUp = () => {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
+  const handlePointerLeave = () => {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
   
   // Format due date for display
   const dueDateStr = item.dueDate 
@@ -120,14 +152,18 @@ export function ListItem({
   return (
     <div
       ref={itemRef}
-      draggable={canUserEdit}
+      draggable={canUserEdit && !isSelectMode}
       onDragStart={(e) => {
-        if (!canUserEdit) return;
+        if (!canUserEdit || isSelectMode) return;
         e.dataTransfer.effectAllowed = "move";
         onDragStart?.();
       }}
-      onDragOver={canUserEdit ? onDragOver : undefined}
-      onDragEnd={canUserEdit ? onDragEnd : undefined}
+      onDragOver={canUserEdit && !isSelectMode ? onDragOver : undefined}
+      onDragEnd={canUserEdit && !isSelectMode ? onDragEnd : undefined}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerLeave}
+      onClick={isSelectMode ? onToggleSelect : undefined}
       className={`flex items-center gap-2 px-3 py-2.5 transition-all touch-manipulation ${
         isDragging 
           ? "opacity-50 bg-gray-100 dark:bg-gray-700 scale-[1.02]" 
@@ -144,10 +180,39 @@ export function ListItem({
         item.checked
           ? "bg-gray-50/50 dark:bg-gray-800/50"
           : ""
+      } ${
+        isSelected
+          ? "bg-amber-50 dark:bg-amber-900/30 ring-2 ring-amber-400 dark:ring-amber-600"
+          : ""
+      } ${
+        isSelectMode
+          ? "cursor-pointer"
+          : ""
       }`}
     >
-      {/* Drag handle - only show if user can edit */}
-      {canUserEdit && (
+      {/* Selection checkbox - show in select mode */}
+      {isSelectMode && canUserEdit && (
+        <div
+          className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+            isSelected
+              ? "bg-amber-500 text-white"
+              : "bg-gray-200 dark:bg-gray-600"
+          }`}
+        >
+          {isSelected && (
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+          )}
+        </div>
+      )}
+
+      {/* Drag handle - only show if user can edit and not in select mode */}
+      {canUserEdit && !isSelectMode && (
         <div
           className="flex-shrink-0 w-6 h-10 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 dark:hover:text-gray-500 transition-colors touch-none select-none"
           aria-label="Drag to reorder"
@@ -163,8 +228,8 @@ export function ListItem({
         </div>
       )}
 
-      {/* Checkbox - compact size */}
-      {canUserEdit ? (
+      {/* Checkbox - compact size (hidden in select mode) */}
+      {!isSelectMode && (canUserEdit ? (
         <button
           onClick={handleToggleCheck}
           disabled={isUpdating}
@@ -206,15 +271,21 @@ export function ListItem({
             </svg>
           )}
         </div>
-      )}
+      ))}
 
-      {/* Item content - clickable to open details */}
-      <button
-        onClick={() => {
+      {/* Item content - clickable to open details (or toggle selection in select mode) */}
+      <div
+        onClick={(e) => {
+          if (isSelectMode) {
+            e.stopPropagation(); // Already handled by parent
+            return;
+          }
           haptic('light');
           setShowDetails(true);
         }}
-        className="flex-1 min-w-0 text-left hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded px-1 -mx-1 transition-colors"
+        className={`flex-1 min-w-0 text-left rounded px-1 -mx-1 transition-colors ${
+          isSelectMode ? "" : "hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer"
+        }`}
       >
         <div className="flex items-center gap-1.5">
           {/* Priority indicator */}
@@ -281,10 +352,10 @@ export function ListItem({
             </span>
           )}
         </div>
-      </button>
+      </div>
 
-      {/* Remove button - only show if user can edit */}
-      {canUserEdit && (
+      {/* Remove button - only show if user can edit and not in select mode */}
+      {canUserEdit && !isSelectMode && (
         <button
           onClick={handleRemove}
           disabled={isUpdating}

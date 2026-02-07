@@ -25,6 +25,7 @@ import { CollaboratorList } from "../components/sharing/CollaboratorList";
 import { NoItemsEmptyState } from "../components/ui/EmptyState";
 import { ListViewSkeleton } from "../components/ui/Skeleton";
 import { CalendarView } from "../components/CalendarView";
+import { BatchOperations } from "../components/BatchOperations";
 
 // Lazy-loaded modals for better bundle splitting
 const DeleteListDialog = lazy(() => import("../components/DeleteListDialog").then(m => ({ default: m.DeleteListDialog })));
@@ -50,6 +51,10 @@ export function ListView() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectedCalendarItem, setSelectedCalendarItem] = useState<Doc<"items"> | null>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Multi-select state
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<Id<"items">>>(new Set());
 
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
@@ -64,6 +69,41 @@ export function ListView() {
     isLoading: itemsLoading,
     usingCache,
   } = useOptimisticItems(listId);
+
+  // Multi-select callbacks (after items is defined)
+  const toggleSelection = useCallback((itemId: Id<"items">) => {
+    haptic('light');
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      // Exit select mode if no items selected
+      if (newSet.size === 0) {
+        setIsSelectMode(false);
+      }
+      return newSet;
+    });
+  }, [haptic]);
+
+  const enterSelectMode = useCallback((itemId: Id<"items">) => {
+    haptic('medium');
+    setIsSelectMode(true);
+    setSelectedIds(new Set([itemId]));
+  }, [haptic]);
+
+  const selectAll = useCallback(() => {
+    haptic('light');
+    setSelectedIds(new Set(items.map(item => item._id)));
+  }, [items, haptic]);
+
+  const clearSelection = useCallback(() => {
+    haptic('light');
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
+  }, [haptic]);
 
   // Get user's role and collaborators
   const { userRole, collaborators, isLoading: collabLoading } = useCollaborators(listId);
@@ -402,6 +442,47 @@ export function ListView() {
         </div>
       )}
 
+      {/* Select mode header */}
+      {isSelectMode && canUserEdit && (
+        <div className="mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center justify-between animate-slide-up">
+          <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+            {selectedIds.size} of {totalCount} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={selectAll}
+              className="px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors"
+            >
+              Select all
+            </button>
+            <button
+              onClick={clearSelection}
+              className="px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Select mode toggle button (when not in select mode) */}
+      {!isSelectMode && canUserEdit && totalCount > 0 && (
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={() => {
+              haptic('light');
+              setIsSelectMode(true);
+            }}
+            className="px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            Select
+          </button>
+        </div>
+      )}
+
       {/* Add Item Input - at top of list, only show if user can edit */}
       {canUserEdit && (
         <div className="mb-4 animate-slide-up">
@@ -450,6 +531,10 @@ export function ListView() {
                     onTouchStart={touchDrag.handleTouchStart}
                     onCheck={checkItem}
                     onUncheck={uncheckItem}
+                    isSelectMode={isSelectMode}
+                    isSelected={selectedIds.has(item._id)}
+                    onToggleSelect={() => toggleSelection(item._id)}
+                    onLongPress={() => enterSelectMode(item._id)}
                   />
                 </div>
               ))}
@@ -508,6 +593,16 @@ export function ListView() {
           />
         )}
       </Suspense>
+
+      {/* Batch operations bar */}
+      {canUserEdit && (
+        <BatchOperations
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+          userDid={did}
+          legacyDid={legacyDid ?? undefined}
+        />
+      )}
     </div>
   );
 }
