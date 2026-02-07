@@ -11,6 +11,7 @@ import type { Doc } from "../../convex/_generated/dataModel";
 import { getRoleDescription } from "../lib/permissions";
 import { useSettings } from "../hooks/useSettings";
 import { Panel } from "./ui/Panel";
+import { ListProvenanceInfo } from "./ProvenanceInfo";
 
 interface ShareModalProps {
   list: Doc<"lists">;
@@ -212,6 +213,9 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
             </p>
           </div>
         )}
+
+        {/* Originals Provenance Info */}
+        <ListProvenanceInfo list={list} />
       </div>
     </Panel>
   );
