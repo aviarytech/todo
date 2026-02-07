@@ -1,7 +1,8 @@
 /**
  * Poo App Database Schema
- * 
+ *
  * Core tables for the collaborative list-sharing app with DID-based identity.
+ * Uses Convex for real-time sync and offline support.
  */
 
 import { defineSchema, defineTable } from "convex/server";
