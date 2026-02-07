@@ -27,6 +27,7 @@ import { NoItemsEmptyState } from "../components/ui/EmptyState";
 import { ListViewSkeleton } from "../components/ui/Skeleton";
 import { CalendarView } from "../components/CalendarView";
 import { BatchOperations } from "../components/BatchOperations";
+import { HeaderActionsMenu } from "../components/HeaderActionsMenu";
 
 // Lazy-loaded modals for better bundle splitting
 const DeleteListDialog = lazy(() => import("../components/DeleteListDialog").then(m => ({ default: m.DeleteListDialog })));
@@ -498,29 +499,30 @@ export function ListView() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-6">
+      {/* Header - Redesigned for less crowding */}
+      <div className="flex items-center gap-3 mb-6">
         {/* Back button */}
         <Link
           to="/app"
           onClick={() => haptic('light')}
-          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+          className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
           aria-label="Back to lists"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
 
+        {/* Title and info - takes remaining space */}
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
             {list.name}
           </h2>
           
           {/* Progress and collaborators info */}
-          <div className="flex items-center gap-3 mt-1">
+          <div className="flex items-center gap-2 text-xs sm:text-sm">
             {totalCount > 0 && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-gray-500 dark:text-gray-400">
                 {checkedCount}/{totalCount} done
               </span>
             )}
@@ -533,14 +535,14 @@ export function ListView() {
                     haptic('light');
                     setShowCollaborators(!showCollaborators);
                   }}
-                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 transition-colors"
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                   {collaboratorCount}
                   <svg
-                    className={`w-3 h-3 transition-transform ${showCollaborators ? "rotate-180" : ""}`}
+                    className={`w-2.5 h-2.5 transition-transform ${showCollaborators ? "rotate-180" : ""}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -553,16 +555,16 @@ export function ListView() {
           </div>
         </div>
 
-        {/* View toggle and action buttons - wrap together on mobile */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* View toggle */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+        {/* Compact action buttons */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* View toggle - compact on mobile */}
+          <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
             <button
               onClick={() => {
                 haptic('light');
                 setViewMode("list");
               }}
-              className={`p-2 rounded-md transition-all ${
+              className={`p-1.5 sm:p-2 rounded-md transition-all ${
                 viewMode === "list"
                   ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
@@ -570,7 +572,7 @@ export function ListView() {
               aria-label="List view"
               title="List view"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
             </button>
@@ -579,7 +581,7 @@ export function ListView() {
                 haptic('light');
                 setViewMode("calendar");
               }}
-              className={`p-2 rounded-md transition-all ${
+              className={`p-1.5 sm:p-2 rounded-md transition-all ${
                 viewMode === "calendar"
                   ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
@@ -587,99 +589,44 @@ export function ListView() {
               aria-label="Calendar view"
               title="Calendar view"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </button>
           </div>
 
-          {/* Action buttons */}
-          {/* Keyboard shortcuts button - hidden on mobile */}
-          <button
-            onClick={() => {
-              haptic('light');
-              setShowHelp(true);
-            }}
-            className="hidden sm:flex p-2.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-            aria-label="Keyboard shortcuts"
-            title="Keyboard shortcuts (?)"
-          >
-            <span className="text-sm">⌨️</span>
-          </button>
-          {/* Publish button - icon only on mobile */}
-          {canUserDelete && (
-            <button
-              onClick={() => {
-                haptic('light');
-                setIsPublishModalOpen(true);
-              }}
-              disabled={!isOnline}
-              title={!isOnline ? "Available when online" : "Publish"}
-              className={`p-2.5 sm:px-4 sm:py-2.5 text-sm rounded-xl font-medium transition-all ${
-                !isOnline ? "opacity-50 cursor-not-allowed" : ""
-              } ${
-                publicationStatus?.status === "active"
-                  ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50"
-                  : "bg-purple-600 text-white hover:bg-purple-700"
-              }`}
-              aria-label={publicationStatus?.status === "active" ? "Published" : "Publish"}
-            >
-              <span className="sm:hidden">📡</span>
-              <span className="hidden sm:inline">{publicationStatus?.status === "active" ? "📡 Published" : "📡 Publish"}</span>
-            </button>
-          )}
-          {/* Share button - icon only on mobile */}
+          {/* Share button - always visible as it's commonly used */}
           {canUserInvite && (
             <button
               onClick={() => {
                 haptic('light');
                 setIsShareModalOpen(true);
               }}
-              className="p-2.5 sm:px-4 sm:py-2.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors"
+              className="p-2 sm:p-2.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-xl transition-colors"
               aria-label="Share"
-              title="Share"
+              title="Share list"
             >
-              <span className="sm:hidden">🔗</span>
-              <span className="hidden sm:inline">🔗 Share</span>
-            </button>
-          )}
-          {/* Save as Template button */}
-          {canUserEdit && (
-            <button
-              onClick={() => {
-                haptic('light');
-                setIsSaveTemplateModalOpen(true);
-              }}
-              disabled={!isOnline}
-              title={!isOnline ? "Available when online" : "Save as template"}
-              className={`p-2.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors ${
-                !isOnline ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              aria-label="Save as template"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
             </button>
           )}
-          {canUserDelete && (
-            <button
-              onClick={() => {
-                haptic('light');
-                setIsDeleteDialogOpen(true);
-              }}
-              disabled={!isOnline}
-              title={!isOnline ? "Available when online" : "Delete list"}
-              className={`p-2.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors ${
-                !isOnline ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              aria-label="Delete list"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          )}
+
+          {/* More actions menu - consolidates Publish, Template, Delete, Keyboard shortcuts */}
+          <HeaderActionsMenu
+            canShare={canUserInvite}
+            canPublish={canUserDelete}
+            canSaveTemplate={canUserEdit}
+            canDelete={canUserDelete}
+            isOnline={isOnline}
+            isPublished={publicationStatus?.status === "active"}
+            onShare={() => setIsShareModalOpen(true)}
+            onPublish={() => setIsPublishModalOpen(true)}
+            onSaveTemplate={() => setIsSaveTemplateModalOpen(true)}
+            onDelete={() => setIsDeleteDialogOpen(true)}
+            onKeyboardShortcuts={() => setShowHelp(true)}
+            haptic={haptic}
+          />
         </div>
       </div>
 
