@@ -16,10 +16,15 @@ function createListOwnershipVC(
   ownerDid: string,
   listName: string,
   createdAt: number
-): string {
-  const issuanceDate = new Date(createdAt).toISOString();
-  
-  const vc = {
+): {
+  type: string;
+  issuer: string;
+  issuanceDate: number;
+  credentialSubject: { id: string; ownerDid: string };
+  proof?: string;
+} {
+  // Build the full W3C VC for the proof (to be signed later)
+  const fullVc = {
     "@context": [
       "https://www.w3.org/2018/credentials/v1",
       "https://originals.tech/credentials/v1"
@@ -27,27 +32,28 @@ function createListOwnershipVC(
     type: ["VerifiableCredential", "ListOwnershipCredential"],
     id: `urn:uuid:${crypto.randomUUID()}`,
     issuer: ownerDid,
-    issuanceDate,
+    issuanceDate: new Date(createdAt).toISOString(),
     credentialSubject: {
       id: ownerDid,
       listId: listId.toString(),
       assetDid,
       listName,
       role: "owner",
-      createdAt: issuanceDate,
-    },
-    // Placeholder proof - to be replaced with actual cryptographic signature
-    // when server-side signing via Turnkey or @originals/sdk is implemented
-    proof: {
-      type: "PlaceholderProof2024",
-      created: issuanceDate,
-      verificationMethod: `${ownerDid}#keys-1`,
-      proofPurpose: "assertionMethod",
-      proofValue: "PLACEHOLDER_SIGNATURE_TO_BE_IMPLEMENTED",
     },
   };
-  
-  return JSON.stringify(vc);
+
+  // Return the structured VC object for storage
+  return {
+    type: "ListOwnershipCredential",
+    issuer: ownerDid,
+    issuanceDate: createdAt,
+    credentialSubject: {
+      id: assetDid,
+      ownerDid,
+    },
+    // Full VC JSON for signing/verification
+    proof: JSON.stringify(fullVc),
+  };
 }
 
 /**
