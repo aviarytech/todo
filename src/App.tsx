@@ -18,6 +18,7 @@ import { Landing } from './pages/Landing'
 const ListView = lazy(() => import('./pages/ListView').then(m => ({ default: m.ListView })))
 const JoinList = lazy(() => import('./pages/JoinList').then(m => ({ default: m.JoinList })))
 const PublicList = lazy(() => import('./pages/PublicList').then(m => ({ default: m.PublicList })))
+const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })))
 
 /**
  * Authenticated layout wrapper with header and navigation.
@@ -141,6 +142,7 @@ function App() {
 
           {/* Protected routes - require authentication */}
           <Route path="/app" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/list/:id" element={<ProtectedRoute><ListView /></ProtectedRoute>} />
 
           {/* Fallback - redirect to app (AuthGuard will handle login redirect if needed) */}

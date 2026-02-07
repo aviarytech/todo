@@ -3,6 +3,7 @@
  * Features improved design and dark mode support.
  */
 
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSettings } from '../hooks/useSettings';
 
@@ -20,13 +21,18 @@ export function ProfileBadge() {
 
   return (
     <div className="flex items-center gap-2">
-      {/* DID badge */}
-      <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
+      {/* DID badge - now links to profile */}
+      <Link 
+        to="/profile"
+        onClick={() => haptic('light')}
+        className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+        title={did}
+      >
         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-        <span className="text-xs font-mono text-gray-600 dark:text-gray-400" title={did}>
+        <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
           {shortDid}
         </span>
-      </div>
+      </Link>
 
       {/* Logout button */}
       <button
