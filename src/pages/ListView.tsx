@@ -500,29 +500,34 @@ export function ListView() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header - Redesigned for less crowding */}
-      <div className="flex items-center gap-3 mb-6">
-        {/* Back button */}
-        <Link
-          to="/app"
-          onClick={() => haptic('light')}
-          className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-          aria-label="Back to lists"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
+      {/* Mobile: stack title above actions for more room */}
+      <div className="mb-6">
+        {/* Top row: back button + title */}
+        <div className="flex items-center gap-2 mb-2">
+          {/* Back button */}
+          <Link
+            to="/app"
+            onClick={() => haptic('light')}
+            className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+            aria-label="Back to lists"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
 
-        {/* Title and info - takes remaining space */}
-        <div className="flex-1 min-w-0">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
+          {/* Title - allow more characters on mobile with line-clamp-2 */}
+          <h2 className="flex-1 min-w-0 text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 line-clamp-2 sm:truncate">
             {list.name}
           </h2>
-          
+        </div>
+        
+        {/* Bottom row: progress info + action buttons */}
+        <div className="flex items-center justify-between gap-2 pl-11 sm:pl-12">
           {/* Progress and collaborators info */}
-          <div className="flex items-center gap-2 text-xs sm:text-sm">
+          <div className="flex items-center gap-2 text-xs sm:text-sm min-w-0">
             {totalCount > 0 && (
-              <span className="text-gray-500 dark:text-gray-400">
+              <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
                 {checkedCount}/{totalCount} done
               </span>
             )}
@@ -553,10 +558,9 @@ export function ListView() {
               </>
             )}
           </div>
-        </div>
 
-        {/* Compact action buttons */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Compact action buttons */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
           {/* View toggle - compact on mobile */}
           <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
             <button
@@ -627,6 +631,7 @@ export function ListView() {
             onKeyboardShortcuts={() => setShowHelp(true)}
             haptic={haptic}
           />
+        </div>
         </div>
       </div>
 

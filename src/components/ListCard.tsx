@@ -50,23 +50,23 @@ export function ListCard({ list, currentUserDid, showOwner }: ListCardProps) {
     <Link
       to={`/list/${list._id}`}
       onClick={() => haptic('light')}
-      className="group block bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl dark:shadow-gray-900/50 transition-all duration-200 p-5 card-hover border border-gray-100 dark:border-gray-700 hover:border-amber-200 dark:hover:border-amber-600"
+      className="group block bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl dark:shadow-gray-900/50 transition-all duration-200 p-4 sm:p-5 card-hover border border-gray-100 dark:border-gray-700 hover:border-amber-200 dark:hover:border-amber-600"
     >
-      <div className="flex items-start gap-4">
-        {/* Emoji icon */}
-        <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+      <div className="flex items-start gap-3 sm:gap-4">
+        {/* Emoji icon - smaller on mobile */}
+        <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-xl flex items-center justify-center text-xl sm:text-2xl group-hover:scale-110 transition-transform">
           {emoji}
         </div>
 
         <div className="flex-1 min-w-0">
           {/* List name and badges */}
           <div className="flex items-start justify-between gap-2">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors line-clamp-2 sm:truncate">
               {list.name}
             </h3>
             {!isOwner && (
-              <span className="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
-                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="flex-shrink-0 inline-flex items-center px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
+                <svg className="w-3 h-3 mr-0.5 sm:mr-1 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 Shared
