@@ -56,6 +56,9 @@ export function SubItems({
     e.preventDefault();
     if (!newItemName.trim() || !canEdit || isAdding) return;
     
+    // Can't add sub-items to a temp parent (not yet persisted)
+    if (isTemp) return;
+    
     haptic("medium");
     setIsAdding(true);
 
@@ -66,7 +69,7 @@ export function SubItems({
         createdByDid: userDid,
         legacyDid,
         createdAt: Date.now(),
-        parentId,
+        parentId: parentId as Id<"items">,
       });
       haptic("success");
       setNewItemName("");
