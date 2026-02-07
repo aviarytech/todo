@@ -6,9 +6,9 @@
  * Supports list view and calendar view modes.
  */
 
-import React, { useState, useCallback, useRef, lazy, Suspense, useEffect } from "react";
+import React, { useState, useCallback, useRef, lazy, Suspense, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -18,6 +18,7 @@ import { useOffline } from "../hooks/useOffline";
 import { useSettings } from "../hooks/useSettings";
 import { useTouchDrag } from "../hooks/useTouchDrag";
 import { useNotifications } from "../hooks/useNotifications";
+import { useKeyboardShortcuts, KeyboardShortcutsHelp, type Shortcut } from "../hooks/useKeyboardShortcuts";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
@@ -55,6 +56,11 @@ export function ListView() {
   // Multi-select state
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<Id<"items">>>(new Set());
+  
+  // Keyboard navigation state
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [editingItem, setEditingItem] = useState<Doc<"items"> | null>(null);
+  const addItemInputRef = useRef<HTMLInputElement>(null);
 
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
@@ -69,6 +75,9 @@ export function ListView() {
     isLoading: itemsLoading,
     usingCache,
   } = useOptimisticItems(listId);
+  
+  // Mutation for removing items via keyboard
+  const removeItemMutation = useMutation(api.items.removeItem);
 
   // Multi-select callbacks (after items is defined)
   const toggleSelection = useCallback((itemId: Id<"items">) => {
@@ -104,6 +113,18 @@ export function ListView() {
     setSelectedIds(new Set());
     setIsSelectMode(false);
   }, [haptic]);
+
+  // Sorted items for consistent keyboard navigation
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      if (a.checked !== b.checked) {
+        return a.checked ? 1 : -1;
+      }
+      const orderA = a.order ?? a.createdAt;
+      const orderB = b.order ?? b.createdAt;
+      return orderA - orderB;
+    });
+  }, [items]);
 
   // Get user's role and collaborators
   const { userRole, collaborators, isLoading: collabLoading } = useCollaborators(listId);
@@ -191,6 +212,199 @@ export function ListView() {
     onReorder: handleTouchReorder,
     containerRef: itemsContainerRef,
   });
+
+  // Keyboard shortcuts for power users
+  const shortcuts: Shortcut[] = useMemo(() => {
+    const canUserEditNow = userRole ? canEdit(userRole) : false;
+    
+    return [
+      {
+        key: "n",
+        description: "New item (focus input)",
+        action: () => {
+          if (canUserEditNow) {
+            addItemInputRef.current?.focus();
+          }
+        },
+      },
+      {
+        key: "/",
+        description: "Focus add item input",
+        action: () => {
+          if (canUserEditNow) {
+            addItemInputRef.current?.focus();
+          }
+        },
+      },
+      {
+        key: "j",
+        description: "Move focus down",
+        action: () => {
+          if (sortedItems.length === 0) return;
+          setFocusedIndex((prev) => {
+            if (prev === null) return 0;
+            return Math.min(prev + 1, sortedItems.length - 1);
+          });
+        },
+      },
+      {
+        key: "k",
+        description: "Move focus up",
+        action: () => {
+          if (sortedItems.length === 0) return;
+          setFocusedIndex((prev) => {
+            if (prev === null) return sortedItems.length - 1;
+            return Math.max(prev - 1, 0);
+          });
+        },
+      },
+      {
+        key: "ArrowDown",
+        description: "Move focus down",
+        action: () => {
+          if (sortedItems.length === 0) return;
+          setFocusedIndex((prev) => {
+            if (prev === null) return 0;
+            return Math.min(prev + 1, sortedItems.length - 1);
+          });
+        },
+      },
+      {
+        key: "ArrowUp",
+        description: "Move focus up",
+        action: () => {
+          if (sortedItems.length === 0) return;
+          setFocusedIndex((prev) => {
+            if (prev === null) return sortedItems.length - 1;
+            return Math.max(prev - 1, 0);
+          });
+        },
+      },
+      {
+        key: "x",
+        description: "Toggle check on focused item",
+        action: () => {
+          if (!canUserEditNow || focusedIndex === null || !did) return;
+          const item = sortedItems[focusedIndex];
+          if (item) {
+            if (item.checked) {
+              uncheckItem(item._id, did, legacyDid ?? undefined);
+            } else {
+              checkItem(item._id, did, legacyDid ?? undefined);
+            }
+          }
+        },
+      },
+      {
+        key: " ",
+        description: "Toggle check on focused item",
+        action: () => {
+          if (!canUserEditNow || focusedIndex === null || !did) return;
+          const item = sortedItems[focusedIndex];
+          if (item) {
+            if (item.checked) {
+              uncheckItem(item._id, did, legacyDid ?? undefined);
+            } else {
+              checkItem(item._id, did, legacyDid ?? undefined);
+            }
+          }
+        },
+      },
+      {
+        key: "e",
+        description: "Edit focused item",
+        action: () => {
+          if (focusedIndex === null) return;
+          const item = sortedItems[focusedIndex];
+          if (item) {
+            setEditingItem(item as Doc<"items">);
+          }
+        },
+      },
+      {
+        key: "Enter",
+        description: "Edit focused item",
+        action: () => {
+          if (focusedIndex === null) return;
+          const item = sortedItems[focusedIndex];
+          if (item) {
+            setEditingItem(item as Doc<"items">);
+          }
+        },
+      },
+      {
+        key: "d",
+        description: "Delete focused item",
+        action: () => {
+          if (!canUserEditNow || focusedIndex === null || !did) return;
+          const item = sortedItems[focusedIndex];
+          if (item) {
+            haptic('medium');
+            removeItemMutation({ itemId: item._id, userDid: did, legacyDid: legacyDid ?? undefined });
+            // Move focus up if at end of list
+            if (focusedIndex >= sortedItems.length - 1) {
+              setFocusedIndex(Math.max(0, sortedItems.length - 2));
+            }
+          }
+        },
+      },
+      {
+        key: "Delete",
+        description: "Delete focused item",
+        action: () => {
+          if (!canUserEditNow || focusedIndex === null || !did) return;
+          const item = sortedItems[focusedIndex];
+          if (item) {
+            haptic('medium');
+            removeItemMutation({ itemId: item._id, userDid: did, legacyDid: legacyDid ?? undefined });
+            // Move focus up if at end of list
+            if (focusedIndex >= sortedItems.length - 1) {
+              setFocusedIndex(Math.max(0, sortedItems.length - 2));
+            }
+          }
+        },
+      },
+      {
+        key: "Backspace",
+        description: "Delete focused item",
+        action: () => {
+          if (!canUserEditNow || focusedIndex === null || !did) return;
+          const item = sortedItems[focusedIndex];
+          if (item) {
+            haptic('medium');
+            removeItemMutation({ itemId: item._id, userDid: did, legacyDid: legacyDid ?? undefined });
+            // Move focus up if at end of list
+            if (focusedIndex >= sortedItems.length - 1) {
+              setFocusedIndex(Math.max(0, sortedItems.length - 2));
+            }
+          }
+        },
+      },
+      {
+        key: "Escape",
+        description: "Clear focus / close modals",
+        action: () => {
+          setFocusedIndex(null);
+          setEditingItem(null);
+          if (isSelectMode) {
+            clearSelection();
+          }
+        },
+      },
+    ];
+  }, [sortedItems, focusedIndex, did, legacyDid, userRole, checkItem, uncheckItem, removeItemMutation, haptic, isSelectMode, clearSelection]);
+
+  const { showHelp, setShowHelp } = useKeyboardShortcuts({
+    enabled: viewMode === "list" && !editingItem,
+    shortcuts,
+  });
+
+  // Reset focus when items change significantly
+  useEffect(() => {
+    if (focusedIndex !== null && focusedIndex >= sortedItems.length) {
+      setFocusedIndex(sortedItems.length > 0 ? sortedItems.length - 1 : null);
+    }
+  }, [sortedItems.length, focusedIndex]);
 
   // Loading state
   if (
@@ -363,6 +577,18 @@ export function ListView() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-2">
+          {/* Keyboard shortcuts button - hidden on mobile */}
+          <button
+            onClick={() => {
+              haptic('light');
+              setShowHelp(true);
+            }}
+            className="hidden sm:flex p-2.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+            aria-label="Keyboard shortcuts"
+            title="Keyboard shortcuts (?)"
+          >
+            <span className="text-sm">⌨️</span>
+          </button>
           {canUserDelete && (
             <button
               onClick={() => {
@@ -486,14 +712,14 @@ export function ListView() {
       {/* Add Item Input - at top of list, only show if user can edit */}
       {canUserEdit && (
         <div className="mb-4 animate-slide-up">
-          <AddItemInput assetDid={list.assetDid} onAddItem={addItem} />
+          <AddItemInput ref={addItemInputRef} assetDid={list.assetDid} onAddItem={addItem} />
         </div>
       )}
 
       {/* Items - List View */}
       {viewMode === "list" && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-          {items.length === 0 ? (
+          {sortedItems.length === 0 ? (
             <NoItemsEmptyState />
           ) : (
             <div 
@@ -502,16 +728,7 @@ export function ListView() {
               onTouchMove={touchDrag.handleTouchMove}
               onTouchEnd={touchDrag.handleTouchEnd}
             >
-              {[...items].sort((a, b) => {
-                // Sort unchecked items above checked items
-                if (a.checked !== b.checked) {
-                  return a.checked ? 1 : -1;
-                }
-                // Keep original order within each group
-                const orderA = a.order ?? a.createdAt;
-                const orderB = b.order ?? b.createdAt;
-                return orderA - orderB;
-              }).map((item: OptimisticItem, index) => (
+              {sortedItems.map((item: OptimisticItem, index) => (
                 <div 
                   key={item._id} 
                   data-item-id={item._id}
@@ -525,6 +742,7 @@ export function ListView() {
                     canEdit={canUserEdit}
                     isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
                     isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
+                    isFocused={focusedIndex === index}
                     onDragStart={() => handleDragStart(item._id)}
                     onDragOver={(e) => handleDragOver(e, item._id)}
                     onDragEnd={handleDragEnd}
@@ -592,7 +810,28 @@ export function ListView() {
             onClose={() => setSelectedCalendarItem(null)}
           />
         )}
+        
+        {editingItem && (
+          <ItemDetailsModal
+            item={editingItem}
+            userDid={did}
+            legacyDid={legacyDid ?? undefined}
+            canEdit={canUserEdit}
+            onClose={() => setEditingItem(null)}
+          />
+        )}
       </Suspense>
+      
+      {/* Keyboard shortcuts help modal */}
+      {showHelp && (
+        <KeyboardShortcutsHelp
+          shortcuts={shortcuts.filter(s => 
+            // Only show distinct shortcuts in help (filter duplicates)
+            !["ArrowUp", "ArrowDown", " ", "Enter", "Delete", "Backspace"].includes(s.key)
+          )}
+          onClose={() => setShowHelp(false)}
+        />
+      )}
 
       {/* Batch operations bar */}
       {canUserEdit && (
