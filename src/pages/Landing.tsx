@@ -1,5 +1,5 @@
 /**
- * Landing page for PooApp
+ * Landing page for Poo App
  * "Organize your life while you Poop" 💩
  */
 
@@ -34,7 +34,7 @@ export function Landing() {
         <nav className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-4xl">💩</span>
-            <span className="font-black text-2xl text-amber-900">PooApp</span>
+            <span className="font-black text-2xl text-amber-900">Poo App</span>
           </div>
           <Link
             to={isAuthenticated ? '/' : '/login'}
@@ -94,7 +94,7 @@ export function Landing() {
         {/* Features */}
         <section id="features" className="mt-32 scroll-mt-20">
           <h2 className="text-3xl md:text-4xl font-bold text-amber-900 text-center mb-16">
-            Why PooApp? 🤔
+            Why Poo App? 🤔
           </h2>
 
           <div className="grid md:grid-cols-3 gap-8">

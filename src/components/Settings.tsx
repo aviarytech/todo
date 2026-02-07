@@ -2,6 +2,7 @@
  * Settings modal/page component.
  */
 
+import { Link } from 'react-router-dom';
 import { useSettings } from '../hooks/useSettings';
 import { supportsHaptics } from '../lib/haptics';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -116,6 +117,35 @@ export function Settings({ onClose }: SettingsProps) {
             </section>
           )}
 
+          {/* Account Section */}
+          <section>
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+              Account
+            </h3>
+            
+            <Link
+              to="/profile"
+              onClick={() => {
+                haptic('light');
+                onClose();
+              }}
+              className="flex items-center justify-between py-3 px-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">👤</span>
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">Your Profile</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    View stats and account details
+                  </p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </section>
+
           {/* About Section */}
           <section>
             <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
@@ -126,7 +156,7 @@ export function Settings({ onClose }: SettingsProps) {
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-3xl">💩</span>
                 <div>
-                  <p className="font-bold text-gray-900 dark:text-gray-100">PooApp</p>
+                  <p className="font-bold text-gray-900 dark:text-gray-100">Poo App</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Version 1.0.0</p>
                 </div>
               </div>

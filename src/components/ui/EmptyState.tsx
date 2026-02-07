@@ -1,5 +1,5 @@
 /**
- * Empty state components with playful PooApp branding.
+ * Empty state components with playful Poo App branding.
  */
 
 import { type ReactNode } from 'react';
