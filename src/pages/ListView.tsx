@@ -3,13 +3,14 @@
  *
  * Displays list header with actions, items, and add item input.
  * Features improved design, dark mode, and better empty states.
+ * Supports list view and calendar view modes.
  */
 
 import React, { useState, useCallback, useRef, lazy, Suspense, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import type { Id, Doc } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useCollaborators } from "../hooks/useCollaborators";
 import { useOptimisticItems, type OptimisticItem } from "../hooks/useOptimisticItems";
@@ -23,11 +24,15 @@ import { ListItem } from "../components/ListItem";
 import { CollaboratorList } from "../components/sharing/CollaboratorList";
 import { NoItemsEmptyState } from "../components/ui/EmptyState";
 import { ListViewSkeleton } from "../components/ui/Skeleton";
+import { CalendarView } from "../components/CalendarView";
 
 // Lazy-loaded modals for better bundle splitting
 const DeleteListDialog = lazy(() => import("../components/DeleteListDialog").then(m => ({ default: m.DeleteListDialog })));
 const ShareModal = lazy(() => import("../components/ShareModal").then(m => ({ default: m.ShareModal })));
 const PublishModal = lazy(() => import("../components/publish/PublishModal").then(m => ({ default: m.PublishModal })));
+const ItemDetailsModal = lazy(() => import("../components/ItemDetailsModal").then(m => ({ default: m.ItemDetailsModal })));
+
+type ViewMode = "list" | "calendar";
 
 export function ListView() {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +47,8 @@ export function ListView() {
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [selectedCalendarItem, setSelectedCalendarItem] = useState<Doc<"items"> | null>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
 
   const listId = id as Id<"lists">;
@@ -276,6 +283,44 @@ export function ListView() {
           </div>
         </div>
 
+        {/* View toggle */}
+        <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+          <button
+            onClick={() => {
+              haptic('light');
+              setViewMode("list");
+            }}
+            className={`p-2 rounded-md transition-all ${
+              viewMode === "list"
+                ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            }`}
+            aria-label="List view"
+            title="List view"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+          </button>
+          <button
+            onClick={() => {
+              haptic('light');
+              setViewMode("calendar");
+            }}
+            className={`p-2 rounded-md transition-all ${
+              viewMode === "calendar"
+                ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            }`}
+            aria-label="Calendar view"
+            title="Calendar view"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </button>
+        </div>
+
         {/* Action buttons */}
         <div className="flex items-center gap-2">
           {canUserDelete && (
@@ -364,52 +409,65 @@ export function ListView() {
         </div>
       )}
 
-      {/* Items */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-        {items.length === 0 ? (
-          <NoItemsEmptyState />
-        ) : (
-          <div 
-            ref={itemsContainerRef}
-            className="divide-y divide-gray-100 dark:divide-gray-700"
-            onTouchMove={touchDrag.handleTouchMove}
-            onTouchEnd={touchDrag.handleTouchEnd}
-          >
-            {[...items].sort((a, b) => {
-              // Sort unchecked items above checked items
-              if (a.checked !== b.checked) {
-                return a.checked ? 1 : -1;
-              }
-              // Keep original order within each group
-              const orderA = a.order ?? a.createdAt;
-              const orderB = b.order ?? b.createdAt;
-              return orderA - orderB;
-            }).map((item: OptimisticItem, index) => (
-              <div 
-                key={item._id} 
-                data-item-id={item._id}
-                className="animate-slide-up"
-                style={{ animationDelay: `${index * 30}ms` }}
-              >
-                <ListItem
-                  item={item}
-                  userDid={did}
-                  legacyDid={legacyDid ?? undefined}
-                  canEdit={canUserEdit}
-                  isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
-                  isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
-                  onDragStart={() => handleDragStart(item._id)}
-                  onDragOver={(e) => handleDragOver(e, item._id)}
-                  onDragEnd={handleDragEnd}
-                  onTouchStart={touchDrag.handleTouchStart}
-                  onCheck={checkItem}
-                  onUncheck={uncheckItem}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Items - List View */}
+      {viewMode === "list" && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+          {items.length === 0 ? (
+            <NoItemsEmptyState />
+          ) : (
+            <div 
+              ref={itemsContainerRef}
+              className="divide-y divide-gray-100 dark:divide-gray-700"
+              onTouchMove={touchDrag.handleTouchMove}
+              onTouchEnd={touchDrag.handleTouchEnd}
+            >
+              {[...items].sort((a, b) => {
+                // Sort unchecked items above checked items
+                if (a.checked !== b.checked) {
+                  return a.checked ? 1 : -1;
+                }
+                // Keep original order within each group
+                const orderA = a.order ?? a.createdAt;
+                const orderB = b.order ?? b.createdAt;
+                return orderA - orderB;
+              }).map((item: OptimisticItem, index) => (
+                <div 
+                  key={item._id} 
+                  data-item-id={item._id}
+                  className="animate-slide-up"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
+                  <ListItem
+                    item={item}
+                    userDid={did}
+                    legacyDid={legacyDid ?? undefined}
+                    canEdit={canUserEdit}
+                    isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
+                    isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
+                    onDragStart={() => handleDragStart(item._id)}
+                    onDragOver={(e) => handleDragOver(e, item._id)}
+                    onDragEnd={handleDragEnd}
+                    onTouchStart={touchDrag.handleTouchStart}
+                    onCheck={checkItem}
+                    onUncheck={uncheckItem}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Items - Calendar View */}
+      {viewMode === "calendar" && (
+        <CalendarView
+          listId={listId}
+          onItemClick={(item) => {
+            haptic('light');
+            setSelectedCalendarItem(item);
+          }}
+        />
+      )}
 
       {/* Viewer notice */}
       {!canUserEdit && (
@@ -438,6 +496,16 @@ export function ListView() {
 
         {isPublishModalOpen && (
           <PublishModal list={list} onClose={() => setIsPublishModalOpen(false)} />
+        )}
+
+        {selectedCalendarItem && (
+          <ItemDetailsModal
+            item={selectedCalendarItem}
+            userDid={did}
+            legacyDid={legacyDid ?? undefined}
+            canEdit={canUserEdit}
+            onClose={() => setSelectedCalendarItem(null)}
+          />
         )}
       </Suspense>
     </div>
