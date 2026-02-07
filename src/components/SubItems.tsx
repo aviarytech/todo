@@ -9,8 +9,16 @@ import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
 
+/**
+ * Helper to check if an ID is a temporary optimistic ID (not yet persisted).
+ * Temp IDs are strings like "temp-1770491397213" used for optimistic UI.
+ */
+function isTempId(id: string): boolean {
+  return typeof id === "string" && id.startsWith("temp-");
+}
+
 interface SubItemsProps {
-  parentId: Id<"items">;
+  parentId: Id<"items"> | string; // Can be temp ID for optimistic items
   listId: Id<"lists">;
   userDid: string;
   legacyDid?: string;
@@ -29,8 +37,14 @@ export function SubItems({
   const [isAdding, setIsAdding] = useState(false);
   const [showInput, setShowInput] = useState(false);
 
-  // Fetch sub-items for this parent
-  const subItems = useQuery(api.items.getSubItems, { parentId }) ?? [];
+  // Skip query for temporary IDs (optimistic items not yet persisted)
+  const isTemp = isTempId(parentId as string);
+  
+  // Fetch sub-items for this parent (skip for temp IDs)
+  const subItems = useQuery(
+    api.items.getSubItems,
+    isTemp ? "skip" : { parentId: parentId as Id<"items"> }
+  ) ?? [];
   
   // Mutations
   const addItem = useMutation(api.items.addItem);
@@ -279,9 +293,17 @@ export function SubItems({
 /**
  * Helper hook to get sub-item progress for an item.
  * Used by ListItem to show progress indicator.
+ * 
+ * Skips the query for temp IDs (optimistic items not yet persisted)
+ * to avoid Convex validation errors.
  */
-export function useSubItemProgress(itemId: Id<"items">) {
-  const subItems = useQuery(api.items.getSubItems, { parentId: itemId });
+export function useSubItemProgress(itemId: Id<"items"> | string) {
+  // Skip query for temporary IDs - they don't exist in DB yet
+  const shouldSkip = isTempId(itemId as string);
+  const subItems = useQuery(
+    api.items.getSubItems,
+    shouldSkip ? "skip" : { parentId: itemId as Id<"items"> }
+  );
   
   if (!subItems || subItems.length === 0) {
     return null;
