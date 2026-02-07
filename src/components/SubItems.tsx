@@ -1,9 +1,11 @@
 /**
- * Sub-items component for nested task management.
- * Note: Sub-items functionality requires Convex backend deployment.
+ * Sub-items component for creating nested checklist items within a parent item.
+ * Each sub-item has its own checkbox that can be checked off independently.
  */
 
 import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
 
@@ -16,71 +18,146 @@ interface SubItemsProps {
 }
 
 export function SubItems({
+  parentId,
+  listId,
+  userDid,
+  legacyDid,
   canEdit,
 }: SubItemsProps) {
   const { haptic } = useSettings();
   const [newItemName, setNewItemName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [showInput, setShowInput] = useState(false);
 
-  // Sub-items API not yet deployed - show placeholder
-  const subItems: Doc<"items">[] = [];
+  // Fetch sub-items for this parent
+  const subItems = useQuery(api.items.getSubItems, { parentId }) ?? [];
+  
+  // Mutations
+  const addItem = useMutation(api.items.addItem);
+  const checkItem = useMutation(api.items.checkItem);
+  const uncheckItem = useMutation(api.items.uncheckItem);
+  const removeItem = useMutation(api.items.removeItem);
 
   const handleAddSubItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim() || !canEdit || isAdding) return;
-
+    
     haptic("medium");
     setIsAdding(true);
 
-    // TODO: Implement when backend is deployed
-    setTimeout(() => {
+    try {
+      await addItem({
+        listId,
+        name: newItemName.trim(),
+        createdByDid: userDid,
+        legacyDid,
+        createdAt: Date.now(),
+        parentId,
+      });
+      haptic("success");
       setNewItemName("");
+      // Keep input open for adding more items
+    } catch (err) {
+      console.error("Failed to add sub-item:", err);
+      haptic("error");
+    } finally {
       setIsAdding(false);
-    }, 500);
+    }
   };
 
-  const completedCount = subItems.filter((i) => i.checked).length;
+  const handleToggleCheck = async (item: Doc<"items">) => {
+    haptic(item.checked ? "light" : "success");
+    
+    try {
+      if (item.checked) {
+        await uncheckItem({
+          itemId: item._id,
+          userDid,
+          legacyDid,
+        });
+      } else {
+        await checkItem({
+          itemId: item._id,
+          checkedByDid: userDid,
+          legacyDid,
+          checkedAt: Date.now(),
+        });
+      }
+    } catch (err) {
+      console.error("Failed to toggle sub-item:", err);
+      haptic("error");
+    }
+  };
+
+  const handleRemove = async (itemId: Id<"items">) => {
+    haptic("medium");
+    
+    try {
+      await removeItem({
+        itemId,
+        userDid,
+        legacyDid,
+      });
+    } catch (err) {
+      console.error("Failed to remove sub-item:", err);
+      haptic("error");
+    }
+  };
+
+  // Sort: unchecked first, then by order/createdAt
+  const sortedItems = [...subItems].sort((a, b) => {
+    // Unchecked items first
+    if (a.checked !== b.checked) return a.checked ? 1 : -1;
+    // Then by order
+    const orderA = a.order ?? a.createdAt;
+    const orderB = b.order ?? b.createdAt;
+    return orderA - orderB;
+  });
+
+  const checkedCount = subItems.filter((i) => i.checked).length;
   const totalCount = subItems.length;
 
   return (
     <div className="space-y-2">
-      {/* Progress indicator */}
+      {/* Progress indicator if there are sub-items */}
       {totalCount > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
           <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
-              className="h-full bg-green-500 transition-all duration-300"
-              style={{ width: `${(completedCount / totalCount) * 100}%` }}
+              className="h-full bg-gradient-to-r from-green-500 to-emerald-600 rounded-full transition-all duration-300"
+              style={{ width: `${totalCount > 0 ? (checkedCount / totalCount) * 100 : 0}%` }}
             />
           </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {completedCount}/{totalCount}
+          <span className="flex-shrink-0">
+            {checkedCount}/{totalCount}
           </span>
         </div>
       )}
 
       {/* Sub-items list */}
       <div className="space-y-1">
-        {subItems
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-          .map((item) => (
-            <div
-              key={item._id}
-              className={`flex items-center gap-2 py-1.5 px-2 rounded-lg group ${
-                item.checked ? "bg-gray-50 dark:bg-gray-800/50" : ""
-              }`}
-            >
-              {/* Checkbox */}
+        {sortedItems.map((item) => (
+          <div
+            key={item._id}
+            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors ${
+              item.checked
+                ? "bg-gray-50 dark:bg-gray-800/50"
+                : "bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800"
+            }`}
+          >
+            {/* Checkbox */}
+            {canEdit ? (
               <button
-                disabled={!canEdit}
-                className={`flex-shrink-0 w-4 h-4 rounded flex items-center justify-center transition-all ${
+                onClick={() => handleToggleCheck(item)}
+                className={`flex-shrink-0 w-4 h-4 rounded flex items-center justify-center transition-all active:scale-90 ${
                   item.checked
-                    ? "bg-green-500 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-                } disabled:cursor-default`}
+                    ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white"
+                    : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+                }`}
+                aria-label={item.checked ? "Uncheck sub-item" : "Check sub-item"}
               >
                 {item.checked && (
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
                     <path
                       fillRule="evenodd"
                       d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -89,70 +166,129 @@ export function SubItems({
                   </svg>
                 )}
               </button>
-
-              {/* Name */}
-              <span
-                className={`flex-1 text-xs ${
+            ) : (
+              <div
+                className={`flex-shrink-0 w-4 h-4 rounded flex items-center justify-center ${
                   item.checked
-                    ? "text-gray-400 dark:text-gray-500 line-through"
-                    : "text-gray-700 dark:text-gray-300"
+                    ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white"
+                    : "bg-gray-100 dark:bg-gray-700"
                 }`}
               >
-                {item.name}
-              </span>
-
-              {/* Remove button */}
-              {canEdit && (
-                <button
-                  className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-red-500 dark:hover:text-red-400 rounded transition-all"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                {item.checked && (
+                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
                   </svg>
-                </button>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            )}
+
+            {/* Item name */}
+            <span
+              className={`flex-1 text-xs transition-all ${
+                item.checked
+                  ? "line-through text-gray-400 dark:text-gray-500"
+                  : "text-gray-700 dark:text-gray-300"
+              }`}
+            >
+              {item.name}
+            </span>
+
+            {/* Remove button */}
+            {canEdit && (
+              <button
+                onClick={() => handleRemove(item._id)}
+                className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 rounded transition-colors"
+                aria-label="Remove sub-item"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        ))}
       </div>
 
-      {/* Add sub-item form */}
+      {/* Add new sub-item */}
       {canEdit && (
-        <form onSubmit={handleAddSubItem} className="flex items-center gap-2">
-          <input
-            type="text"
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-            placeholder="Add sub-item..."
-            disabled={isAdding}
-            className="flex-1 px-2 py-1.5 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
-          />
-          <button
-            type="submit"
-            disabled={isAdding || !newItemName.trim()}
-            className="px-2 py-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white rounded disabled:opacity-50 transition-colors"
-          >
-            {isAdding ? "..." : "Add"}
-          </button>
-        </form>
+        <>
+          {showInput ? (
+            <form onSubmit={handleAddSubItem} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                placeholder="Add sub-item..."
+                autoFocus
+                disabled={isAdding}
+                className="flex-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+                onBlur={() => {
+                  // Close input if empty after blur
+                  if (!newItemName.trim()) {
+                    setTimeout(() => setShowInput(false), 200);
+                  }
+                }}
+              />
+              <button
+                type="submit"
+                disabled={isAdding || !newItemName.trim()}
+                className="flex-shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isAdding ? "..." : "Add"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowInput(false);
+                  setNewItemName("");
+                }}
+                className="flex-shrink-0 px-2 py-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs transition-colors"
+              >
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <button
+              onClick={() => {
+                haptic("light");
+                setShowInput(true);
+              }}
+              className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add sub-item
+            </button>
+          )}
+        </>
       )}
 
-      {subItems.length === 0 && (
-        <p className="text-xs text-gray-400 dark:text-gray-500">
-          No sub-items yet. Add a checklist for this task.
-        </p>
+      {/* Empty state for viewers */}
+      {!canEdit && totalCount === 0 && (
+        <p className="text-xs text-gray-400 dark:text-gray-500 italic">No sub-items</p>
       )}
     </div>
   );
 }
 
 /**
- * Sub-item count badge (for showing on parent items).
+ * Helper hook to get sub-item progress for an item.
+ * Used by ListItem to show progress indicator.
  */
-interface SubItemCountProps {
-  parentId: Id<"items">;
-}
-
-export function SubItemCount(_props: SubItemCountProps) {
-  // API not deployed yet
-  return null;
+export function useSubItemProgress(itemId: Id<"items">) {
+  const subItems = useQuery(api.items.getSubItems, { parentId: itemId });
+  
+  if (!subItems || subItems.length === 0) {
+    return null;
+  }
+  
+  const checked = subItems.filter((i) => i.checked).length;
+  const total = subItems.length;
+  
+  return { checked, total };
 }

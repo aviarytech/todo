@@ -13,6 +13,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { ItemAttribution } from "./ItemAttribution";
 import { useSettings } from "../hooks/useSettings";
 import type { OptimisticItem } from "../hooks/useOptimisticItems";
+import { useSubItemProgress } from "./SubItems";
 
 // Lazy load the details modal
 const ItemDetailsModal = lazy(() => import("./ItemDetailsModal").then(m => ({ default: m.ItemDetailsModal })));
@@ -56,6 +57,9 @@ export function ListItem({
   const [isUpdating, setIsUpdating] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const itemRef = useRef<HTMLDivElement>(null);
+  
+  // Get sub-item progress (only for top-level items)
+  const subItemProgress = useSubItemProgress(item._id);
   
   // Format due date for display
   const dueDateStr = item.dueDate 
@@ -261,6 +265,19 @@ export function ListItem({
           {item.attachments && item.attachments.length > 0 && (
             <span className="text-[10px] text-gray-400 flex-shrink-0 flex items-center gap-0.5" title={`${item.attachments.length} attachment${item.attachments.length > 1 ? 's' : ''}`}>
               📎 {item.attachments.length}
+            </span>
+          )}
+          {/* Sub-items indicator */}
+          {subItemProgress && (
+            <span 
+              className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                subItemProgress.checked === subItemProgress.total
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                  : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+              }`}
+              title={`${subItemProgress.checked} of ${subItemProgress.total} sub-items done`}
+            >
+              📦 {subItemProgress.checked}/{subItemProgress.total}
             </span>
           )}
         </div>
