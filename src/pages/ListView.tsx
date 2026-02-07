@@ -52,7 +52,8 @@ export function ListView() {
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [selectedCalendarItem, setSelectedCalendarItem] = useState<Doc<"items"> | null>(null);
+  // Store only IDs to avoid stale snapshots - we'll look up live items from the reactive items array
+  const [selectedCalendarItemId, setSelectedCalendarItemId] = useState<Id<"items"> | null>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   
   // Multi-select state
@@ -61,7 +62,8 @@ export function ListView() {
   
   // Keyboard navigation state
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
-  const [editingItem, setEditingItem] = useState<Doc<"items"> | null>(null);
+  // Store only ID to avoid stale snapshots - we'll look up live item from the reactive items array
+  const [editingItemId, setEditingItemId] = useState<Id<"items"> | null>(null);
   const addItemInputRef = useRef<HTMLInputElement>(null);
 
   const listId = id as Id<"lists">;
@@ -127,6 +129,18 @@ export function ListView() {
       return orderA - orderB;
     });
   }, [items]);
+
+  // Look up live items by ID to avoid stale snapshots in modals
+  // This ensures tags and other fields update in real-time
+  const editingItem = useMemo(() => {
+    if (!editingItemId) return null;
+    return items.find(item => item._id === editingItemId) as Doc<"items"> | undefined ?? null;
+  }, [items, editingItemId]);
+
+  const selectedCalendarItem = useMemo(() => {
+    if (!selectedCalendarItemId) return null;
+    return items.find(item => item._id === selectedCalendarItemId) as Doc<"items"> | undefined ?? null;
+  }, [items, selectedCalendarItemId]);
 
   // Get user's role and collaborators
   const { userRole, collaborators, isLoading: collabLoading } = useCollaborators(listId);
@@ -319,7 +333,7 @@ export function ListView() {
           if (focusedIndex === null) return;
           const item = sortedItems[focusedIndex];
           if (item) {
-            setEditingItem(item as Doc<"items">);
+            setEditingItemId(item._id);
           }
         },
       },
@@ -330,7 +344,7 @@ export function ListView() {
           if (focusedIndex === null) return;
           const item = sortedItems[focusedIndex];
           if (item) {
-            setEditingItem(item as Doc<"items">);
+            setEditingItemId(item._id);
           }
         },
       },
@@ -387,7 +401,7 @@ export function ListView() {
         description: "Clear focus / close modals",
         action: () => {
           setFocusedIndex(null);
-          setEditingItem(null);
+          setEditingItemId(null);
           if (isSelectMode) {
             clearSelection();
           }
@@ -788,7 +802,7 @@ export function ListView() {
           listId={listId}
           onItemClick={(item) => {
             haptic('light');
-            setSelectedCalendarItem(item);
+            setSelectedCalendarItemId(item._id);
           }}
         />
       )}
@@ -836,7 +850,7 @@ export function ListView() {
             userDid={did}
             legacyDid={legacyDid ?? undefined}
             canEdit={canUserEdit}
-            onClose={() => setSelectedCalendarItem(null)}
+            onClose={() => setSelectedCalendarItemId(null)}
           />
         )}
         
@@ -846,7 +860,7 @@ export function ListView() {
             userDid={did}
             legacyDid={legacyDid ?? undefined}
             canEdit={canUserEdit}
-            onClose={() => setEditingItem(null)}
+            onClose={() => setEditingItemId(null)}
           />
         )}
       </Suspense>
