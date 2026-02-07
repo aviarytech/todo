@@ -12,6 +12,7 @@ import { useSettings } from "../hooks/useSettings";
 import { TagSelector } from "./TagSelector";
 import { SubItems } from "./SubItems";
 import { Attachments } from "./Attachments";
+import { Comments } from "./Comments";
 import { Panel } from "./ui/Panel";
 
 interface ItemDetailsModalProps {
@@ -289,6 +290,19 @@ export function ItemDetailsModal({
             📷 Attachments
           </label>
           <Attachments
+            itemId={item._id}
+            userDid={userDid}
+            legacyDid={legacyDid}
+            canEdit={canEdit}
+          />
+        </div>
+
+        {/* Comments */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+            💬 Comments
+          </label>
+          <Comments
             itemId={item._id}
             userDid={userDid}
             legacyDid={legacyDid}

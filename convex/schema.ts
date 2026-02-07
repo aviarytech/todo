@@ -193,4 +193,14 @@ export default defineSchema({
     .index("by_list", ["listId"])
     .index("by_webvh_did", ["webvhDid"])
     .index("by_status", ["status"]),
+
+  // Comments table - threaded discussions on items
+  comments: defineTable({
+    itemId: v.id("items"),
+    userDid: v.string(), // Author of the comment
+    text: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_item", ["itemId"])
+    .index("by_user", ["userDid"]),
 });
