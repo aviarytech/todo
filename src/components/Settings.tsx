@@ -3,12 +3,14 @@
  * Uses Panel for slide-up drawer experience.
  */
 
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSettings } from '../hooks/useSettings';
 import { useNotifications } from '../hooks/useNotifications';
 import { useAuth } from '../hooks/useAuth';
 import { supportsHaptics } from '../lib/haptics';
 import { supportsPushNotifications } from '../lib/notifications';
+import { biometrics } from '../lib/biometrics';
 import { Panel } from './ui/Panel';
 
 interface SettingsProps {
@@ -16,7 +18,7 @@ interface SettingsProps {
 }
 
 export function Settings({ onClose }: SettingsProps) {
-  const { darkMode, toggleDarkMode, hapticsEnabled, setHapticsEnabled, haptic } = useSettings();
+  const { darkMode, toggleDarkMode, hapticsEnabled, setHapticsEnabled, biometricLockEnabled, setBiometricLockEnabled, haptic } = useSettings();
   const { user } = useAuth();
   const {
     permission: notificationPermission,
@@ -26,6 +28,12 @@ export function Settings({ onClose }: SettingsProps) {
     toggleNotifications,
     setReminderMinutes,
   } = useNotifications({ userDid: user?.did ?? null });
+
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  
+  useEffect(() => {
+    biometrics.isAvailable().then(setBiometricsAvailable);
+  }, []);
 
   const handleToggle = (current: boolean, setter: (v: boolean) => void) => {
     haptic('light');
@@ -133,6 +141,42 @@ export function Settings({ onClose }: SettingsProps) {
                 <div
                   className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
                     hapticsEnabled ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Security Section */}
+        {biometricsAvailable && (
+          <section>
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+              Security
+            </h3>
+            
+            {/* Biometric Lock Toggle */}
+            <div className="flex items-center justify-between py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl leading-none">🔒</span>
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">App Lock</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Require Face ID / fingerprint on launch
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleToggle(biometricLockEnabled, setBiometricLockEnabled)}
+                className={`relative w-14 h-8 rounded-full transition-colors ${
+                  biometricLockEnabled ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+                role="switch"
+                aria-checked={biometricLockEnabled}
+              >
+                <div
+                  className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
+                    biometricLockEnabled ? 'translate-x-7' : 'translate-x-1'
                   }`}
                 />
               </button>
