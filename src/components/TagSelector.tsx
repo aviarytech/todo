@@ -183,6 +183,7 @@ export function TagSelector({
                 }`}
                 style={{ backgroundColor: color.value }}
                 title={color.name}
+                aria-label={`Select ${color.name} color`}
               />
             ))}
           </div>

@@ -3,13 +3,33 @@
 declare const self: ServiceWorkerGlobalScope;
 
 // Bump this on breaking changes to force cache invalidation
-const CACHE_NAME = 'lisa-v3';
+const CACHE_NAME = 'lisa-v4';
 
-// Install event: activate immediately without caching anything
-// Fresh HTML is fetched on every navigation to avoid stale asset references
+// Critical assets to pre-cache for offline shell support
+// These ensure the app shell loads even when fully offline
+const PRECACHE_URLS = [
+  '/',
+  '/manifest.json',
+  '/pwa-192x192.png',
+  '/pwa-512x512.png',
+];
+
+// Install event: pre-cache critical shell assets then activate
 self.addEventListener('install', (event) => {
-  // Skip waiting to activate immediately
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Pre-cache critical assets, but don't fail install if some miss
+      await Promise.allSettled(
+        PRECACHE_URLS.map((url) =>
+          cache.add(url).catch((err) => {
+            console.warn('[SW] Failed to pre-cache:', url, err);
+          })
+        )
+      );
+      // Skip waiting to activate immediately
+      return self.skipWaiting();
+    })
+  );
 });
 
 // Activate event: clean up ALL old caches and take control
@@ -53,9 +73,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // CRITICAL: Never cache hashed assets - let browser handle them
-  // These have content hashes and immutable caching headers from the CDN
+  // Hashed assets (/assets/*): cache-first since they're immutable by hash
+  // This enables offline access to JS/CSS bundles within Capacitor native shell
   if (url.pathname.startsWith('/assets/') && /[-\.][a-f0-9]{8,}\.(js|css|woff2?)$/.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        });
+      })
+    );
     return;
   }
 

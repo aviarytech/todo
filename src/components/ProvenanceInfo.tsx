@@ -128,6 +128,7 @@ function DidRow({
             : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         }`}
         title={copied ? "Copied!" : "Copy full DID"}
+        aria-label={copied ? "Copied!" : `Copy ${label}`}
       >
         {copied ? (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,6 +179,7 @@ function ProvenanceSection({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2">
           <svg 
