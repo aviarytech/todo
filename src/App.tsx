@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState } from 'react'
-import { Routes, Route, Link, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useState, useEffect } from 'react'
+import { Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { useSettings } from './hooks/useSettings'
 import { AuthGuard } from './components/auth/AuthGuard'
@@ -8,6 +8,7 @@ import { ProfileBadge } from './components/ProfileBadge'
 import { OfflineIndicator } from './components/offline/OfflineIndicator'
 import { ToastContainer } from './components/notifications/Toast'
 import { Settings } from './components/Settings'
+import { initDeepLinks } from './lib/deeplinks'
 
 // Static imports for frequently used routes
 import { Home } from './pages/Home'
@@ -128,6 +129,12 @@ function PageLoadingFallback() {
 
 function App() {
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+
+  // Initialize deep links for mobile
+  useEffect(() => {
+    initDeepLinks(navigate)
+  }, [navigate])
 
   return (
     <>
