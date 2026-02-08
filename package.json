@@ -27,6 +27,7 @@
     "@capacitor/haptics": "^8.0.0",
     "@capacitor/ios": "^8.0.2",
     "@capacitor/keyboard": "^8.0.0",
+    "@capacitor/share": "^8.0.0",
     "@capacitor/status-bar": "^8.0.0",
     "@originals/auth": "^1.8.2",
     "@originals/sdk": "^1.8.2",

@@ -15,6 +15,7 @@ import { useSettings } from "../hooks/useSettings";
 import type { OptimisticItem } from "../hooks/useOptimisticItems";
 import { useSubItemProgress } from "./SubItems";
 import { ItemVerificationBadge } from "./VerificationBadge";
+import { shareItem } from "../lib/share";
 
 // Lazy load the details modal
 const ItemDetailsModal = lazy(() => import("./ItemDetailsModal").then(m => ({ default: m.ItemDetailsModal })));
@@ -149,6 +150,21 @@ export function ListItem({
       console.error("Failed to remove item:", err);
       haptic('error');
       setIsUpdating(false);
+    }
+  };
+
+  const handleShare = async () => {
+    haptic('light');
+    
+    const listUrl = `${window.location.origin}/app/${item.listId}`;
+    const listName = "My List"; // We don't have the list name here, so use a generic name
+    
+    try {
+      await shareItem(item.name, listName, listUrl);
+      haptic('success');
+    } catch (error) {
+      console.error('Share failed:', error);
+      haptic('error');
     }
   };
 
@@ -368,6 +384,32 @@ export function ListItem({
           )}
         </div>
       </div>
+
+      {/* Share button - only show if not in select mode */}
+      {!isSelectMode && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleShare();
+          }}
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all active:scale-90"
+          aria-label="Share item"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+            />
+          </svg>
+        </button>
+      )}
 
       {/* Remove button - only show if user can edit and not in select mode */}
       {canUserEdit && !isSelectMode && (
