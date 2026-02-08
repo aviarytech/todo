@@ -1,0 +1,1 @@
+function i(n){const s=Date.now()-n,e=Math.floor(s/1e3),o=Math.floor(e/60),t=Math.floor(o/60),a=Math.floor(t/24);if(e<60)return"just now";if(o<60)return o===1?"1 minute ago":`${o} minutes ago`;if(t<24)return t===1?"1 hour ago":`${t} hours ago`;if(a<2)return"yesterday";const r=new Date(n),f=r.toLocaleString("en-US",{month:"short"}),u=r.getDate();return`${f} ${u}`}export{i as f};
