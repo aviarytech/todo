@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useConvex } from "convex/react";
 import { syncManager, type SyncStatus } from "../lib/sync";
 import { getQueuedMutations } from "../lib/offline";
+import { getNetworkStatus, onNetworkChange } from "../lib/network";
 
 /**
  * Hook return type for useOffline
@@ -55,9 +56,7 @@ export interface UseOfflineResult {
  * ```
  */
 export function useOffline(): UseOfflineResult {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
+  const [isOnline, setIsOnline] = useState(getNetworkStatus());
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ status: "idle" });
   const [pendingCount, setPendingCount] = useState(0);
   const convex = useConvex();
@@ -71,24 +70,16 @@ export function useOffline(): UseOfflineResult {
     };
   }, []);
 
-  // Track online/offline events and trigger sync on reconnect
+  // Track online/offline events using Capacitor network service and trigger sync on reconnect
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      syncManager.sync(convex);
+    const handleNetworkChange = (connected: boolean) => {
+      setIsOnline(connected);
+      if (connected) {
+        syncManager.sync(convex);
+      }
     };
 
-    const handleOffline = () => {
-      setIsOnline(false);
-    };
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
+    return onNetworkChange(handleNetworkChange);
   }, [convex]);
 
   // Subscribe to sync status updates from SyncManager
