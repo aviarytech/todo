@@ -19,8 +19,10 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.0.2",
+    "@capacitor/app": "^8.0.0",
     "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^8.0.2",
+    "@capacitor/haptics": "^8.0.0",
     "@capacitor/ios": "^8.0.2",
     "@originals/auth": "^1.8.2",
     "@originals/sdk": "^1.8.2",
