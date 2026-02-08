@@ -9,6 +9,7 @@ import { OfflineIndicator } from './components/offline/OfflineIndicator'
 import { ToastContainer } from './components/notifications/Toast'
 import { Settings } from './components/Settings'
 import { initDeepLinks } from './lib/deeplinks'
+import { initPushNotifications } from './lib/pushNotifications'
 
 // Static imports for frequently used routes
 import { Home } from './pages/Home'
@@ -135,6 +136,13 @@ function App() {
   useEffect(() => {
     initDeepLinks(navigate)
   }, [navigate])
+
+  // Initialize push notifications after user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      initPushNotifications();
+    }
+  }, [isAuthenticated]);
 
   return (
     <>
