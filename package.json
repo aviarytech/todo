@@ -15,13 +15,17 @@
     "env:dev": "bash -c 'export $(grep -v \"^#\" .env.local | grep -E \"^(TURNKEY_|JWT_SECRET|WEBVH_DOMAIN)\" | xargs) && for k in TURNKEY_API_PUBLIC_KEY TURNKEY_API_PRIVATE_KEY TURNKEY_ORGANIZATION_ID JWT_SECRET WEBVH_DOMAIN; do npx convex env set \"$k\" \"${!k}\"; done'",
     "env:prod": "bash -c 'export $(grep -v \"^#\" .env.local | grep -E \"^(TURNKEY_|JWT_SECRET|WEBVH_DOMAIN)\" | xargs) && for k in TURNKEY_API_PUBLIC_KEY TURNKEY_API_PRIVATE_KEY TURNKEY_ORGANIZATION_ID JWT_SECRET WEBVH_DOMAIN; do npx convex env set --prod \"$k\" \"${!k}\"; done'",
     "env:turnkey:dev": "bash ./scripts/sync-convex-turnkey-env.sh .env.local dev",
-    "env:turnkey:prod": "bash ./scripts/sync-convex-turnkey-env.sh .env.local prod"
+    "env:turnkey:prod": "bash ./scripts/sync-convex-turnkey-env.sh .env.local prod",
+    "cap:sync": "npx cap sync",
+    "cap:build": "npm run build && npx cap sync"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.2",
     "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^8.0.2",
     "@capacitor/ios": "^8.0.2",
+    "@capacitor/keyboard": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
     "@originals/auth": "^1.8.2",
     "@originals/sdk": "^1.8.2",
     "@turnkey/core": "^1.11.0",

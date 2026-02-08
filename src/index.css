@@ -3,6 +3,20 @@
 /* Tailwind v4 class-based dark mode variant */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Safe area insets for native mobile */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* Apply to the main layout */
+body {
+  padding-top: var(--safe-area-top);
+  padding-bottom: var(--safe-area-bottom);
+}
+
 /* Custom animations */
 @keyframes shimmer {
   0% {
