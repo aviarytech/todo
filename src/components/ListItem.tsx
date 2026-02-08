@@ -238,7 +238,10 @@ export function ListItem({
       {/* Checkbox - compact size (hidden in select mode) */}
       {!isSelectMode && (canUserEdit ? (
         <button
-          onClick={handleToggleCheck}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggleCheck();
+          }}
           disabled={isUpdating}
           className={`flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all active:scale-90 ${
             item.checked
@@ -283,8 +286,8 @@ export function ListItem({
       {/* Item content - clickable to open details (or toggle selection in select mode) */}
       <div
         onClick={(e) => {
+          e.stopPropagation();
           if (isSelectMode) {
-            e.stopPropagation(); // Already handled by parent
             return;
           }
           haptic('light');
@@ -369,7 +372,10 @@ export function ListItem({
       {/* Remove button - only show if user can edit and not in select mode */}
       {canUserEdit && !isSelectMode && (
         <button
-          onClick={handleRemove}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleRemove();
+          }}
           disabled={isUpdating}
           className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50 transition-all active:scale-90"
           aria-label="Remove item"
