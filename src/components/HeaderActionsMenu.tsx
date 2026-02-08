@@ -106,7 +106,7 @@ export function HeaderActionsMenu({
             onClick={() => handleAction(onKeyboardShortcuts)}
             className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"
           >
-            <span className="text-base">⌨️</span>
+            <span className="text-base leading-none">⌨️</span>
             <span>Keyboard shortcuts</span>
             <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">?</span>
           </button>
@@ -119,7 +119,7 @@ export function HeaderActionsMenu({
               onClick={() => handleAction(onShare)}
               className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"
             >
-              <span className="text-base">🔗</span>
+              <span className="text-base leading-none">🔗</span>
               <span>Share list</span>
             </button>
           )}
@@ -135,7 +135,7 @@ export function HeaderActionsMenu({
                   : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
               }`}
             >
-              <span className="text-base">📡</span>
+              <span className="text-base leading-none">📡</span>
               <span>{isPublished ? "Manage publication" : "Publish list"}</span>
               {!isOnline && <span className="ml-auto text-xs text-gray-400">Offline</span>}
             </button>

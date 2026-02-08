@@ -115,7 +115,7 @@ export function TemplatePickerModal({ onClose, onCreateBlank }: TemplatePickerMo
   const header = (
     <>
       <div className="flex items-center gap-3">
-        <span className="text-2xl">📁</span>
+        <span className="text-2xl leading-none">📁</span>
         <div>
           <h2 id="template-picker-title" className="text-lg font-bold text-gray-900 dark:text-gray-100">
             {selectedTemplate ? "Customize Template" : "Choose a Template"}
@@ -206,7 +206,7 @@ export function TemplatePickerModal({ onClose, onCreateBlank }: TemplatePickerMo
             </button>
 
             <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 flex items-start gap-3">
-              <span className="text-2xl">{selectedTemplate.emoji}</span>
+              <span className="text-2xl leading-none">{selectedTemplate.emoji}</span>
               <div>
                 <p className="font-medium text-gray-900 dark:text-gray-100">{selectedTemplate.name}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">{selectedTemplate.items.length} items</p>
@@ -271,7 +271,7 @@ export function TemplatePickerModal({ onClose, onCreateBlank }: TemplatePickerMo
               }}
               className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-2 border-dashed border-amber-300 dark:border-amber-700 rounded-xl hover:border-amber-400 dark:hover:border-amber-600 transition-colors text-left"
             >
-              <span className="text-2xl">✨</span>
+              <span className="text-2xl leading-none">✨</span>
               <div>
                 <p className="font-medium text-gray-900 dark:text-gray-100">Blank List</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Start from scratch</p>
@@ -290,7 +290,7 @@ export function TemplatePickerModal({ onClose, onCreateBlank }: TemplatePickerMo
                     onClick={() => handleSelectBuiltin(template)}
                     className="w-full flex items-center gap-4 p-4 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-md transition-all text-left"
                   >
-                    <span className="text-2xl">{template.emoji}</span>
+                    <span className="text-2xl leading-none">{template.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 dark:text-gray-100">{template.name}</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{template.description}</p>
@@ -315,7 +315,7 @@ export function TemplatePickerModal({ onClose, onCreateBlank }: TemplatePickerMo
                       disabled={isCreating}
                       className="w-full flex items-center gap-4 p-4 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-md transition-all text-left disabled:opacity-50"
                     >
-                      <span className="text-2xl">📄</span>
+                      <span className="text-2xl leading-none">📄</span>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 dark:text-gray-100">{template.name}</p>
                         {template.description && (

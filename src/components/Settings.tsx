@@ -79,7 +79,7 @@ export function Settings({ onClose }: SettingsProps) {
           {/* Dark Mode Toggle */}
           <div className="flex items-center justify-between py-3">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">{darkMode ? '🌙' : '☀️'}</span>
+              <span className="text-2xl leading-none">{darkMode ? '🌙' : '☀️'}</span>
               <div>
                 <p className="font-medium text-gray-900 dark:text-gray-100">Dark Mode</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -114,7 +114,7 @@ export function Settings({ onClose }: SettingsProps) {
             {/* Haptic Feedback Toggle */}
             <div className="flex items-center justify-between py-3">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">📳</span>
+                <span className="text-2xl leading-none">📳</span>
                 <div>
                   <p className="font-medium text-gray-900 dark:text-gray-100">Haptic Feedback</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -150,7 +150,7 @@ export function Settings({ onClose }: SettingsProps) {
             {/* Push Notifications Toggle */}
             <div className="flex items-center justify-between py-3">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">🔔</span>
+                <span className="text-2xl leading-none">🔔</span>
                 <div>
                   <p className="font-medium text-gray-900 dark:text-gray-100">Push Notifications</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -186,7 +186,7 @@ export function Settings({ onClose }: SettingsProps) {
             {notificationsEnabled && (
               <div className="py-3">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="text-2xl">⏰</span>
+                  <span className="text-2xl leading-none">⏰</span>
                   <div>
                     <p className="font-medium text-gray-900 dark:text-gray-100">Reminder Time</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -238,7 +238,7 @@ export function Settings({ onClose }: SettingsProps) {
             className="flex items-center justify-between py-3 px-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl transition-colors"
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl">👤</span>
+              <span className="text-2xl leading-none">👤</span>
               <div>
                 <p className="font-medium text-gray-900 dark:text-gray-100">Your Profile</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -260,7 +260,7 @@ export function Settings({ onClose }: SettingsProps) {
           
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700 dark:to-gray-700 rounded-xl p-4">
             <div className="flex items-center gap-3 mb-3">
-              <span className="text-3xl">💩</span>
+              <span className="text-3xl leading-none">💩</span>
               <div>
                 <p className="font-bold text-gray-900 dark:text-gray-100">Poo App</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Version 1.0.0</p>
