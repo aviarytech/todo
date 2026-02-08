@@ -207,11 +207,11 @@ export function Home() {
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Your Lists
         </h2>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Link
             to="/priority"
             onClick={() => haptic('light')}
-            className="text-gray-600 dark:text-gray-400 px-3 py-2 rounded-xl font-medium hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 px-3.5 py-2 rounded-full font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
           >
             🎯 Focus
           </Link>
@@ -220,13 +220,13 @@ export function Home() {
               haptic('light');
               setIsCategoryManagerOpen(true);
             }}
-            className="text-gray-600 dark:text-gray-400 px-3 py-2 rounded-xl font-medium hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 px-3.5 py-2 rounded-full font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
           >
             📁 Categories
           </button>
           <button
             onClick={handleOpenCreate}
-            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-5 py-2 rounded-xl font-semibold shadow-lg shadow-amber-500/25 hover:shadow-xl hover:shadow-amber-500/30 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-4 py-2 rounded-full font-semibold shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
           >
             ✨ New List
           </button>
