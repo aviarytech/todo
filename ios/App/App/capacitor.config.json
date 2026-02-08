@@ -1,0 +1,6 @@
+{
+	"appId": "app.trypoo.app",
+	"appName": "Poo App",
+	"webDir": "dist",
+	"packageClassList": []
+}
