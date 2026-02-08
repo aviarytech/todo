@@ -233,10 +233,16 @@ export function getAisle(aisleId: string): GroceryAisle {
 /**
  * Group items by grocery aisle. Returns aisles in store-walk order,
  * only including aisles that have items.
+ * Custom aisles (if provided) appear after built-in aisles.
  */
 export function groupByAisle<T extends { name: string; checked: boolean; groceryAisle?: string }>(
-  items: T[]
+  items: T[],
+  customAisles?: GroceryAisle[]
 ): { aisle: GroceryAisle; items: T[] }[] {
+  const allAisles = customAisles?.length
+    ? [...AISLES, ...customAisles].sort((a, b) => a.order - b.order)
+    : AISLES;
+
   const groups = new Map<string, T[]>();
 
   for (const item of items) {
@@ -246,7 +252,7 @@ export function groupByAisle<T extends { name: string; checked: boolean; grocery
     groups.get(aisleId)!.push(item);
   }
 
-  return AISLES.filter((aisle) => groups.has(aisle.id))
+  return allAisles.filter((aisle) => groups.has(aisle.id))
     .map((aisle) => ({
       aisle,
       items: groups.get(aisle.id)!,

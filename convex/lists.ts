@@ -443,3 +443,48 @@ export const addCollaborator = mutation({
   },
 });
 
+/**
+ * Add a custom grocery aisle to a list.
+ */
+export const addCustomAisle = mutation({
+  args: {
+    listId: v.id("lists"),
+    name: v.string(),
+    emoji: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const list = await ctx.db.get(args.listId);
+    if (!list) throw new Error("List not found");
+
+    const existing = list.customAisles ?? [];
+    const id = `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    // Custom aisles start at order 50 and increment
+    const maxOrder = existing.length > 0 ? Math.max(...existing.map(a => a.order)) : 49;
+
+    await ctx.db.patch(args.listId, {
+      customAisles: [...existing, { id, name: args.name, emoji: args.emoji, order: maxOrder + 1 }],
+    });
+
+    return id;
+  },
+});
+
+/**
+ * Remove a custom grocery aisle from a list.
+ */
+export const removeCustomAisle = mutation({
+  args: {
+    listId: v.id("lists"),
+    aisleId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const list = await ctx.db.get(args.listId);
+    if (!list) throw new Error("List not found");
+
+    const existing = list.customAisles ?? [];
+    await ctx.db.patch(args.listId, {
+      customAisles: existing.filter(a => a.id !== args.aisleId),
+    });
+  },
+});
+

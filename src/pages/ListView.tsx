@@ -93,6 +93,14 @@ export function ListView() {
   const removeItemMutation = useMutation(api.items.removeItem);
   const updateItemMutation = useMutation(api.items.updateItem);
 
+  // Custom aisle state
+  const addCustomAisleMutation = useMutation(api.lists.addCustomAisle);
+  const _removeCustomAisle = useMutation(api.lists.removeCustomAisle);
+  void _removeCustomAisle; // available for future delete-aisle UI
+  const [showAddAisle, setShowAddAisle] = useState(false);
+  const [newAisleName, setNewAisleName] = useState("");
+  const [newAisleEmoji, setNewAisleEmoji] = useState("🏷️");
+
   // Multi-select callbacks (after items is defined)
   const toggleSelection = useCallback((itemId: Id<"items">) => {
     haptic('light');
@@ -155,8 +163,9 @@ export function ListView() {
     if (!isGroceryList) return null;
     const unchecked = sortedItems.filter(item => !item.checked);
     const checked = sortedItems.filter(item => item.checked);
-    return { groups: groupByAisle(unchecked.map(item => ({ ...item, name: item.name ?? "" }))), checked };
-  }, [isGroceryList, sortedItems]);
+    const customAisles = (list as any)?.customAisles as { id: string; name: string; emoji: string; order: number }[] | undefined;
+    return { groups: groupByAisle(unchecked.map(item => ({ ...item, name: item.name ?? "" })), customAisles ?? undefined), checked, customAisles: customAisles ?? [] };
+  }, [isGroceryList, sortedItems, list]);
 
   // Look up live items by ID to avoid stale snapshots in modals
   // This ensures tags and other fields update in real-time
@@ -874,6 +883,72 @@ export function ListView() {
                   </div>
                 </div>
               ))}
+
+              {/* Add custom aisle */}
+              {canUserEdit && (
+                showAddAisle ? (
+                  <div className="mb-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">New Aisle</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newAisleEmoji}
+                        onChange={e => setNewAisleEmoji(e.target.value)}
+                        className="w-10 text-center text-lg bg-gray-100 dark:bg-gray-700 rounded-lg p-1"
+                        maxLength={2}
+                      />
+                      <input
+                        type="text"
+                        value={newAisleName}
+                        onChange={e => setNewAisleName(e.target.value)}
+                        placeholder="Aisle name..."
+                        className="flex-1 text-sm bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2 text-gray-800 dark:text-gray-200 placeholder-gray-400"
+                        autoFocus
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && newAisleName.trim()) {
+                            addCustomAisleMutation({ listId, name: newAisleName.trim(), emoji: newAisleEmoji || "🏷️" });
+                            setNewAisleName("");
+                            setNewAisleEmoji("🏷️");
+                            setShowAddAisle(false);
+                          } else if (e.key === "Escape") {
+                            setShowAddAisle(false);
+                            setNewAisleName("");
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          if (newAisleName.trim()) {
+                            addCustomAisleMutation({ listId, name: newAisleName.trim(), emoji: newAisleEmoji || "🏷️" });
+                            setNewAisleName("");
+                            setNewAisleEmoji("🏷️");
+                            setShowAddAisle(false);
+                          }
+                        }}
+                        className="text-sm font-medium text-blue-600 dark:text-blue-400 px-2 py-1"
+                      >
+                        Add
+                      </button>
+                      <button
+                        onClick={() => { setShowAddAisle(false); setNewAisleName(""); }}
+                        className="text-sm text-gray-400 px-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowAddAisle(true)}
+                    className="w-full mb-3 py-2 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                  >
+                    <span>＋</span>
+                    <span>New Aisle</span>
+                  </button>
+                )
+              )}
 
               {/* Completed section */}
               {aisleGroups.checked.length > 0 && (

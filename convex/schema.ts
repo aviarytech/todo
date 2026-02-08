@@ -98,6 +98,13 @@ export default defineSchema({
       }),
       proof: v.optional(v.string()), // JWT or linked data proof
     })),
+    // Custom grocery aisles created by users for this list
+    customAisles: v.optional(v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      emoji: v.string(),
+      order: v.number(),
+    }))),
   })
     .index("by_owner", ["ownerDid"])
     .index("by_asset_did", ["assetDid"])
