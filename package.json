@@ -18,6 +18,10 @@
     "env:turnkey:prod": "bash ./scripts/sync-convex-turnkey-env.sh .env.local prod"
   },
   "dependencies": {
+    "@capacitor/android": "^8.0.2",
+    "@capacitor/cli": "^8.0.2",
+    "@capacitor/core": "^8.0.2",
+    "@capacitor/ios": "^8.0.2",
     "@originals/auth": "^1.8.2",
     "@originals/sdk": "^1.8.2",
     "@turnkey/core": "^1.11.0",
