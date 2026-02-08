@@ -269,6 +269,8 @@ export const updateItem = mutation({
       nextDue: v.optional(v.number()),
     })),
     priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
+    groceryAisle: v.optional(v.string()),
+    clearGroceryAisle: v.optional(v.boolean()),
     clearDueDate: v.optional(v.boolean()),
     clearRecurrence: v.optional(v.boolean()),
     clearUrl: v.optional(v.boolean()),
@@ -295,12 +297,14 @@ export const updateItem = mutation({
     if (args.url !== undefined) updates.url = args.url;
     if (args.recurrence !== undefined) updates.recurrence = args.recurrence;
     if (args.priority !== undefined) updates.priority = args.priority;
+    if (args.groceryAisle !== undefined) updates.groceryAisle = args.groceryAisle;
     
     // Clear fields if requested
     if (args.clearDueDate) updates.dueDate = undefined;
     if (args.clearRecurrence) updates.recurrence = undefined;
     if (args.clearUrl) updates.url = undefined;
     if (args.clearPriority) updates.priority = undefined;
+    if (args.clearGroceryAisle) updates.groceryAisle = undefined;
 
     await ctx.db.patch(args.itemId, updates);
     return args.itemId;
@@ -557,6 +561,37 @@ export const reorderItems = mutation({
         await ctx.db.patch(itemId, { order: i, updatedAt: Date.now() });
       }
     }
+  },
+});
+
+/**
+ * Set the grocery aisle override for an item.
+ * Allows users to manually classify items into a different aisle.
+ * Pass null/undefined aisleId to clear the override.
+ */
+export const setAisleOverride = mutation({
+  args: {
+    itemId: v.id("items"),
+    aisleId: v.optional(v.string()),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) throw new Error("Item not found");
+
+    const canEdit = await canUserEditList(
+      ctx,
+      item.listId,
+      args.userDid,
+      args.legacyDid
+    );
+    if (!canEdit) throw new Error("Not authorized to edit this item");
+
+    await ctx.db.patch(args.itemId, {
+      groceryAisle: args.aisleId ?? undefined,
+      updatedAt: Date.now(),
+    });
   },
 });
 

@@ -127,6 +127,8 @@ export default defineSchema({
     priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
     // Tags - array of tag IDs
     tags: v.optional(v.array(v.id("tags"))),
+    // Grocery aisle override — user-assigned aisle that takes priority over keyword auto-classification
+    groceryAisle: v.optional(v.string()),
     // Parent item ID for sub-items
     parentId: v.optional(v.id("items")),
     // Attachments - stored file IDs

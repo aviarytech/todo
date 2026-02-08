@@ -20,7 +20,7 @@ import { useTouchDrag } from "../hooks/useTouchDrag";
 import { useNotifications } from "../hooks/useNotifications";
 import { useKeyboardShortcuts, KeyboardShortcutsHelp, type Shortcut } from "../hooks/useKeyboardShortcuts";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
-import { groupByAisle } from "../lib/groceryAisles";
+import { groupByAisle, classifyItem } from "../lib/groceryAisles";
 import { useCategories } from "../hooks/useCategories";
 import { shareList } from "../lib/share";
 import { AddItemInput } from "../components/AddItemInput";
@@ -91,6 +91,7 @@ export function ListView() {
   
   // Mutation for removing items via keyboard
   const removeItemMutation = useMutation(api.items.removeItem);
+  const updateItemMutation = useMutation(api.items.updateItem);
 
   // Multi-select callbacks (after items is defined)
   const toggleSelection = useCallback((itemId: Id<"items">) => {
@@ -255,6 +256,49 @@ export function ListView() {
     onReorder: handleTouchReorder,
     containerRef: itemsContainerRef,
   });
+
+  // Grocery aisle drag — detect which aisle section a dragged item lands in
+  const handleGroceryTouchReorder = useCallback(async (draggedId: string, _targetId: string) => {
+    if (!did || !itemsContainerRef.current) return;
+    // Find which aisle the target item belongs to by walking up the DOM
+    const targetEl = itemsContainerRef.current.querySelector(`[data-item-id="${_targetId}"]`);
+    if (!targetEl) return;
+    const aisleContainer = targetEl.closest('[data-aisle-id]');
+    if (!aisleContainer) return;
+    const targetAisleId = aisleContainer.getAttribute('data-aisle-id');
+    if (!targetAisleId) return;
+
+    // Find the dragged item's current aisle
+    const draggedItem = sortedItems.find(i => i._id === draggedId);
+    if (!draggedItem) return;
+    const currentAisleId = (draggedItem as OptimisticItem & { groceryAisle?: string }).groceryAisle || classifyItem(draggedItem.name);
+
+    if (targetAisleId === currentAisleId) return; // Same aisle, nothing to do
+
+    haptic('medium');
+    await updateItemMutation({
+      itemId: draggedId as Id<"items">,
+      userDid: did,
+      legacyDid: legacyDid ?? undefined,
+      groceryAisle: targetAisleId,
+    });
+  }, [did, legacyDid, sortedItems, haptic, updateItemMutation]);
+
+  const groceryTouchDrag = useTouchDrag({
+    onReorder: handleGroceryTouchReorder,
+    containerRef: itemsContainerRef,
+  });
+
+  // Determine which aisle is being dragged over (for header highlighting)
+  const dragOverAisleId = useMemo(() => {
+    if (!aisleGroups) return null;
+    const overId = groceryTouchDrag.state.dragOverId;
+    if (!overId) return null;
+    for (const { aisle, items: aisleItems } of aisleGroups.groups) {
+      if (aisleItems.some(i => i._id === overId)) return aisle.id;
+    }
+    return null;
+  }, [aisleGroups, groceryTouchDrag.state.dragOverId]);
 
   // Native share handler
   const handleNativeShare = useCallback(async () => {
@@ -772,18 +816,24 @@ export function ListView() {
               <NoItemsEmptyState />
             </div>
           ) : isGroceryList && aisleGroups ? (
-            /* Grocery aisle-grouped view — drag & long-press disabled (items auto-sorted by aisle) */
+            /* Grocery aisle-grouped view — drag between aisles to override classification */
             <div
               ref={itemsContainerRef}
+              onTouchMove={groceryTouchDrag.handleTouchMove}
+              onTouchEnd={groceryTouchDrag.handleTouchEnd}
             >
               <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 mb-2 text-xs text-gray-400 dark:text-gray-500">
                 <span>✨</span>
-                <span>Items are auto-sorted by aisle</span>
+                <span>Drag items between aisles to reclassify</span>
               </div>
               {aisleGroups.groups.map(({ aisle, items: aisleItems }) => (
-                <div key={aisle.id} className="mb-3">
-                  {/* Aisle section header */}
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-t-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700 dark:to-gray-750 border-b border-amber-100 dark:border-gray-600">
+                <div key={aisle.id} className="mb-3" data-aisle-id={aisle.id}>
+                  {/* Aisle section header — highlights when dragging over */}
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-t-xl border-b transition-colors duration-150 ${
+                    dragOverAisleId === aisle.id && groceryTouchDrag.state.draggedId
+                      ? "bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border-blue-300 dark:border-blue-600 ring-2 ring-blue-300 dark:ring-blue-600"
+                      : "bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700 dark:to-gray-750 border-amber-100 dark:border-gray-600"
+                  }`}>
                     <span className="text-lg">{aisle.emoji}</span>
                     <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">{aisle.name}</span>
                     <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 tabular-nums">
@@ -804,9 +854,10 @@ export function ListView() {
                             userDid={did}
                             legacyDid={legacyDid ?? undefined}
                             canEdit={canUserEdit}
-                            isDragging={false}
-                            isDragOver={false}
+                            isDragging={groceryTouchDrag.state.draggedId === item._id}
+                            isDragOver={groceryTouchDrag.state.dragOverId === item._id}
                             isFocused={focusedIndex === globalIndex}
+                            onTouchStart={groceryTouchDrag.handleTouchStart}
                             onCheck={checkItem}
                             onUncheck={uncheckItem}
                             isSelectMode={isSelectMode}

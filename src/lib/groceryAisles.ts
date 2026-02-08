@@ -234,13 +234,14 @@ export function getAisle(aisleId: string): GroceryAisle {
  * Group items by grocery aisle. Returns aisles in store-walk order,
  * only including aisles that have items.
  */
-export function groupByAisle<T extends { name: string; checked: boolean }>(
+export function groupByAisle<T extends { name: string; checked: boolean; groceryAisle?: string }>(
   items: T[]
 ): { aisle: GroceryAisle; items: T[] }[] {
   const groups = new Map<string, T[]>();
 
   for (const item of items) {
-    const aisleId = classifyItem(item.name);
+    // User-assigned aisle override takes priority over keyword auto-classification
+    const aisleId = item.groceryAisle || classifyItem(item.name);
     if (!groups.has(aisleId)) groups.set(aisleId, []);
     groups.get(aisleId)!.push(item);
   }
