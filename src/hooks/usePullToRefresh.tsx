@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { hapticMedium } from '../lib/haptics';
 
 interface UsePullToRefreshOptions {
   /** Callback when refresh is triggered */
@@ -89,6 +90,7 @@ export function usePullToRefresh({
 
     const handleTouchEnd = () => {
       if (pullDistance >= threshold && !isRefreshing) {
+        hapticMedium();
         refresh();
       } else {
         setPullDistance(0);
