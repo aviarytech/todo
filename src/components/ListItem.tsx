@@ -317,10 +317,10 @@ export function ListItem({
           </p>
           {/* Indicators for extras */}
           {item.url && (
-            <span className="text-blue-500 flex-shrink-0" title="Has link">🔗</span>
+            <span className="text-blue-500 flex-shrink-0 inline-flex items-center text-xs leading-none" title="Has link">🔗</span>
           )}
           {item.recurrence && (
-            <span className="text-purple-500 flex-shrink-0" title={`Repeats ${item.recurrence.frequency}`}>🔁</span>
+            <span className="text-purple-500 flex-shrink-0 inline-flex items-center text-xs leading-none" title={`Repeats ${item.recurrence.frequency}`}>🔁</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -332,35 +332,35 @@ export function ListItem({
           />
           {/* Due date badge */}
           {dueDateStr && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5 ${
               isOverdue 
                 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                 : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
             }`}>
-              📅 {dueDateStr}
+              <span className="leading-none">📅</span> {dueDateStr}
             </span>
           )}
           {/* Notes indicator */}
           {item.description && (
-            <span className="text-[10px] text-gray-400 flex-shrink-0" title="Has notes">📝</span>
+            <span className="text-[10px] text-gray-400 flex-shrink-0 inline-flex items-center leading-none" title="Has notes">📝</span>
           )}
           {/* Attachments indicator */}
           {item.attachments && item.attachments.length > 0 && (
-            <span className="text-[10px] text-gray-400 flex-shrink-0 flex items-center gap-0.5" title={`${item.attachments.length} attachment${item.attachments.length > 1 ? 's' : ''}`}>
-              📎 {item.attachments.length}
+            <span className="text-[10px] text-gray-400 flex-shrink-0 inline-flex items-center gap-0.5" title={`${item.attachments.length} attachment${item.attachments.length > 1 ? 's' : ''}`}>
+              <span className="leading-none">📎</span> {item.attachments.length}
             </span>
           )}
           {/* Sub-items indicator */}
           {subItemProgress && (
             <span 
-              className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+              className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5 ${
                 subItemProgress.checked === subItemProgress.total
                   ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                   : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
               }`}
               title={`${subItemProgress.checked} of ${subItemProgress.total} sub-items done`}
             >
-              📦 {subItemProgress.checked}/{subItemProgress.total}
+              <span className="leading-none">📦</span> {subItemProgress.checked}/{subItemProgress.total}
             </span>
           )}
         </div>

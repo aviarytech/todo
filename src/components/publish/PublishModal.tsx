@@ -128,7 +128,7 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
   const header = (
     <>
       <div className="flex items-center gap-3">
-        <span className="text-2xl">{isPublished ? "🌐" : "📤"}</span>
+        <span className="text-2xl leading-none">{isPublished ? "🌐" : "📤"}</span>
         <div>
           <h2 id="publish-dialog-title" className="text-lg font-bold text-gray-900 dark:text-gray-100">
             {isPublished ? "Published List" : "Publish List"}

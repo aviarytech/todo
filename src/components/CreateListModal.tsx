@@ -74,7 +74,7 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
   const header = (
     <>
       <div className="flex items-center gap-3">
-        <span className="text-2xl">✨</span>
+        <span className="text-2xl leading-none">✨</span>
         <div>
           <h2 id="create-list-dialog-title" className="text-lg font-bold text-gray-900 dark:text-gray-100">
             Create New List

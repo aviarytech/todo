@@ -79,7 +79,7 @@ export function SaveAsTemplateModal({ listId, listName, onClose, onSuccess }: Sa
   const header = (
     <>
       <div className="flex items-center gap-3">
-        <span className="text-2xl">📁</span>
+        <span className="text-2xl leading-none">📁</span>
         <div>
           <h2 id="save-template-title" className="text-lg font-bold text-gray-900 dark:text-gray-100">
             Save as Template
