@@ -11,7 +11,7 @@ export function OfflineIndicator() {
   if (isOnline) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 animate-slide-up">
+    <div className="fixed top-0 left-0 right-0 z-50 animate-slide-up" role="alert" aria-live="assertive">
       <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2.5 text-center text-sm font-medium shadow-lg">
         <div className="flex items-center justify-center gap-2">
           <span className="relative flex h-3 w-3">

@@ -204,9 +204,9 @@ export function Home() {
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Your Lists
-        </h2>
+        </h1>
         <div className="flex items-center gap-2">
           <Link
             to="/priority"

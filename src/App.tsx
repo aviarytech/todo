@@ -32,6 +32,14 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 transition-colors">
+      {/* Skip to main content link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-amber-500 focus:text-white focus:rounded-lg focus:text-sm focus:font-medium"
+      >
+        Skip to main content
+      </a>
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800 safe-area-inset-top">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -88,7 +96,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main className="container mx-auto px-4 py-6 safe-area-inset-bottom">
+      <main id="main-content" className="container mx-auto px-4 py-6 safe-area-inset-bottom">
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
 

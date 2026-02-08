@@ -94,6 +94,7 @@ export function Settings({ onClose }: SettingsProps) {
               }`}
               role="switch"
               aria-checked={darkMode}
+              aria-label="Toggle dark mode"
             >
               <div
                 className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
@@ -129,6 +130,7 @@ export function Settings({ onClose }: SettingsProps) {
                 }`}
                 role="switch"
                 aria-checked={hapticsEnabled}
+                aria-label="Toggle haptic feedback"
               >
                 <div
                   className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
@@ -177,6 +179,7 @@ export function Settings({ onClose }: SettingsProps) {
                 } ${notificationsLoading || notificationPermission === 'denied' ? 'opacity-50 cursor-not-allowed' : ''}`}
                 role="switch"
                 aria-checked={notificationsEnabled}
+                aria-label="Toggle push notifications"
               >
                 <div
                   className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
