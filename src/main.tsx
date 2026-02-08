@@ -24,7 +24,7 @@ initNativePlatform();
 // Initialize network monitoring for offline support
 initNetworkMonitoring();
 
-// Register service worker for offline support (web only)
+// Register service worker for offline support (web only - disabled in native apps)
 if (!Capacitor.isNativePlatform()) {
   registerServiceWorker({
     onUpdate: () => {
