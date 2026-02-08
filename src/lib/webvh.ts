@@ -58,6 +58,8 @@ class BrowserWebVHSigner {
 
 async function getOrCreateKeyPair(subOrgId: string) {
   const storageKey = `${KEY_STORAGE_PREFIX}:${subOrgId}`;
+  // TODO: Migrate to async storageAdapter for native support (see storageAdapter.ts)
+  // This would provide better security on native platforms via Capacitor Preferences
   const existingPrivateKey = localStorage.getItem(storageKey);
   const privateKey = existingPrivateKey
     ? hexToBytes(existingPrivateKey)
