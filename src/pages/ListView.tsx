@@ -50,6 +50,7 @@ export function ListView() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
@@ -546,7 +547,7 @@ export function ListView() {
                     haptic('light');
                     setShowCollaborators(!showCollaborators);
                   }}
-                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all active:scale-95 text-xs sm:text-sm"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -567,15 +568,15 @@ export function ListView() {
         </div>
 
         {/* Compact action buttons */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* View toggle - compact on mobile */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+          <div className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-full p-0.5">
             <button
               onClick={() => {
                 haptic('light');
                 setViewMode("list");
               }}
-              className={`p-1.5 sm:p-2 rounded-md transition-all ${
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-full transition-all active:scale-95 ${
                 viewMode === "list"
                   ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
@@ -583,7 +584,7 @@ export function ListView() {
               aria-label="List view"
               title="List view"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
             </button>
@@ -592,7 +593,7 @@ export function ListView() {
                 haptic('light');
                 setViewMode("calendar");
               }}
-              className={`p-1.5 sm:p-2 rounded-md transition-all ${
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-full transition-all active:scale-95 ${
                 viewMode === "calendar"
                   ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
@@ -600,7 +601,7 @@ export function ListView() {
               aria-label="Calendar view"
               title="Calendar view"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </button>
@@ -613,11 +614,11 @@ export function ListView() {
                 haptic('light');
                 setIsShareModalOpen(true);
               }}
-              className="p-2 sm:p-2.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-xl transition-colors"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 transition-all active:scale-95"
               aria-label="Share"
               title="Share list"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
             </button>

@@ -86,7 +86,7 @@ export function HeaderActionsMenu({
           haptic('light');
           setIsOpen(!isOpen);
         }}
-        className="p-2.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+        className="inline-flex items-center justify-center p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all active:scale-95"
         aria-label="More actions"
         aria-expanded={isOpen}
         aria-haspopup="true"
