@@ -10,6 +10,8 @@ import {
   setListSort as storeListSort,
   getHapticsEnabled,
   setHapticsEnabled as storeHapticsEnabled,
+  getBiometricLockEnabled,
+  setBiometricLockEnabled as storeBiometricLockEnabled,
   type SortOption,
 } from '../lib/storage';
 import { haptic as triggerHaptic } from '../lib/haptics';
@@ -22,6 +24,8 @@ interface SettingsContextValue {
   setListSort: (sort: SortOption) => void;
   hapticsEnabled: boolean;
   setHapticsEnabled: (enabled: boolean) => void;
+  biometricLockEnabled: boolean;
+  setBiometricLockEnabled: (enabled: boolean) => void;
   haptic: (pattern?: 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning') => void;
 }
 
@@ -31,6 +35,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [darkMode, setDarkModeState] = useState(() => getDarkMode());
   const [listSort, setListSortState] = useState<SortOption>(() => getListSort());
   const [hapticsEnabled, setHapticsEnabledState] = useState(() => getHapticsEnabled());
+  const [biometricLockEnabled, setBiometricLockEnabledState] = useState(() => getBiometricLockEnabled());
 
   // Listen for system dark mode changes
   useEffect(() => {
@@ -69,6 +74,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     storeHapticsEnabled(enabled);
   }, []);
 
+  const setBiometricLockEnabled = useCallback((enabled: boolean) => {
+    setBiometricLockEnabledState(enabled);
+    storeBiometricLockEnabled(enabled);
+  }, []);
+
   const haptic = useCallback(
     (pattern: 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning' = 'light') => {
       if (hapticsEnabled) {
@@ -88,6 +98,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setListSort,
         hapticsEnabled,
         setHapticsEnabled,
+        biometricLockEnabled,
+        setBiometricLockEnabled,
         haptic,
       }}
     >

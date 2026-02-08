@@ -8,6 +8,7 @@ import { ProfileBadge } from './components/ProfileBadge'
 import { OfflineIndicator } from './components/offline/OfflineIndicator'
 import { ToastContainer } from './components/notifications/Toast'
 import { Settings } from './components/Settings'
+import { AppLockGuard } from './components/AppLockGuard'
 import { initDeepLinks } from './lib/deeplinks'
 
 // Static imports for frequently used routes
@@ -137,7 +138,7 @@ function App() {
   }, [navigate])
 
   return (
-    <>
+    <AppLockGuard>
       <OfflineIndicator />
       <Suspense fallback={<PageLoadingFallback />}>
         <Routes>
@@ -161,7 +162,7 @@ function App() {
         </Routes>
       </Suspense>
       <ToastContainer />
-    </>
+    </AppLockGuard>
   )
 }
 
