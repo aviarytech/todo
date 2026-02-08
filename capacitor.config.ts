@@ -4,15 +4,17 @@ const config: CapacitorConfig = {
   appId: 'app.trypoo.app',
   appName: 'Poo App',
   webDir: 'dist',
+  // Allow service worker and offline caching in native WebView
+  server: {
+    // Allow mixed content for local service worker
+    androidScheme: 'https',
+  },
   plugins: {
-    SplashScreen: {
-      launchShowDuration: 2000,
-      backgroundColor: '#FFFFFF',
-      androidScaleType: 'CENTER_CROP',
-      showSpinner: false,
-      splashFullScreen: true,
-      splashImmersive: true,
-    },
+    // No special config needed for Network plugin - it works out of the box
+  },
+  // iOS: allow offline usage and background fetch
+  ios: {
+    allowsLinkPreview: false,
   },
 };
 
