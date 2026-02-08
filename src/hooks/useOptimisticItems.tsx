@@ -5,7 +5,7 @@
  * offline and merging with server state when back online.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
@@ -58,6 +58,13 @@ export function useOptimisticItems(listId: Id<"lists">) {
   const [optimisticItems, setOptimisticItems] = useState<OptimisticItem[]>([]);
   const [cachedItems, setCachedItems] = useState<OfflineItem[]>([]);
 
+  // Keep a ref to the last known server items so we don't flash stale data
+  // during Convex WebSocket reconnections (when serverItems briefly becomes undefined)
+  const lastServerItemsRef = useRef<Doc<"items">[] | undefined>(undefined);
+  if (serverItems !== undefined) {
+    lastServerItemsRef.current = serverItems;
+  }
+
   // Cache items when online and data is available
   useEffect(() => {
     if (serverItems && isOnline) {
@@ -80,6 +87,32 @@ export function useOptimisticItems(listId: Id<"lists">) {
       cacheItems(itemsToCache);
     }
   }, [serverItems, isOnline]);
+
+  // Clean up stale optimistic items when server state catches up.
+  // This prevents unbounded growth and eliminates stale data during reconnections.
+  useEffect(() => {
+    if (!serverItems) return;
+    setOptimisticItems((prev) => {
+      if (prev.length === 0) return prev;
+      const serverMap = new Map(serverItems.map((s) => [s._id, s]));
+      const filtered = prev.filter((o) => {
+        // Keep temp items that haven't appeared on server yet
+        if ((o._id as string).startsWith("temp-")) {
+          return !serverItems.some(
+            (s) =>
+              s.name === o.name &&
+              s.createdByDid === o.createdByDid &&
+              Math.abs(s.createdAt - o.createdAt) < 5000
+          );
+        }
+        // Keep non-temp items only if server hasn't caught up (checked state differs)
+        const serverItem = serverMap.get(o._id);
+        return serverItem !== undefined && serverItem.checked !== o.checked;
+      });
+      // Only update state if something actually changed
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [serverItems]);
 
   // Load cached items when offline
   useEffect(() => {
@@ -109,7 +142,7 @@ export function useOptimisticItems(listId: Id<"lists">) {
     }) => {
       const tempId = `temp-${Date.now()}` as Id<"items">;
       // Calculate min order to put new item at top
-      const currentItems = serverItems ?? [];
+      const currentItems = lastServerItemsRef.current ?? [];
       const minOrder = currentItems.reduce(
         (min, item) => Math.min(min, item.order ?? 0),
         0
@@ -146,7 +179,7 @@ export function useOptimisticItems(listId: Id<"lists">) {
         });
       }
     },
-    [isOnline, listId, addItemMutation]
+    [isOnline, listId, addItemMutation]  // lastServerItemsRef is a ref, no need in deps
   );
 
   /**
@@ -157,10 +190,8 @@ export function useOptimisticItems(listId: Id<"lists">) {
     async (itemId: Id<"items">, checkedByDid: string, legacyDid?: string) => {
       const checkedAt = Date.now();
 
-      // Find original state for potential rollback
-      const originalItem = [...(serverItems ?? []), ...optimisticItems].find(
-        (i) => i._id === itemId
-      );
+      // Use ref for finding original item to avoid stale closure issues
+      const currentServerItems = lastServerItemsRef.current ?? [];
 
       setOptimisticItems((prev) => {
         // If item exists in optimistic list, update it
@@ -178,7 +209,10 @@ export function useOptimisticItems(listId: Id<"lists">) {
               : i
           );
         }
-        // If not in optimistic list, add the server item with optimistic update
+        // If not in optimistic list, find the server item and add with optimistic update
+        const originalItem = [...currentServerItems, ...prev].find(
+          (i) => i._id === itemId
+        );
         if (originalItem) {
           return [
             ...prev,
@@ -211,7 +245,7 @@ export function useOptimisticItems(listId: Id<"lists">) {
         });
       }
     },
-    [isOnline, checkItemMutation, serverItems, optimisticItems]
+    [isOnline, checkItemMutation]
   );
 
   /**
@@ -220,9 +254,8 @@ export function useOptimisticItems(listId: Id<"lists">) {
    */
   const uncheckItem = useCallback(
     async (itemId: Id<"items">, userDid: string, legacyDid?: string) => {
-      const originalItem = [...(serverItems ?? []), ...optimisticItems].find(
-        (i) => i._id === itemId
-      );
+      // Use ref for finding original item to avoid stale closure issues
+      const currentServerItems = lastServerItemsRef.current ?? [];
 
       setOptimisticItems((prev) => {
         const exists = prev.some((i) => i._id === itemId);
@@ -239,6 +272,9 @@ export function useOptimisticItems(listId: Id<"lists">) {
               : i
           );
         }
+        const originalItem = [...currentServerItems, ...prev].find(
+          (i) => i._id === itemId
+        );
         if (originalItem) {
           return [
             ...prev,
@@ -271,7 +307,7 @@ export function useOptimisticItems(listId: Id<"lists">) {
         });
       }
     },
-    [isOnline, uncheckItemMutation, serverItems, optimisticItems]
+    [isOnline, uncheckItemMutation]
   );
 
   /**
@@ -297,22 +333,20 @@ export function useOptimisticItems(listId: Id<"lists">) {
 
   /**
    * Merge server items with optimistic items, filtering out stale optimistic items.
-   * Falls back to cached items when offline and server data is unavailable.
+   * Falls back to last known server items during reconnection, or cached items when offline.
    *
    * - Apply optimistic updates to matching server items (only if server hasn't caught up)
    * - Include new optimistic items (temp IDs) that don't exist on server yet
-   * - Automatically filter stale optimistic items based on server state
-   *
-   * Note: Stale optimistic items remain in state but are filtered out during merge.
-   * This is intentional to avoid calling setState in effects/render, which can cause
-   * cascading renders. The state cleanup happens naturally when mutations complete
-   * (rollback on error) or items are eventually garbage collected.
+   * - Use last known server items during brief Convex reconnections to prevent flicker
    */
   const items = useMemo((): OptimisticItem[] => {
-    // Use cached items when offline and no server data
-    const baseItems: Doc<"items">[] | undefined = serverItems ?? (!isOnline && cachedItems.length > 0
-      ? (cachedItems as unknown as Doc<"items">[])
-      : undefined);
+    // Priority: live server items > last known server items > offline cache > optimistic only
+    const baseItems: Doc<"items">[] | undefined =
+      serverItems ??
+      lastServerItemsRef.current ??
+      (!isOnline && cachedItems.length > 0
+        ? (cachedItems as unknown as Doc<"items">[])
+        : undefined);
 
     if (!baseItems) return optimisticItems;
 
