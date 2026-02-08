@@ -8,6 +8,7 @@ import { ProfileBadge } from './components/ProfileBadge'
 import { OfflineIndicator } from './components/offline/OfflineIndicator'
 import { ToastContainer } from './components/notifications/Toast'
 import { Settings } from './components/Settings'
+import { AppLockGuard } from './components/AppLockGuard'
 import { initDeepLinks } from './lib/deeplinks'
 import { initPushNotifications } from './lib/pushNotifications'
 
@@ -151,7 +152,7 @@ function App() {
   }, [isAuthenticated]);
 
   return (
-    <>
+    <AppLockGuard>
       <OfflineIndicator />
       <Suspense fallback={<PageLoadingFallback />}>
         <Routes>
@@ -175,7 +176,7 @@ function App() {
         </Routes>
       </Suspense>
       <ToastContainer />
-    </>
+    </AppLockGuard>
   )
 }
 

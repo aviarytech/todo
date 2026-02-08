@@ -92,7 +92,9 @@ export async function registerServiceWorker(
 
   // Only register in production or when explicitly testing
   // In development, SW can interfere with hot reloading
-  if (import.meta.env.DEV && !import.meta.env.VITE_ENABLE_SW) {
+  // Exception: always register on Capacitor native (assets are local)
+  const isNative = typeof (window as unknown as Record<string, unknown>).Capacitor !== 'undefined';
+  if (import.meta.env.DEV && !import.meta.env.VITE_ENABLE_SW && !isNative) {
     console.log('Service worker disabled in development');
     return undefined;
   }

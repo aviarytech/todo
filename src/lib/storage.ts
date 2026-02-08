@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   ONBOARDING_COMPLETE: 'pooapp:onboardingComplete',
   NOTIFICATIONS_ENABLED: 'pooapp:notificationsEnabled',
   REMINDER_MINUTES: 'pooapp:reminderMinutes',
+  BIOMETRIC_LOCK_ENABLED: 'pooapp:biometricLockEnabled',
 } as const;
 
 export type SortOption = 'name-asc' | 'name-desc' | 'newest' | 'oldest';
@@ -122,4 +123,20 @@ export function getReminderMinutes(): number {
  */
 export function setReminderMinutes(minutes: number): void {
   localStorage.setItem(STORAGE_KEYS.REMINDER_MINUTES, String(minutes));
+}
+
+/**
+ * Get biometric lock enabled preference.
+ */
+export function getBiometricLockEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  const stored = localStorage.getItem(STORAGE_KEYS.BIOMETRIC_LOCK_ENABLED);
+  return stored === 'true';
+}
+
+/**
+ * Set biometric lock enabled preference.
+ */
+export function setBiometricLockEnabled(enabled: boolean): void {
+  localStorage.setItem(STORAGE_KEYS.BIOMETRIC_LOCK_ENABLED, String(enabled));
 }
