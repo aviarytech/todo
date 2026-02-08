@@ -191,6 +191,10 @@ export function Settings({ onClose }: SettingsProps) {
               Notifications
             </h3>
             
+            {/* TODO: Native mobile push notifications (Capacitor) are initialized in App.tsx
+                 This toggle currently handles web push notifications only.
+                 Consider adding a separate toggle or combining status for native push. */}
+            
             {/* Push Notifications Toggle */}
             <div className="flex items-center justify-between py-3">
               <div className="flex items-center gap-3">
