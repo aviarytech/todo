@@ -53,6 +53,7 @@ export const ListCard = memo(function ListCard({ list, currentUserDid, showOwner
       to={`/list/${list._id}`}
       onClick={() => haptic('light')}
       className="group block bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl dark:shadow-gray-900/50 transition-all duration-200 p-5 card-hover border border-gray-100 dark:border-gray-700 hover:border-amber-200 dark:hover:border-amber-600"
+      aria-label={`Open list: ${list.name}`}
     >
       <div className="flex items-start gap-4">
         {/* Emoji icon */}

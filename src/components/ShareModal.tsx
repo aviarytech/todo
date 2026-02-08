@@ -187,11 +187,12 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
 
         {inviteLink && !isCreating && (
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="invite-link-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Invite link
             </label>
             <div className="flex gap-2">
               <input
+                id="invite-link-input"
                 type="text"
                 value={inviteLink}
                 readOnly

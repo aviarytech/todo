@@ -228,6 +228,7 @@ function RoleSelector({ value, onChange, disabled }: RoleSelectorProps) {
       onChange={(e) => onChange(e.target.value as "editor" | "viewer")}
       disabled={disabled}
       className="px-2 py-1 text-xs border border-gray-300 rounded bg-white text-gray-700 disabled:opacity-50"
+      aria-label="Change role"
     >
       <option value="editor">Editor</option>
       <option value="viewer">Viewer</option>

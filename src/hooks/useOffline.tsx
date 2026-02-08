@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useConvex } from "convex/react";
+import { Capacitor } from "@capacitor/core";
 import { syncManager, type SyncStatus } from "../lib/sync";
 import { getQueuedMutations } from "../lib/offline";
 
@@ -72,7 +73,10 @@ export function useOffline(): UseOfflineResult {
   }, []);
 
   // Track online/offline events and trigger sync on reconnect
+  // Use Capacitor Network plugin on native for reliable detection
   useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
     const handleOnline = () => {
       setIsOnline(true);
       syncManager.sync(convex);
@@ -82,12 +86,44 @@ export function useOffline(): UseOfflineResult {
       setIsOnline(false);
     };
 
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+    if (Capacitor.isNativePlatform()) {
+      // Use Capacitor Network plugin for reliable native network detection
+      import("@capacitor/network").then(({ Network }) => {
+        // Get initial status
+        Network.getStatus().then((status) => {
+          if (isMounted.current) {
+            setIsOnline(status.connected);
+          }
+        });
+
+        // Listen for changes
+        const listener = Network.addListener("networkStatusChange", (status) => {
+          if (isMounted.current) {
+            if (status.connected) {
+              handleOnline();
+            } else {
+              handleOffline();
+            }
+          }
+        });
+
+        cleanup = () => {
+          listener.then((l) => l.remove());
+        };
+      });
+    } else {
+      // Fallback to browser events for web
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+
+      cleanup = () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
+    }
 
     return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+      cleanup?.();
     };
   }, [convex]);
 

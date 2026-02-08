@@ -61,10 +61,12 @@ export const AddItemInput = forwardRef<HTMLInputElement, AddItemInputProps>(func
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-3">
+    <form onSubmit={handleSubmit} className="flex gap-3" aria-label="Add new item">
       <div className="flex-1 relative">
+        <label htmlFor="add-item-input" className="sr-only">Add new item</label>
         <input
           ref={inputRef}
+          id="add-item-input"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}

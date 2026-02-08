@@ -11,6 +11,9 @@
  *
  * The JWT token is stored in localStorage and sent with API requests.
  * All signing operations (credentials, DIDs) are handled server-side.
+ * 
+ * TODO: Migrate to async storageAdapter for native support (see lib/storageAdapter.ts)
+ * This will require refactoring the useEffect and callback functions to handle async storage.
  */
 
 /* eslint-disable react-refresh/only-export-components */

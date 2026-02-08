@@ -1,5 +1,10 @@
 /**
  * Local storage utilities for app settings.
+ * 
+ * NOTE: These functions currently use localStorage directly (synchronous).
+ * For native platform support, use storageAdapter.ts instead, which provides
+ * an async interface that works with both Capacitor Preferences (native) and
+ * localStorage (web). These functions will be migrated to async in a future update.
  */
 
 const STORAGE_KEYS = {
@@ -9,12 +14,15 @@ const STORAGE_KEYS = {
   ONBOARDING_COMPLETE: 'pooapp:onboardingComplete',
   NOTIFICATIONS_ENABLED: 'pooapp:notificationsEnabled',
   REMINDER_MINUTES: 'pooapp:reminderMinutes',
+  BIOMETRIC_LOCK_ENABLED: 'pooapp:biometricLockEnabled',
 } as const;
 
 export type SortOption = 'name-asc' | 'name-desc' | 'newest' | 'oldest';
 
 /**
  * Get dark mode preference.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function getDarkMode(): boolean {
   if (typeof window === 'undefined') return false;
@@ -26,6 +34,8 @@ export function getDarkMode(): boolean {
 
 /**
  * Set dark mode preference.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function setDarkMode(enabled: boolean): void {
   localStorage.setItem(STORAGE_KEYS.DARK_MODE, String(enabled));
@@ -48,6 +58,8 @@ export function initDarkMode(): void {
 
 /**
  * Get list sort preference.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function getListSort(): SortOption {
   if (typeof window === 'undefined') return 'newest';
@@ -56,6 +68,8 @@ export function getListSort(): SortOption {
 
 /**
  * Set list sort preference.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function setListSort(sort: SortOption): void {
   localStorage.setItem(STORAGE_KEYS.LIST_SORT, sort);
@@ -63,6 +77,8 @@ export function setListSort(sort: SortOption): void {
 
 /**
  * Get haptics enabled preference.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function getHapticsEnabled(): boolean {
   if (typeof window === 'undefined') return true;
@@ -72,6 +88,8 @@ export function getHapticsEnabled(): boolean {
 
 /**
  * Set haptics enabled preference.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function setHapticsEnabled(enabled: boolean): void {
   localStorage.setItem(STORAGE_KEYS.HAPTICS_ENABLED, String(enabled));
@@ -79,6 +97,8 @@ export function setHapticsEnabled(enabled: boolean): void {
 
 /**
  * Check if onboarding has been completed.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function isOnboardingComplete(): boolean {
   if (typeof window === 'undefined') return true;
@@ -87,6 +107,8 @@ export function isOnboardingComplete(): boolean {
 
 /**
  * Mark onboarding as complete.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function completeOnboarding(): void {
   localStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
@@ -94,6 +116,8 @@ export function completeOnboarding(): void {
 
 /**
  * Get notifications enabled preference.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function getNotificationsEnabled(): boolean {
   if (typeof window === 'undefined') return false;
@@ -103,6 +127,8 @@ export function getNotificationsEnabled(): boolean {
 
 /**
  * Set notifications enabled preference.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function setNotificationsEnabled(enabled: boolean): void {
   localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS_ENABLED, String(enabled));
@@ -110,6 +136,8 @@ export function setNotificationsEnabled(enabled: boolean): void {
 
 /**
  * Get reminder time in minutes before due date.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function getReminderMinutes(): number {
   if (typeof window === 'undefined') return 60;
@@ -119,7 +147,25 @@ export function getReminderMinutes(): number {
 
 /**
  * Set reminder time in minutes before due date.
+ * 
+ * TODO: Migrate to async storageAdapter for native support
  */
 export function setReminderMinutes(minutes: number): void {
   localStorage.setItem(STORAGE_KEYS.REMINDER_MINUTES, String(minutes));
+}
+
+/**
+ * Get biometric lock enabled preference.
+ */
+export function getBiometricLockEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  const stored = localStorage.getItem(STORAGE_KEYS.BIOMETRIC_LOCK_ENABLED);
+  return stored === 'true';
+}
+
+/**
+ * Set biometric lock enabled preference.
+ */
+export function setBiometricLockEnabled(enabled: boolean): void {
+  localStorage.setItem(STORAGE_KEYS.BIOMETRIC_LOCK_ENABLED, String(enabled));
 }

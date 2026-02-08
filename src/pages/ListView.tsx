@@ -20,6 +20,7 @@ import { useTouchDrag } from "../hooks/useTouchDrag";
 import { useNotifications } from "../hooks/useNotifications";
 import { useKeyboardShortcuts, KeyboardShortcutsHelp, type Shortcut } from "../hooks/useKeyboardShortcuts";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
+import { shareList } from "../lib/share";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
 import { CollaboratorList } from "../components/sharing/CollaboratorList";
@@ -232,6 +233,21 @@ export function ListView() {
     onReorder: handleTouchReorder,
     containerRef: itemsContainerRef,
   });
+
+  // Native share handler
+  const handleNativeShare = useCallback(async () => {
+    if (!list) return;
+    
+    const listUrl = `${window.location.origin}/app/${list._id}`;
+    
+    try {
+      await shareList(list.name, listUrl);
+      haptic('success');
+    } catch (error) {
+      console.error('Share failed:', error);
+      haptic('error');
+    }
+  }, [list, haptic]);
 
   // Keyboard shortcuts for power users
   const shortcuts: Shortcut[] = useMemo(() => {
@@ -635,6 +651,7 @@ export function ListView() {
             isOnline={isOnline}
             isPublished={publicationStatus?.status === "active"}
             onShare={() => setIsShareModalOpen(true)}
+            onNativeShare={handleNativeShare}
             onPublish={() => setIsPublishModalOpen(true)}
             onSaveTemplate={() => setIsSaveTemplateModalOpen(true)}
             onDelete={() => setIsDeleteDialogOpen(true)}

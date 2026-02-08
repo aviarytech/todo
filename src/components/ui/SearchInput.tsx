@@ -38,7 +38,8 @@ export function SearchInput({
   }, []);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} role="search">
+      <label htmlFor="search-lists-input" className="sr-only">Search lists</label>
       {/* Search icon */}
       <div
         className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${
@@ -57,7 +58,8 @@ export function SearchInput({
 
       <input
         ref={inputRef}
-        type="text"
+        id="search-lists-input"
+        type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setIsFocused(true)}
