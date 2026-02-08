@@ -772,12 +772,14 @@ export function ListView() {
               <NoItemsEmptyState />
             </div>
           ) : isGroceryList && aisleGroups ? (
-            /* Grocery aisle-grouped view */
+            /* Grocery aisle-grouped view — drag & long-press disabled (items auto-sorted by aisle) */
             <div
               ref={itemsContainerRef}
-              onTouchMove={touchDrag.handleTouchMove}
-              onTouchEnd={touchDrag.handleTouchEnd}
             >
+              <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 mb-2 text-xs text-gray-400 dark:text-gray-500">
+                <span>✨</span>
+                <span>Items are auto-sorted by aisle</span>
+              </div>
               {aisleGroups.groups.map(({ aisle, items: aisleItems }) => (
                 <div key={aisle.id} className="mb-3">
                   {/* Aisle section header */}
@@ -802,19 +804,14 @@ export function ListView() {
                             userDid={did}
                             legacyDid={legacyDid ?? undefined}
                             canEdit={canUserEdit}
-                            isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
-                            isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
+                            isDragging={false}
+                            isDragOver={false}
                             isFocused={focusedIndex === globalIndex}
-                            onDragStart={() => handleDragStart(item._id)}
-                            onDragOver={(e) => handleDragOver(e, item._id)}
-                            onDragEnd={handleDragEnd}
-                            onTouchStart={touchDrag.handleTouchStart}
                             onCheck={checkItem}
                             onUncheck={uncheckItem}
                             isSelectMode={isSelectMode}
                             isSelected={selectedIds.has(item._id)}
                             onToggleSelect={() => toggleSelection(item._id)}
-                            onLongPress={() => enterSelectMode(item._id)}
                           />
                         </div>
                       );
@@ -847,19 +844,14 @@ export function ListView() {
                             userDid={did}
                             legacyDid={legacyDid ?? undefined}
                             canEdit={canUserEdit}
-                            isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
-                            isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
+                            isDragging={false}
+                            isDragOver={false}
                             isFocused={focusedIndex === globalIndex}
-                            onDragStart={() => handleDragStart(item._id)}
-                            onDragOver={(e) => handleDragOver(e, item._id)}
-                            onDragEnd={handleDragEnd}
-                            onTouchStart={touchDrag.handleTouchStart}
                             onCheck={checkItem}
                             onUncheck={uncheckItem}
                             isSelectMode={isSelectMode}
                             isSelected={selectedIds.has(item._id)}
                             onToggleSelect={() => toggleSelection(item._id)}
-                            onLongPress={() => enterSelectMode(item._id)}
                           />
                         </div>
                       );
