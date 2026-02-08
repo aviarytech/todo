@@ -15,6 +15,22 @@
 body {
   padding-top: var(--safe-area-top);
   padding-bottom: var(--safe-area-bottom);
+  /* Prevent overscroll bounce on iOS — keeps app feeling native */
+  overscroll-behavior: none;
+  /* Use dvh for proper mobile viewport (accounts for browser chrome) */
+  min-height: 100dvh;
+}
+
+/* Prevent iOS Safari input zoom — inputs must be >= 16px */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* Prevent pull-to-refresh in native WebView */
+html, body {
+  overscroll-behavior-y: none;
 }
 
 /* Custom animations */
@@ -227,6 +243,13 @@ button, [role="button"] {
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+}
+
+/* Mobile viewport height fix — min-h-screen uses 100vh which is wrong on mobile.
+   Use this utility class where full-height layouts are needed. */
+.min-h-screen-safe {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Safe area insets for mobile devices */

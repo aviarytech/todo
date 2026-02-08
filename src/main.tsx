@@ -8,7 +8,7 @@ import { ToastProvider } from './hooks/useToast'
 import { SettingsProvider } from './hooks/useSettings'
 import { registerServiceWorker } from './lib/sw-registration'
 import { initDarkMode } from './lib/storage'
-import { initNativePlatform } from './lib/native'
+import { initNativePlatform, initKeyboardHandling } from './lib/native'
 import './index.css'
 import App from './App.tsx'
 
@@ -19,6 +19,7 @@ initDarkMode();
 
 // Initialize native platform features (status bar, keyboard)
 initNativePlatform();
+initKeyboardHandling();
 
 // Register service worker for offline support (web only - disabled in native apps)
 if (!Capacitor.isNativePlatform()) {

@@ -13,6 +13,11 @@ const config: CapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true,
     },
+    Keyboard: {
+      // 'native' resize mode on iOS avoids pushing the whole webview up
+      resize: 'native',
+      resizeOnFullScreen: true,
+    },
   },
 };
 
