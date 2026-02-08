@@ -1,5 +1,6 @@
 import { createDID, MultibaseEncoding, multibaseEncode, prepareDataForSigning } from "didwebvh-ts";
 import { getPublicKeyAsync, signAsync, utils, verifyAsync } from "@noble/ed25519";
+import { Capacitor } from '@capacitor/core';
 
 const KEY_STORAGE_PREFIX = "lisa-webvh-ed25519";
 const ED25519_MULTICODEC_PREFIX = new Uint8Array([0xed, 0x01]);
@@ -91,8 +92,9 @@ export async function createUserWebVHDid(params: {
 }) {
   const { privateKey, publicKeyMultibase } = await getOrCreateKeyPair(params.subOrgId);
   const signer = new BrowserWebVHSigner(privateKey, publicKeyMultibase);
+  const host = Capacitor.isNativePlatform() ? 'trypoo.app' : window.location.host;
   const domain =
-    params.domain || (import.meta.env.VITE_WEBVH_DOMAIN as string | undefined) || window.location.host;
+    params.domain || (import.meta.env.VITE_WEBVH_DOMAIN as string | undefined) || host;
 
   const result = await createDID({
     domain,
