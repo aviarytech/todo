@@ -20,7 +20,7 @@ initDarkMode();
 // Initialize native platform features (status bar, keyboard)
 initNativePlatform();
 
-// Register service worker for offline support (web only)
+// Register service worker for offline support (web only - disabled in native apps)
 if (!Capacitor.isNativePlatform()) {
   registerServiceWorker({
     onUpdate: () => {

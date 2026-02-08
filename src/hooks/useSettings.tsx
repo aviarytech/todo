@@ -22,7 +22,7 @@ interface SettingsContextValue {
   setListSort: (sort: SortOption) => void;
   hapticsEnabled: boolean;
   setHapticsEnabled: (enabled: boolean) => void;
-  haptic: (pattern?: 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning') => void;
+  haptic: (pattern?: 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning' | 'selection') => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -70,7 +70,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const haptic = useCallback(
-    (pattern: 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning' = 'light') => {
+    (pattern: 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning' | 'selection' = 'light') => {
       if (hapticsEnabled) {
         triggerHaptic(pattern);
       }
