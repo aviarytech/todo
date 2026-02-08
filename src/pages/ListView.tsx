@@ -547,10 +547,10 @@ export function ListView() {
               anchorBlockHeight={publicationStatus?.anchorBlockHeight}
               anchorTxId={publicationStatus?.anchorTxId}
             />
-          </div>
+            </div>
           
-          {/* Progress and collaborators info */}
-          <div className="flex items-center gap-2 text-xs sm:text-sm">
+            {/* Progress and collaborators info */}
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
             {totalCount > 0 && (
               <span className="text-gray-500 dark:text-gray-400">
                 {checkedCount}/{totalCount} done
@@ -582,11 +582,11 @@ export function ListView() {
                 </button>
               </>
             )}
+            </div>
           </div>
-        </div>
 
-        {/* Compact action buttons */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Compact action buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
           {/* View toggle - compact on mobile */}
           <div className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-full p-0.5">
             <button
@@ -661,7 +661,6 @@ export function ListView() {
             haptic={haptic}
           />
           </div>
-        </div>
         </div>
       </div>
 
