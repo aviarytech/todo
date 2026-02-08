@@ -38,6 +38,7 @@ jobs:
     name: Build iOS
     runs-on: macos-latest
     needs: web-build
+    if: hashFiles('ios/App/App.xcodeproj') != ''
     steps:
       - uses: actions/checkout@v4
 
@@ -83,6 +84,7 @@ jobs:
     name: Build Android
     runs-on: ubuntu-latest
     needs: web-build
+    if: hashFiles('android/build.gradle') != ''
     steps:
       - uses: actions/checkout@v4
 
