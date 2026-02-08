@@ -12,6 +12,7 @@ interface HeaderActionsMenuProps {
   canSaveTemplate: boolean;
   canDelete: boolean;
   canRename: boolean;
+  canChangeCategory?: boolean;
   isOnline: boolean;
   isPublished: boolean;
   onShare: () => void;
@@ -20,6 +21,7 @@ interface HeaderActionsMenuProps {
   onSaveTemplate: () => void;
   onDelete: () => void;
   onRename: () => void;
+  onChangeCategory?: () => void;
   onKeyboardShortcuts: () => void;
   haptic: (type: 'light' | 'medium' | 'heavy') => void;
 }
@@ -30,6 +32,7 @@ export function HeaderActionsMenu({
   canSaveTemplate,
   canDelete,
   canRename,
+  canChangeCategory,
   isOnline,
   isPublished,
   onShare,
@@ -38,6 +41,7 @@ export function HeaderActionsMenu({
   onSaveTemplate,
   onDelete,
   onRename,
+  onChangeCategory,
   onKeyboardShortcuts,
   haptic,
 }: HeaderActionsMenuProps) {
@@ -125,6 +129,23 @@ export function HeaderActionsMenu({
             >
               <span className="text-base leading-none">✏️</span>
               <span>Rename list</span>
+            </button>
+          )}
+
+          {/* Change category */}
+          {canChangeCategory && onChangeCategory && (
+            <button
+              onClick={() => handleAction(onChangeCategory)}
+              disabled={!isOnline}
+              className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+                !isOnline 
+                  ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" 
+                  : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              }`}
+            >
+              <span className="text-base leading-none">📁</span>
+              <span>Change category</span>
+              {!isOnline && <span className="ml-auto text-xs text-gray-400">Offline</span>}
             </button>
           )}
 

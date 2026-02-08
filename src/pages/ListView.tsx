@@ -38,6 +38,7 @@ const PublishModal = lazy(() => import("../components/publish/PublishModal").the
 const ItemDetailsModal = lazy(() => import("../components/ItemDetailsModal").then(m => ({ default: m.ItemDetailsModal })));
 const SaveAsTemplateModal = lazy(() => import("../components/SaveAsTemplateModal").then(m => ({ default: m.SaveAsTemplateModal })));
 const RenameListDialog = lazy(() => import("../components/RenameListDialog").then(m => ({ default: m.RenameListDialog })));
+const ChangeCategoryDialog = lazy(() => import("../components/ChangeCategoryDialog").then(m => ({ default: m.ChangeCategoryDialog })));
 
 type ViewMode = "list" | "calendar";
 
@@ -53,6 +54,7 @@ export function ListView() {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
@@ -657,6 +659,8 @@ export function ListView() {
             onSaveTemplate={() => setIsSaveTemplateModalOpen(true)}
             onDelete={() => setIsDeleteDialogOpen(true)}
             onRename={() => setIsRenameDialogOpen(true)}
+            canChangeCategory={canUserDelete}
+            onChangeCategory={() => setIsCategoryDialogOpen(true)}
             onKeyboardShortcuts={() => setShowHelp(true)}
             haptic={haptic}
           />
@@ -829,6 +833,14 @@ export function ListView() {
           <RenameListDialog
             list={list}
             onClose={() => setIsRenameDialogOpen(false)}
+          />
+        )}
+
+        {isCategoryDialogOpen && (
+          <ChangeCategoryDialog
+            listId={listId}
+            currentCategoryId={list.categoryId}
+            onClose={() => setIsCategoryDialogOpen(false)}
           />
         )}
 
