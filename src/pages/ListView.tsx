@@ -20,6 +20,8 @@ import { useTouchDrag } from "../hooks/useTouchDrag";
 import { useNotifications } from "../hooks/useNotifications";
 import { useKeyboardShortcuts, KeyboardShortcutsHelp, type Shortcut } from "../hooks/useKeyboardShortcuts";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
+import { groupByAisle } from "../lib/groceryAisles";
+import { useCategories } from "../hooks/useCategories";
 import { shareList } from "../lib/share";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
@@ -125,6 +127,9 @@ export function ListView() {
     setIsSelectMode(false);
   }, [haptic]);
 
+  // Detect grocery lists by category name
+  const { categories } = useCategories();
+
   // Sorted items for consistent keyboard navigation
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
@@ -136,6 +141,21 @@ export function ListView() {
       return orderA - orderB;
     });
   }, [items]);
+
+  // Detect grocery lists by category name
+  const isGroceryList = useMemo(() => {
+    if (!list || !list.categoryId) return false;
+    const cat = categories.find((c: { _id: Id<"categories">; name: string }) => c._id === list.categoryId);
+    return cat ? cat.name.toLowerCase().includes("grocer") : false;
+  }, [list, categories]);
+
+  // Grocery aisle grouping for grocery lists
+  const aisleGroups = useMemo(() => {
+    if (!isGroceryList) return null;
+    const unchecked = sortedItems.filter(item => !item.checked);
+    const checked = sortedItems.filter(item => item.checked);
+    return { groups: groupByAisle(unchecked.map(item => ({ ...item, name: item.name ?? "" }))), checked };
+  }, [isGroceryList, sortedItems]);
 
   // Look up live items by ID to avoid stale snapshots in modals
   // This ensures tags and other fields update in real-time
@@ -746,44 +766,146 @@ export function ListView() {
 
       {/* Items - List View */}
       {viewMode === "list" && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+        <div className="overflow-hidden">
           {sortedItems.length === 0 ? (
-            <NoItemsEmptyState />
-          ) : (
-            <div 
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
+              <NoItemsEmptyState />
+            </div>
+          ) : isGroceryList && aisleGroups ? (
+            /* Grocery aisle-grouped view */
+            <div
               ref={itemsContainerRef}
-              className="divide-y divide-gray-100 dark:divide-gray-700"
               onTouchMove={touchDrag.handleTouchMove}
               onTouchEnd={touchDrag.handleTouchEnd}
             >
-              {sortedItems.map((item: OptimisticItem, index) => (
-                <div 
-                  key={item._id} 
-                  data-item-id={item._id}
-                  className="animate-slide-up"
-                  style={{ animationDelay: `${index * 30}ms` }}
-                >
-                  <ListItem
-                    item={item}
-                    userDid={did}
-                    legacyDid={legacyDid ?? undefined}
-                    canEdit={canUserEdit}
-                    isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
-                    isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
-                    isFocused={focusedIndex === index}
-                    onDragStart={() => handleDragStart(item._id)}
-                    onDragOver={(e) => handleDragOver(e, item._id)}
-                    onDragEnd={handleDragEnd}
-                    onTouchStart={touchDrag.handleTouchStart}
-                    onCheck={checkItem}
-                    onUncheck={uncheckItem}
-                    isSelectMode={isSelectMode}
-                    isSelected={selectedIds.has(item._id)}
-                    onToggleSelect={() => toggleSelection(item._id)}
-                    onLongPress={() => enterSelectMode(item._id)}
-                  />
+              {aisleGroups.groups.map(({ aisle, items: aisleItems }) => (
+                <div key={aisle.id} className="mb-3">
+                  {/* Aisle section header */}
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-t-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700 dark:to-gray-750 border-b border-amber-100 dark:border-gray-600">
+                    <span className="text-lg">{aisle.emoji}</span>
+                    <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">{aisle.name}</span>
+                    <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+                      {aisleItems.length} {aisleItems.length === 1 ? "item" : "items"}
+                    </span>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-b-xl shadow-lg divide-y divide-gray-100 dark:divide-gray-700">
+                    {aisleItems.map((item) => {
+                      const globalIndex = sortedItems.findIndex(si => si._id === item._id);
+                      return (
+                        <div
+                          key={item._id}
+                          data-item-id={item._id}
+                          className="animate-slide-up"
+                        >
+                          <ListItem
+                            item={item}
+                            userDid={did}
+                            legacyDid={legacyDid ?? undefined}
+                            canEdit={canUserEdit}
+                            isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
+                            isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
+                            isFocused={focusedIndex === globalIndex}
+                            onDragStart={() => handleDragStart(item._id)}
+                            onDragOver={(e) => handleDragOver(e, item._id)}
+                            onDragEnd={handleDragEnd}
+                            onTouchStart={touchDrag.handleTouchStart}
+                            onCheck={checkItem}
+                            onUncheck={uncheckItem}
+                            isSelectMode={isSelectMode}
+                            isSelected={selectedIds.has(item._id)}
+                            onToggleSelect={() => toggleSelection(item._id)}
+                            onLongPress={() => enterSelectMode(item._id)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
+
+              {/* Completed section */}
+              {aisleGroups.checked.length > 0 && (
+                <div className="mb-3">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-t-xl bg-gradient-to-r from-green-50 to-emerald-50 dark:from-gray-700 dark:to-gray-750 border-b border-green-100 dark:border-gray-600">
+                    <span className="text-lg">✅</span>
+                    <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">Completed</span>
+                    <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+                      {aisleGroups.checked.length} {aisleGroups.checked.length === 1 ? "item" : "items"}
+                    </span>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-b-xl shadow-lg divide-y divide-gray-100 dark:divide-gray-700">
+                    {aisleGroups.checked.map((item) => {
+                      const globalIndex = sortedItems.findIndex(si => si._id === item._id);
+                      return (
+                        <div
+                          key={item._id}
+                          data-item-id={item._id}
+                          className="animate-slide-up"
+                        >
+                          <ListItem
+                            item={item}
+                            userDid={did}
+                            legacyDid={legacyDid ?? undefined}
+                            canEdit={canUserEdit}
+                            isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
+                            isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
+                            isFocused={focusedIndex === globalIndex}
+                            onDragStart={() => handleDragStart(item._id)}
+                            onDragOver={(e) => handleDragOver(e, item._id)}
+                            onDragEnd={handleDragEnd}
+                            onTouchStart={touchDrag.handleTouchStart}
+                            onCheck={checkItem}
+                            onUncheck={uncheckItem}
+                            isSelectMode={isSelectMode}
+                            isSelected={selectedIds.has(item._id)}
+                            onToggleSelect={() => toggleSelection(item._id)}
+                            onLongPress={() => enterSelectMode(item._id)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Standard flat list view */
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
+              <div
+                ref={itemsContainerRef}
+                className="divide-y divide-gray-100 dark:divide-gray-700"
+                onTouchMove={touchDrag.handleTouchMove}
+                onTouchEnd={touchDrag.handleTouchEnd}
+              >
+                {sortedItems.map((item: OptimisticItem, index) => (
+                  <div 
+                    key={item._id} 
+                    data-item-id={item._id}
+                    className="animate-slide-up"
+                    style={{ animationDelay: `${index * 30}ms` }}
+                  >
+                    <ListItem
+                      item={item}
+                      userDid={did}
+                      legacyDid={legacyDid ?? undefined}
+                      canEdit={canUserEdit}
+                      isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
+                      isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
+                      isFocused={focusedIndex === index}
+                      onDragStart={() => handleDragStart(item._id)}
+                      onDragOver={(e) => handleDragOver(e, item._id)}
+                      onDragEnd={handleDragEnd}
+                      onTouchStart={touchDrag.handleTouchStart}
+                      onCheck={checkItem}
+                      onUncheck={uncheckItem}
+                      isSelectMode={isSelectMode}
+                      isSelected={selectedIds.has(item._id)}
+                      onToggleSelect={() => toggleSelection(item._id)}
+                      onLongPress={() => enterSelectMode(item._id)}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
