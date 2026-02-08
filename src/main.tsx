@@ -9,6 +9,7 @@ import { SettingsProvider } from './hooks/useSettings'
 import { registerServiceWorker } from './lib/sw-registration'
 import { initDarkMode } from './lib/storage'
 import { initNativePlatform, initKeyboardHandling } from './lib/native'
+import { initNetworkMonitoring } from './lib/network'
 import './index.css'
 import App from './App.tsx'
 
@@ -20,6 +21,9 @@ initDarkMode();
 // Initialize native platform features (status bar, keyboard)
 initNativePlatform();
 initKeyboardHandling();
+
+// Initialize network monitoring for offline support
+initNetworkMonitoring();
 
 // Register service worker for offline support (web only - disabled in native apps)
 if (!Capacitor.isNativePlatform()) {

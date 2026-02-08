@@ -7,9 +7,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useConvex } from "convex/react";
-import { Capacitor } from "@capacitor/core";
 import { syncManager, type SyncStatus } from "../lib/sync";
 import { getQueuedMutations } from "../lib/offline";
+import { getNetworkStatus, onNetworkChange } from "../lib/network";
 
 /**
  * Hook return type for useOffline
@@ -56,9 +56,7 @@ export interface UseOfflineResult {
  * ```
  */
 export function useOffline(): UseOfflineResult {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
+  const [isOnline, setIsOnline] = useState(getNetworkStatus());
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ status: "idle" });
   const [pendingCount, setPendingCount] = useState(0);
   const convex = useConvex();
@@ -72,59 +70,16 @@ export function useOffline(): UseOfflineResult {
     };
   }, []);
 
-  // Track online/offline events and trigger sync on reconnect
-  // Use Capacitor Network plugin on native for reliable detection
+  // Track online/offline events using Capacitor network service and trigger sync on reconnect
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
-
-    const handleOnline = () => {
-      setIsOnline(true);
-      syncManager.sync(convex);
+    const handleNetworkChange = (connected: boolean) => {
+      setIsOnline(connected);
+      if (connected) {
+        syncManager.sync(convex);
+      }
     };
 
-    const handleOffline = () => {
-      setIsOnline(false);
-    };
-
-    if (Capacitor.isNativePlatform()) {
-      // Use Capacitor Network plugin for reliable native network detection
-      import("@capacitor/network").then(({ Network }) => {
-        // Get initial status
-        Network.getStatus().then((status) => {
-          if (isMounted.current) {
-            setIsOnline(status.connected);
-          }
-        });
-
-        // Listen for changes
-        const listener = Network.addListener("networkStatusChange", (status) => {
-          if (isMounted.current) {
-            if (status.connected) {
-              handleOnline();
-            } else {
-              handleOffline();
-            }
-          }
-        });
-
-        cleanup = () => {
-          listener.then((l) => l.remove());
-        };
-      });
-    } else {
-      // Fallback to browser events for web
-      window.addEventListener("online", handleOnline);
-      window.addEventListener("offline", handleOffline);
-
-      cleanup = () => {
-        window.removeEventListener("online", handleOnline);
-        window.removeEventListener("offline", handleOffline);
-      };
-    }
-
-    return () => {
-      cleanup?.();
-    };
+    return onNetworkChange(handleNetworkChange);
   }, [convex]);
 
   // Subscribe to sync status updates from SyncManager
