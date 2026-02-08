@@ -94,6 +94,7 @@ export async function createUserWebVHDid(params: {
 }) {
   const { privateKey, publicKeyMultibase } = await getOrCreateKeyPair(params.subOrgId);
   const signer = new BrowserWebVHSigner(privateKey, publicKeyMultibase);
+  // In Capacitor native apps, window.location.host returns "localhost", so use production domain
   const host = Capacitor.isNativePlatform() ? 'trypoo.app' : window.location.host;
   const domain =
     params.domain || (import.meta.env.VITE_WEBVH_DOMAIN as string | undefined) || host;

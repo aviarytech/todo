@@ -5,6 +5,7 @@
  * Features dark mode support and card hover effects.
  */
 
+import { memo } from "react";
 import { Link } from "react-router-dom";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
@@ -42,7 +43,7 @@ function formatRelativeTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString();
 }
 
-export function ListCard({ list, currentUserDid, showOwner }: ListCardProps) {
+export const ListCard = memo(function ListCard({ list, currentUserDid, showOwner }: ListCardProps) {
   const { haptic } = useSettings();
   const isOwner = list.ownerDid === currentUserDid;
   const emoji = getListEmoji(list.name);
@@ -125,4 +126,4 @@ export function ListCard({ list, currentUserDid, showOwner }: ListCardProps) {
       </div>
     </Link>
   );
-}
+});

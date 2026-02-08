@@ -6,7 +6,7 @@
  * Supports notes, due dates, URLs, and recurrence.
  */
 
-import { useState, useRef, lazy, Suspense } from "react";
+import { useState, useRef, lazy, Suspense, memo } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -40,7 +40,7 @@ interface ListItemProps {
   onLongPress?: () => void;
 }
 
-export function ListItem({
+export const ListItem = memo(function ListItem({
   item,
   userDid,
   legacyDid,
@@ -200,42 +200,48 @@ export function ListItem({
       {/* Selection checkbox - show in select mode */}
       {isSelectMode && canUserEdit && (
         <div
-          className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+          className={`flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center transition-all -ml-2`}
+          role="checkbox"
+          aria-checked={isSelected}
+          aria-label={`Select ${item.name}`}
+        >
+          <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
             isSelected
               ? "bg-amber-500 text-white"
               : "bg-gray-200 dark:bg-gray-600"
-          }`}
-        >
-          {isSelected && (
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          )}
+          }`}>
+            {isSelected && (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+          </div>
         </div>
       )}
 
       {/* Drag handle - only show if user can edit and not in select mode */}
       {canUserEdit && !isSelectMode && (
-        <div
-          className="flex-shrink-0 w-6 h-10 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 dark:hover:text-gray-500 transition-colors touch-none select-none"
+        <button
+          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 dark:hover:text-gray-500 transition-colors touch-none select-none -ml-2"
           aria-label="Drag to reorder"
           onTouchStart={(e) => {
             if (itemRef.current && onTouchStart) {
               onTouchStart(e, item._id, itemRef.current);
             }
           }}
+          tabIndex={-1}
         >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
             <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z" />
           </svg>
-        </div>
+        </button>
       )}
 
-      {/* Checkbox - compact size (hidden in select mode) */}
+      {/* Checkbox - larger touch target (hidden in select mode) */}
       {!isSelectMode && (canUserEdit ? (
         <button
           onClick={(e) => {
@@ -243,24 +249,26 @@ export function ListItem({
             handleToggleCheck();
           }}
           disabled={isUpdating}
-          className={`flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all active:scale-90 ${
+          className={`flex-shrink-0 w-11 h-11 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-50 -ml-2`}
+          aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
+        >
+          <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
             item.checked
               ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-sm shadow-green-500/30"
               : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
-          } disabled:opacity-50`}
-          aria-label={item.checked ? "Uncheck item" : "Check item"}
-        >
-          {item.checked ? (
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          ) : (
-            <div className="w-2 h-2" />
-          )}
+          }`}>
+            {item.checked ? (
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : (
+              <div className="w-2 h-2" aria-hidden="true" />
+            )}
+          </div>
         </button>
       ) : (
         // Read-only checkbox display for viewers
@@ -270,9 +278,12 @@ export function ListItem({
               ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white" 
               : "bg-gray-100 dark:bg-gray-700"
           }`}
+          role="checkbox"
+          aria-checked={item.checked}
+          aria-label={`${item.name} is ${item.checked ? 'checked' : 'unchecked'}`}
         >
           {item.checked && (
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
               <path
                 fillRule="evenodd"
                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -290,7 +301,7 @@ export function ListItem({
           if (isSelectMode) {
             return;
           }
-          haptic('light');
+          haptic('selection');
           setShowDetails(true);
         }}
         className={`flex-1 min-w-0 text-left rounded px-1 -mx-1 transition-colors ${
@@ -306,7 +317,8 @@ export function ListItem({
                 item.priority === "medium" ? "bg-yellow-500" :
                 "bg-blue-500"
               }`}
-              title={`${item.priority} priority`}
+              role="img"
+              aria-label={`${item.priority} priority`}
             />
           )}
           <p
@@ -320,10 +332,16 @@ export function ListItem({
           </p>
           {/* Indicators for extras */}
           {item.url && (
-            <span className="text-blue-500 flex-shrink-0 inline-flex items-center text-xs leading-none" title="Has link">🔗</span>
+            <span className="text-blue-500 flex-shrink-0 inline-flex items-center text-xs leading-none" role="img" aria-label="Has link">
+              🔗
+              <span className="sr-only">Link attached</span>
+            </span>
           )}
           {item.recurrence && (
-            <span className="text-purple-500 flex-shrink-0 inline-flex items-center text-xs leading-none" title={`Repeats ${item.recurrence.frequency}`}>🔁</span>
+            <span className="text-purple-500 flex-shrink-0 inline-flex items-center text-xs leading-none" role="img" aria-label={`Repeats ${item.recurrence.frequency}`}>
+              🔁
+              <span className="sr-only">Recurring {item.recurrence.frequency}</span>
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -377,14 +395,15 @@ export function ListItem({
             handleRemove();
           }}
           disabled={isUpdating}
-          className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50 transition-all active:scale-90"
-          aria-label="Remove item"
+          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50 transition-all active:scale-90 -mr-2"
+          aria-label={`Remove ${item.name}`}
         >
           <svg
             className="w-4 h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
@@ -410,4 +429,4 @@ export function ListItem({
       )}
     </div>
   );
-}
+});

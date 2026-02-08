@@ -9,13 +9,12 @@ import { OfflineIndicator } from './components/offline/OfflineIndicator'
 import { ToastContainer } from './components/notifications/Toast'
 import { Settings } from './components/Settings'
 import { initDeepLinks } from './lib/deeplinks'
-
-// Static imports for frequently used routes
-import { Home } from './pages/Home'
-import { Login } from './pages/Login'
-import { Landing } from './pages/Landing'
+import { initPushNotifications } from './lib/pushNotifications'
 
 // Lazy-loaded routes for better code splitting
+const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })))
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })))
+const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })))
 const ListView = lazy(() => import('./pages/ListView').then(m => ({ default: m.ListView })))
 const JoinList = lazy(() => import('./pages/JoinList').then(m => ({ default: m.JoinList })))
 const PublicList = lazy(() => import('./pages/PublicList').then(m => ({ default: m.PublicList })))
@@ -135,6 +134,13 @@ function App() {
   useEffect(() => {
     initDeepLinks(navigate)
   }, [navigate])
+
+  // Initialize push notifications after user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      initPushNotifications();
+    }
+  }, [isAuthenticated]);
 
   return (
     <>
