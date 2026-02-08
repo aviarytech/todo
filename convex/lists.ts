@@ -170,6 +170,68 @@ export const renameList = mutation({
 });
 
 /**
+ * Update the category of a list.
+ * Only the list owner can change the category.
+ */
+export const updateListCategory = mutation({
+  args: {
+    listId: v.id("lists"),
+    categoryId: v.optional(v.id("categories")),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const list = await ctx.db.get(args.listId);
+    if (!list) {
+      throw new Error("List not found");
+    }
+
+    const didsToCheck = [args.userDid];
+    if (args.legacyDid) {
+      didsToCheck.push(args.legacyDid);
+    }
+
+    let isOwner = false;
+
+    for (const did of didsToCheck) {
+      const collab = await ctx.db
+        .query("collaborators")
+        .withIndex("by_list_user", (q) =>
+          q.eq("listId", args.listId).eq("userDid", did)
+        )
+        .first();
+
+      if (collab?.role === "owner") {
+        isOwner = true;
+        break;
+      }
+    }
+
+    if (!isOwner) {
+      isOwner =
+        list.ownerDid === args.userDid ||
+        (args.legacyDid !== undefined && list.ownerDid === args.legacyDid);
+    }
+
+    if (!isOwner) {
+      throw new Error("Only the list owner can change the category");
+    }
+
+    // Validate category exists if provided
+    if (args.categoryId) {
+      const category = await ctx.db.get(args.categoryId);
+      if (!category) {
+        throw new Error("Category not found");
+      }
+    }
+
+    await ctx.db.patch(args.listId, {
+      categoryId: args.categoryId,
+    });
+  },
+});
+
+/**
  * Get a list by its ID.
  * Returns the list with owner and collaborator info.
  */
