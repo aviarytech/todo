@@ -235,6 +235,7 @@ export function Attachments({ itemId, userDid, legacyDid, canEdit }: Attachments
                   <img
                     src={url}
                     alt="Attachment"
+                    loading="lazy"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       // If image fails to load, show file icon
