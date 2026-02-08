@@ -519,25 +519,26 @@ export function ListView() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header - Redesigned for less crowding */}
-      <div className="flex items-center gap-3 mb-6">
-        {/* Back button */}
-        <Link
-          to="/app"
-          onClick={() => haptic('light')}
-          className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-          aria-label="Back to lists"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
+      <div className="mb-6">
+        <div className="flex items-start gap-3">
+          {/* Back button */}
+          <Link
+            to="/app"
+            onClick={() => haptic('light')}
+            className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+            aria-label="Back to lists"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
 
-        {/* Title and info - takes remaining space */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 line-clamp-2 sm:truncate">
-              {list.name}
-            </h2>
+          {/* Title and info - takes remaining space */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 break-words min-w-0">
+                {list.name}
+              </h1>
             {/* Verification badge for list */}
             <ListVerificationBadge
               hasVC={!!list.assetDid}
@@ -659,6 +660,7 @@ export function ListView() {
             onKeyboardShortcuts={() => setShowHelp(true)}
             haptic={haptic}
           />
+        </div>
         </div>
       </div>
 
