@@ -27,6 +27,7 @@ export function CategoryHeader({
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between py-2 text-left group"
+        aria-expanded={isExpanded}
       >
         <div className="flex items-center gap-2">
           <span

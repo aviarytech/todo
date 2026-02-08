@@ -49,13 +49,18 @@ export function RenameListDialog({ list, onClose }: RenameListDialogProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
       <div
         ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rename-dialog-title"
         className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6 animate-slide-up"
       >
-        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+        <h3 id="rename-dialog-title" className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
           Rename list
         </h3>
 
+        <label htmlFor="rename-list-input" className="sr-only">List name</label>
         <input
+          id="rename-list-input"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
