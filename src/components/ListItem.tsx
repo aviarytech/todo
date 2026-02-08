@@ -290,7 +290,7 @@ export function ListItem({
           if (isSelectMode) {
             return;
           }
-          haptic('light');
+          haptic('selection');
           setShowDetails(true);
         }}
         className={`flex-1 min-w-0 text-left rounded px-1 -mx-1 transition-colors ${

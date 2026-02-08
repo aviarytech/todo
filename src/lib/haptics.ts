@@ -1,84 +1,77 @@
+/**
+ * Haptic feedback utilities using Capacitor Haptics plugin.
+ * Uses native haptic engine (Taptic Engine on iOS, vibration on Android).
+ * Falls back gracefully on web where navigator.vibrate is available,
+ * and silently no-ops on unsupported platforms.
+ */
+
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 
-// Lazy import to avoid issues on web
-let HapticsModule: any = null;
+type HapticPattern = 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning' | 'selection';
 
+const isNative = Capacitor.isNativePlatform();
+
+// Web fallback patterns (vibration duration in ms)
+const webPatterns: Record<HapticPattern, number | number[]> = {
+  light: 10,
+  medium: 25,
+  heavy: 50,
+  selection: 5,
+  success: [10, 50, 10],
+  error: [50, 30, 50, 30, 50],
+  warning: [30, 50, 30],
+};
+
+/**
+ * Trigger haptic feedback.
+ * On native platforms, uses the Capacitor Haptics plugin for true haptic engine feedback.
+ * On web, falls back to navigator.vibrate().
+ */
+export function haptic(pattern: HapticPattern = 'light'): void {
+  try {
+    if (isNative) {
+      // Use native Capacitor Haptics
+      switch (pattern) {
+        case 'light':
+          Haptics.impact({ style: ImpactStyle.Light });
+          break;
+        case 'medium':
+          Haptics.impact({ style: ImpactStyle.Medium });
+          break;
+        case 'heavy':
+          Haptics.impact({ style: ImpactStyle.Heavy });
+          break;
+        case 'selection':
+          Haptics.selectionStart();
+          Haptics.selectionChanged();
+          Haptics.selectionEnd();
+          break;
+        case 'success':
+          Haptics.notification({ type: NotificationType.Success });
+          break;
+        case 'error':
+          Haptics.notification({ type: NotificationType.Error });
+          break;
+        case 'warning':
+          Haptics.notification({ type: NotificationType.Warning });
+          break;
+      }
+    } else {
+      // Web fallback using Vibration API
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(webPatterns[pattern]);
+      }
+    }
+  } catch {
+    // Ignore errors - haptics are non-essential
+  }
+}
+
+/**
+ * Check if haptic feedback is available.
+ */
 export function supportsHaptics(): boolean {
-  return Capacitor.isNativePlatform();
-}
-
-async function getHaptics() {
-  if (!Capacitor.isNativePlatform()) return null;
-  if (!HapticsModule) {
-    HapticsModule = await import('@capacitor/haptics');
-  }
-  return HapticsModule.Haptics;
-}
-
-export async function hapticLight() {
-  const Haptics = await getHaptics();
-  if (!Haptics) return;
-  await Haptics.impact({ style: 'light' });  // ImpactStyle.Light
-}
-
-export async function hapticMedium() {
-  const Haptics = await getHaptics();
-  if (!Haptics) return;
-  await Haptics.impact({ style: 'medium' });
-}
-
-export async function hapticSuccess() {
-  const Haptics = await getHaptics();
-  if (!Haptics) return;
-  await Haptics.notification({ type: 'success' });
-}
-
-export async function hapticWarning() {
-  const Haptics = await getHaptics();
-  if (!Haptics) return;
-  await Haptics.notification({ type: 'warning' });
-}
-
-export async function hapticSelection() {
-  const Haptics = await getHaptics();
-  if (!Haptics) return;
-  await Haptics.selectionStart();
-  await Haptics.selectionChanged();
-  await Haptics.selectionEnd();
-}
-
-export async function hapticError() {
-  const Haptics = await getHaptics();
-  if (!Haptics) return;
-  await Haptics.notification({ type: 'error' });
-}
-
-export async function hapticHeavy() {
-  const Haptics = await getHaptics();
-  if (!Haptics) return;
-  await Haptics.impact({ style: 'heavy' });
-}
-
-// Main export function that matches the pattern used by useSettings
-export function haptic(pattern: 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning' = 'light') {
-  switch (pattern) {
-    case 'light':
-      hapticLight();
-      break;
-    case 'medium':
-      hapticMedium();
-      break;
-    case 'heavy':
-      hapticHeavy();
-      break;
-    case 'success':
-      hapticSuccess();
-      break;
-    case 'error':
-      hapticError();
-      break;
-    case 'warning':
-      hapticWarning();
-      break;
-  }
+  if (isNative) return true;
+  return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 }
