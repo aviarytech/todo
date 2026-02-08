@@ -11,12 +11,14 @@ interface HeaderActionsMenuProps {
   canPublish: boolean;
   canSaveTemplate: boolean;
   canDelete: boolean;
+  canRename: boolean;
   isOnline: boolean;
   isPublished: boolean;
   onShare: () => void;
   onPublish: () => void;
   onSaveTemplate: () => void;
   onDelete: () => void;
+  onRename: () => void;
   onKeyboardShortcuts: () => void;
   haptic: (type: 'light' | 'medium' | 'heavy') => void;
 }
@@ -26,12 +28,14 @@ export function HeaderActionsMenu({
   canPublish,
   canSaveTemplate,
   canDelete,
+  canRename,
   isOnline,
   isPublished,
   onShare,
   onPublish,
   onSaveTemplate,
   onDelete,
+  onRename,
   onKeyboardShortcuts,
   haptic,
 }: HeaderActionsMenuProps) {
@@ -110,6 +114,17 @@ export function HeaderActionsMenu({
             <span>Keyboard shortcuts</span>
             <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">?</span>
           </button>
+
+          {/* Rename */}
+          {canRename && (
+            <button
+              onClick={() => handleAction(onRename)}
+              className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"
+            >
+              <span className="text-base leading-none">✏️</span>
+              <span>Rename list</span>
+            </button>
+          )}
 
           <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
 

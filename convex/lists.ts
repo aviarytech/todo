@@ -106,6 +106,70 @@ export const createList = mutation({
 });
 
 /**
+ * Rename a list and re-issue its Verifiable Credential with the updated name.
+ * Only the owner can rename a list.
+ */
+export const renameList = mutation({
+  args: {
+    listId: v.id("lists"),
+    name: v.string(),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const list = await ctx.db.get(args.listId);
+    if (!list) {
+      throw new Error("List not found");
+    }
+
+    const didsToCheck = [args.userDid];
+    if (args.legacyDid) {
+      didsToCheck.push(args.legacyDid);
+    }
+
+    let isOwner = false;
+
+    for (const did of didsToCheck) {
+      const collab = await ctx.db
+        .query("collaborators")
+        .withIndex("by_list_user", (q) =>
+          q.eq("listId", args.listId).eq("userDid", did)
+        )
+        .first();
+
+      if (collab?.role === "owner") {
+        isOwner = true;
+        break;
+      }
+    }
+
+    if (!isOwner) {
+      isOwner =
+        list.ownerDid === args.userDid ||
+        (args.legacyDid !== undefined && list.ownerDid === args.legacyDid);
+    }
+
+    if (!isOwner) {
+      throw new Error("Only the list owner can rename this list");
+    }
+
+    // Re-issue the VC with the new name
+    const vcProof = createListOwnershipVC(
+      args.listId,
+      list.assetDid ?? "",
+      list.ownerDid,
+      args.name,
+      list.createdAt
+    );
+
+    await ctx.db.patch(args.listId, {
+      name: args.name,
+      vcProof,
+    });
+  },
+});
+
+/**
  * Get a list by its ID.
  * Returns the list with owner and collaborator info.
  */
