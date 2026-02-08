@@ -38,27 +38,36 @@ jobs:
     name: Build iOS
     runs-on: macos-latest
     needs: web-build
-    if: hashFiles('ios/App/App.xcodeproj') != ''
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if iOS is configured
+        id: check
+        run: |
+          if [ -d "ios/App" ]; then echo "exists=true" >> $GITHUB_OUTPUT; else echo "exists=false" >> $GITHUB_OUTPUT; fi
+
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.exists == 'true'
         with:
           node-version: 22
           cache: npm
 
       - uses: actions/download-artifact@v4
+        if: steps.check.outputs.exists == 'true'
         with:
           name: web-dist
           path: dist/
 
       - name: Install dependencies
+        if: steps.check.outputs.exists == 'true'
         run: npm ci
 
       - name: Capacitor sync
+        if: steps.check.outputs.exists == 'true'
         run: npx cap sync ios
 
       - name: Cache CocoaPods
+        if: steps.check.outputs.exists == 'true'
         uses: actions/cache@v4
         with:
           path: ios/App/Pods
@@ -66,10 +75,12 @@ jobs:
           restore-keys: pods-
 
       - name: Install CocoaPods
+        if: steps.check.outputs.exists == 'true'
         working-directory: ios/App
         run: pod install
 
       - name: Build iOS (no signing)
+        if: steps.check.outputs.exists == 'true'
         working-directory: ios/App
         run: |
           xcodebuild build \
@@ -84,32 +95,42 @@ jobs:
     name: Build Android
     runs-on: ubuntu-latest
     needs: web-build
-    if: hashFiles('android/build.gradle') != ''
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if Android is configured
+        id: check
+        run: |
+          if [ -d "android" ] && [ -f "android/build.gradle" ]; then echo "exists=true" >> $GITHUB_OUTPUT; else echo "exists=false" >> $GITHUB_OUTPUT; fi
+
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.exists == 'true'
         with:
           node-version: 22
           cache: npm
 
       - uses: actions/setup-java@v4
+        if: steps.check.outputs.exists == 'true'
         with:
           distribution: temurin
           java-version: 17
 
       - uses: actions/download-artifact@v4
+        if: steps.check.outputs.exists == 'true'
         with:
           name: web-dist
           path: dist/
 
       - name: Install dependencies
+        if: steps.check.outputs.exists == 'true'
         run: npm ci
 
       - name: Capacitor sync
+        if: steps.check.outputs.exists == 'true'
         run: npx cap sync android
 
       - name: Cache Gradle
+        if: steps.check.outputs.exists == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -119,5 +140,6 @@ jobs:
           restore-keys: gradle-
 
       - name: Build Android Debug
+        if: steps.check.outputs.exists == 'true'
         working-directory: android
         run: ./gradlew assembleDebug
