@@ -660,6 +660,7 @@ export function ListView() {
             onKeyboardShortcuts={() => setShowHelp(true)}
             haptic={haptic}
           />
+          </div>
         </div>
         </div>
       </div>
