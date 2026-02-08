@@ -843,12 +843,16 @@ export function ListView() {
                   <div className="bg-white dark:bg-gray-800 rounded-b-xl shadow-lg divide-y divide-gray-100 dark:divide-gray-700">
                     {aisleItems.map((item) => {
                       const globalIndex = sortedItems.findIndex(si => si._id === item._id);
+                      const hasAisleOverride = !!(item as OptimisticItem & { groceryAisle?: string }).groceryAisle;
                       return (
                         <div
                           key={item._id}
                           data-item-id={item._id}
-                          className="animate-slide-up"
+                          className="animate-slide-up relative"
                         >
+                          {hasAisleOverride && (
+                            <span className="absolute top-1 right-1 z-10 text-[10px] opacity-60" title="Manually placed in this aisle">📌</span>
+                          )}
                           <ListItem
                             item={item}
                             userDid={did}
