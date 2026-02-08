@@ -36,6 +36,7 @@ const ShareModal = lazy(() => import("../components/ShareModal").then(m => ({ de
 const PublishModal = lazy(() => import("../components/publish/PublishModal").then(m => ({ default: m.PublishModal })));
 const ItemDetailsModal = lazy(() => import("../components/ItemDetailsModal").then(m => ({ default: m.ItemDetailsModal })));
 const SaveAsTemplateModal = lazy(() => import("../components/SaveAsTemplateModal").then(m => ({ default: m.SaveAsTemplateModal })));
+const RenameListDialog = lazy(() => import("../components/RenameListDialog").then(m => ({ default: m.RenameListDialog })));
 
 type ViewMode = "list" | "calendar";
 
@@ -50,6 +51,7 @@ export function ListView() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
@@ -629,12 +631,14 @@ export function ListView() {
             canPublish={canUserDelete}
             canSaveTemplate={canUserEdit}
             canDelete={canUserDelete}
+            canRename={canUserDelete}
             isOnline={isOnline}
             isPublished={publicationStatus?.status === "active"}
             onShare={() => setIsShareModalOpen(true)}
             onPublish={() => setIsPublishModalOpen(true)}
             onSaveTemplate={() => setIsSaveTemplateModalOpen(true)}
             onDelete={() => setIsDeleteDialogOpen(true)}
+            onRename={() => setIsRenameDialogOpen(true)}
             onKeyboardShortcuts={() => setShowHelp(true)}
             haptic={haptic}
           />
@@ -800,6 +804,13 @@ export function ListView() {
 
         {isPublishModalOpen && (
           <PublishModal list={list} onClose={() => setIsPublishModalOpen(false)} />
+        )}
+
+        {isRenameDialogOpen && (
+          <RenameListDialog
+            list={list}
+            onClose={() => setIsRenameDialogOpen(false)}
+          />
         )}
 
         {isSaveTemplateModalOpen && (
