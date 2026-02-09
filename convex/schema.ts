@@ -183,7 +183,7 @@ export default defineSchema({
     .index("by_owner", ["ownerDid"])
     .index("by_public", ["isPublic"]),
 
-  // Push notification subscriptions
+  // Push notification subscriptions (web push)
   pushSubscriptions: defineTable({
     userDid: v.string(),
     endpoint: v.string(),
@@ -195,6 +195,21 @@ export default defineSchema({
   })
     .index("by_user", ["userDid"])
     .index("by_endpoint", ["endpoint"]),
+
+  // Push tokens (native iOS APNs + Android/Web)
+  pushTokens: defineTable({
+    userDid: v.string(),
+    token: v.string(), // APNs device token or web push endpoint
+    platform: v.union(v.literal("ios"), v.literal("android"), v.literal("web")),
+    // For web push, store subscription details
+    webPushKeys: v.optional(v.object({
+      p256dh: v.string(),
+      auth: v.string(),
+    })),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userDid"])
+    .index("by_token", ["token"]),
 
   // Invites table - for sharing lists with partners
   invites: defineTable({

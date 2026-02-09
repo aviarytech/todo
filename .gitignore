@@ -30,3 +30,4 @@ ios/App/App.xcworkspace/xcuserdata/
 android/.gradle/
 android/app/build/
 android/build/
+.secrets/

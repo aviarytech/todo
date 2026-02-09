@@ -50,6 +50,8 @@ export function useNotifications({ userDid }: UseNotificationsOptions) {
   // Convex mutations for subscription management
   const saveSubscription = useMutation(api.notifications.saveSubscription);
   const removeSubscription = useMutation(api.notifications.removeSubscription);
+  const registerPushToken = useMutation(api.notifications.registerPushToken);
+  const unregisterPushToken = useMutation(api.notifications.unregisterPushToken);
 
   // Check if user has server-side subscription
   const hasServerSubscription = useQuery(
@@ -89,12 +91,21 @@ export function useNotifications({ userDid }: UseNotificationsOptions) {
       const subscription = await subscribeToPush();
 
       if (subscription) {
-        // Save to Convex
+        // Save to Convex (both legacy and new pushTokens table)
         const json = subscription.toJSON();
         await saveSubscription({
           userDid,
           endpoint: json.endpoint!,
           keys: {
+            p256dh: json.keys!.p256dh,
+            auth: json.keys!.auth,
+          },
+        });
+        await registerPushToken({
+          userDid,
+          token: json.endpoint!,
+          platform: 'web',
+          webPushKeys: {
             p256dh: json.keys!.p256dh,
             auth: json.keys!.auth,
           },
@@ -131,6 +142,10 @@ export function useNotifications({ userDid }: UseNotificationsOptions) {
         await unsubscribeFromPush();
         await removeSubscription({
           endpoint: subscription.endpoint,
+          userDid,
+        });
+        await unregisterPushToken({
+          token: subscription.endpoint,
           userDid,
         });
       }

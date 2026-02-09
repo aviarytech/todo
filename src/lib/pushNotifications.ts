@@ -1,46 +1,68 @@
+/**
+ * Push notification registration for native (iOS) and web platforms.
+ * Uses APNs directly for iOS via Capacitor, Web Push for Android/web.
+ * No Firebase dependency.
+ */
+
 import { Capacitor } from '@capacitor/core';
 
+/**
+ * Initialize push notification listeners (native only).
+ * For web, use the useNotifications hook instead.
+ * Call registerNativePushToken separately after getting the convex client + userDid.
+ */
 export async function initPushNotifications() {
   if (!Capacitor.isNativePlatform()) return;
-  
+
   const { PushNotifications } = await import('@capacitor/push-notifications');
-  
-  // Request permission
+
   const permResult = await PushNotifications.requestPermissions();
   if (permResult.receive !== 'granted') {
     console.log('Push notification permission not granted');
     return;
   }
-  
-  // Register with APNs / FCM
+
   await PushNotifications.register();
-  
-  // Listen for registration success
+
   PushNotifications.addListener('registration', (token) => {
     console.log('Push registration success, token:', token.value);
-    // TODO: Send token to backend for push delivery
-    // Could store in Convex user record
+    // Token will be sent to Convex via registerNativePushToken
+    // Store it for later registration
+    window.__pooAppAPNsToken = token.value;
   });
-  
-  // Listen for registration errors
+
   PushNotifications.addListener('registrationError', (error) => {
     console.error('Push registration error:', error);
   });
-  
-  // Listen for incoming notifications (app in foreground)
+
   PushNotifications.addListener('pushNotificationReceived', (notification) => {
     console.log('Push notification received:', notification);
-    // TODO: Show in-app notification banner
   });
-  
-  // Listen for notification tap (app opened from notification)
+
   PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
     console.log('Push notification action:', action);
     const data = action.notification.data;
-    // TODO: Navigate to relevant list/item based on notification data
     if (data?.listId) {
       window.location.href = `/list/${data.listId}`;
     }
+  });
+}
+
+/**
+ * Register the native APNs token with Convex.
+ * Call after auth is established and convex client is available.
+ */
+export async function registerNativePushToken(
+  convexMutation: (args: { userDid: string; token: string; platform: 'ios' | 'android' | 'web' }) => Promise<unknown>,
+  userDid: string
+) {
+  const token = window.__pooAppAPNsToken;
+  if (!token) return;
+
+  await convexMutation({
+    userDid,
+    token,
+    platform: 'ios',
   });
 }
 
@@ -49,4 +71,11 @@ export async function getDeliveredNotifications() {
   const { PushNotifications } = await import('@capacitor/push-notifications');
   const { notifications } = await PushNotifications.getDeliveredNotifications();
   return notifications;
+}
+
+// Extend window for APNs token storage
+declare global {
+  interface Window {
+    __pooAppAPNsToken?: string;
+  }
 }
