@@ -18,8 +18,8 @@ platform :ios do
       git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
     )
 
-    # Auto-increment build number using timestamp for uniqueness
-    build_number = Time.now.strftime("%Y%m%d%H%M")
+    # Use CI run number for build version, fallback to timestamp locally
+    build_number = ENV["GITHUB_RUN_NUMBER"] || Time.now.to_i.to_s
     increment_build_number(
       build_number: build_number,
       xcodeproj: "App/App.xcodeproj"
