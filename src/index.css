@@ -245,18 +245,6 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Mobile scroll fixes */
-.scroll-container {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-}
-
-/* Prevent scroll chaining on inner scroll containers */
-[style*="overflow"], .overflow-y-auto, .overflow-auto {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
-
 /* Mobile viewport height fix — min-h-screen uses 100vh which is wrong on mobile.
    Use this utility class where full-height layouts are needed. */
 .min-h-screen-safe {

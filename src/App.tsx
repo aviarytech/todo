@@ -11,7 +11,6 @@ import { Settings } from './components/Settings'
 import { AppLockGuard } from './components/AppLockGuard'
 import { initDeepLinks } from './lib/deeplinks'
 import { initPushNotifications } from './lib/pushNotifications'
-import { useSwipeBack } from './hooks/useSwipeBack'
 
 // Lazy-loaded routes for better code splitting
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })))
@@ -31,7 +30,6 @@ const PriorityFocus = lazy(() => import('./pages/PriorityFocus').then(m => ({ de
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { haptic, darkMode, toggleDarkMode } = useSettings();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  useSwipeBack();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 transition-colors">

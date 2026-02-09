@@ -9,6 +9,7 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
+import { ItemVerificationBadge } from "./VerificationBadge";
 
 interface ListCardProps {
   list: Doc<"lists">;
@@ -67,6 +68,11 @@ export const ListCard = memo(function ListCard({ list, currentUserDid, showOwner
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 sm:truncate group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
                 {list.name}
               </h3>
+              {/* Verification badge showing VC status */}
+              <ItemVerificationBadge
+                hasVC={!!list.assetDid}
+                did={list.assetDid}
+              />
             </div>
             {!isOwner && (
               <span className="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
