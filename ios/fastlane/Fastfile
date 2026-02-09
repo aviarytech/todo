@@ -44,10 +44,7 @@ platform :ios do
 
     upload_to_testflight(
       api_key: api_key,
-      skip_waiting_for_build_processing: false,
-      distribute_external: false,
-      groups: ["Developers"],
-      changelog: "Latest build from main branch"
+      skip_waiting_for_build_processing: true
     )
   end
 end
