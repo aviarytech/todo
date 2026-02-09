@@ -27,6 +27,10 @@ jobs:
 
       - name: Build web app
         run: npm run build
+        env:
+          VITE_CONVEX_URL: ${{ secrets.VITE_CONVEX_URL }}
+          VITE_CONVEX_HTTP_URL: ${{ secrets.VITE_CONVEX_HTTP_URL }}
+          VITE_CONVEX_SITE_URL: ${{ secrets.VITE_CONVEX_SITE_URL }}
 
       - uses: actions/upload-artifact@v4
         with:
