@@ -32,6 +32,7 @@ import { CalendarView } from "../components/CalendarView";
 import { BatchOperations } from "../components/BatchOperations";
 import { HeaderActionsMenu } from "../components/HeaderActionsMenu";
 import { ListVerificationBadge, type VerificationState } from "../components/VerificationBadge";
+import { usePullToRefresh, PullToRefreshIndicator } from "../hooks/usePullToRefresh";
 
 // Lazy-loaded modals for better bundle splitting
 const DeleteListDialog = lazy(() => import("../components/DeleteListDialog").then(m => ({ default: m.DeleteListDialog })));
@@ -74,6 +75,15 @@ export function ListView() {
   // Store only ID to avoid stale snapshots - we'll look up live item from the reactive items array
   const [editingItemId, setEditingItemId] = useState<Id<"items"> | null>(null);
   const addItemInputRef = useRef<HTMLInputElement>(null);
+
+  // Pull to refresh
+  const { isRefreshing, pullDistance, pullRef } = usePullToRefresh({
+    onRefresh: async () => {
+      // Convex is reactive, so just wait briefly for visual feedback
+      await new Promise(resolve => setTimeout(resolve, 800));
+    },
+    threshold: 80,
+  });
 
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
@@ -592,7 +602,8 @@ export function ListView() {
   const totalCount = items.length;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div ref={pullRef} className="max-w-3xl mx-auto">
+      <PullToRefreshIndicator pullDistance={pullDistance} threshold={80} isRefreshing={isRefreshing} />
       {/* Header - Redesigned for less crowding */}
       <div className="mb-6">
         <div className="flex items-start gap-3">
