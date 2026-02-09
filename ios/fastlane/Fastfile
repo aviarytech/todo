@@ -18,6 +18,13 @@ platform :ios do
       git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
     )
 
+    # Auto-increment build number using timestamp for uniqueness
+    build_number = Time.now.strftime("%Y%m%d%H%M")
+    increment_build_number(
+      build_number: build_number,
+      xcodeproj: "App/App.xcodeproj"
+    )
+
     update_code_signing_settings(
       use_automatic_signing: false,
       path: "App/App.xcodeproj",
