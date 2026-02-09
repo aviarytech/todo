@@ -61,10 +61,7 @@ jobs:
           bundler-cache: true
           working-directory: ios
 
-      - name: Install CocoaPods
-        run: gem install cocoapods
-
-      - name: Capacitor sync (includes pod install)
+      - name: Capacitor sync
         run: npx cap sync ios
 
       - name: Fastlane Beta
