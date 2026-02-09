@@ -55,25 +55,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Capacitor sync
-        run: npx cap sync ios
-
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: ios/App/Pods
-          key: pods-${{ hashFiles('ios/App/Podfile.lock') }}
-          restore-keys: pods-
-
-      - name: Install CocoaPods
-        working-directory: ios/App
-        run: pod install
-
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
           bundler-cache: true
           working-directory: ios
+
+      - name: Install CocoaPods
+        run: gem install cocoapods
+
+      - name: Capacitor sync (includes pod install)
+        run: npx cap sync ios
 
       - name: Fastlane Beta
         working-directory: ios
