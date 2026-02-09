@@ -6,8 +6,14 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   // Allow service worker and offline caching in native WebView
   server: {
-    // Allow mixed content for local service worker
+    // Use https scheme on both platforms for proper cookie/CORS handling
     androidScheme: 'https',
+    iosScheme: 'https',
+    // Allow WebSocket and HTTP connections to backend
+    allowNavigation: [
+      'pooapp-convex-backend-production.up.railway.app',
+      'pooapp-http.aviarytech.com',
+    ],
   },
   plugins: {
     SplashScreen: {
