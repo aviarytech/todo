@@ -47,5 +47,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Poo App needs camera access to take photos for your list items.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Poo App needs photo library access to attach images to your list items.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Poo App needs permission to save photos to your library.</string>
 </dict>
 </plist>
