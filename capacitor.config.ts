@@ -11,8 +11,8 @@ const config: CapacitorConfig = {
     iosScheme: 'https',
     // Allow WebSocket and HTTP connections to backend
     allowNavigation: [
-      'pooapp-convex-backend-production.up.railway.app',
-      'pooapp-http.aviarytech.com',
+      'convex-backend-production-8e02.up.railway.app',
+      'convex.x51.ca',
     ],
   },
   plugins: {
