@@ -9,6 +9,7 @@ import { OfflineIndicator } from './components/offline/OfflineIndicator'
 import { ToastContainer } from './components/notifications/Toast'
 import { Settings } from './components/Settings'
 import { AppLockGuard } from './components/AppLockGuard'
+import { useSwipeBack } from './hooks/useSwipeBack'
 import { initDeepLinks } from './lib/deeplinks'
 import { initPushNotifications } from './lib/pushNotifications'
 
@@ -32,7 +33,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 transition-colors">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 transition-colors overflow-hidden">
       {/* Skip to main content link */}
       <a
         href="#main-content"
@@ -97,7 +98,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main id="main-content" className="container mx-auto px-4 py-6 safe-area-inset-bottom">
+      <main id="main-content" className="container mx-auto px-4 py-6 safe-area-inset-bottom flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch" }}>
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
 
@@ -138,6 +139,9 @@ function PageLoadingFallback() {
 function App() {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
+
+  // Enable swipe-right from left edge to go back (mobile PWA)
+  useSwipeBack()
 
   // Initialize deep links for mobile
   useEffect(() => {

@@ -2,6 +2,9 @@
 	"appId": "app.trypoo.app",
 	"appName": "Poo App",
 	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	},
 	"plugins": {
 		"SplashScreen": {
 			"launchShowDuration": 2000,
@@ -10,13 +13,24 @@
 			"showSpinner": false,
 			"splashFullScreen": true,
 			"splashImmersive": true
+		},
+		"Keyboard": {
+			"resize": "native",
+			"resizeOnFullScreen": true
 		}
+	},
+	"ios": {
+		"allowsLinkPreview": false
 	},
 	"packageClassList": [
 		"AppPlugin",
+		"CAPCameraPlugin",
 		"HapticsPlugin",
 		"KeyboardPlugin",
 		"CAPNetworkPlugin",
+		"PreferencesPlugin",
+		"PushNotificationsPlugin",
+		"SharePlugin",
 		"StatusBarPlugin",
 		"NativeBiometric"
 	]

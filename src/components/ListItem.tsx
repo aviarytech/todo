@@ -14,7 +14,6 @@ import { ItemAttribution } from "./ItemAttribution";
 import { useSettings } from "../hooks/useSettings";
 import type { OptimisticItem } from "../hooks/useOptimisticItems";
 import { useSubItemProgress } from "./SubItems";
-import { ItemVerificationBadge } from "./VerificationBadge";
 import { shareItem } from "../lib/share";
 
 // Lazy load the details modal
@@ -362,11 +361,7 @@ export const ListItem = memo(function ListItem({
         </div>
         <div className="flex items-center gap-2">
           <ItemAttribution item={item} />
-          {/* Verification badge - shows VC status for item authorship */}
-          <ItemVerificationBadge
-            hasVC={!!item.createdByDid}
-            did={item.createdByDid}
-          />
+          {/* VC badge removed — verification shown at list level only */}
           {/* Due date badge */}
           {dueDateStr && (
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5 ${
