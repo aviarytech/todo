@@ -1,6 +1,6 @@
 # Poo App 💩
 
-A collaborative list-sharing app with decentralized identity (DID) and verifiable credentials.
+A collaborative list-sharing app with decentralized identity (DID) and verifiable credentials built using Originals.
 
 ## Features Backlog
 
