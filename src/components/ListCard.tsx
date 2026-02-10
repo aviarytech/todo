@@ -51,26 +51,24 @@ export const ListCard = memo(function ListCard({ list, currentUserDid, showOwner
     <Link
       to={`/list/${list._id}`}
       onClick={() => haptic('light')}
-      className="group block bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl dark:shadow-gray-900/50 transition-all duration-200 p-5 card-hover border border-gray-100 dark:border-gray-700 hover:border-amber-200 dark:hover:border-amber-600"
+      className="group block bg-white dark:bg-gray-800/80 rounded-3xl shadow-sm hover:shadow-xl dark:shadow-gray-900/30 transition-all duration-300 p-6 sm:p-7 border border-gray-100/80 dark:border-gray-700/50 hover:border-amber-300/60 dark:hover:border-amber-600/60 backdrop-blur-sm"
       aria-label={`Open list: ${list.name}`}
     >
-      <div className="flex items-start gap-4">
-        {/* Emoji icon */}
-        <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+      <div className="flex items-center gap-5">
+        {/* Emoji icon - larger, more prominent */}
+        <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-amber-100 via-amber-50 to-orange-50 dark:from-amber-900/40 dark:via-amber-900/30 dark:to-orange-900/30 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl group-hover:scale-110 transition-transform duration-300 shadow-sm">
           {emoji}
         </div>
 
         <div className="flex-1 min-w-0">
           {/* List name and badges */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 sm:truncate group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
-                {list.name}
-              </h3>
-            </div>
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-50 line-clamp-2 group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors tracking-tight leading-tight">
+              {list.name}
+            </h3>
             {!isOwner && (
-              <span className="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="flex-shrink-0 inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 text-amber-800 dark:text-amber-300 border border-amber-300/40 dark:border-amber-700/40">
+                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 Shared
@@ -79,31 +77,31 @@ export const ListCard = memo(function ListCard({ list, currentUserDid, showOwner
           </div>
 
           {/* Metadata */}
-          <div className="mt-2 flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
             {isOwner ? (
-              <span className="flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-amber-600 dark:text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-                You
+                <span className="font-medium">You</span>
               </span>
             ) : showOwner ? (
-              <span className="flex items-center gap-1 truncate" title={list.ownerDid}>
-                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="flex items-center gap-1.5 truncate" title={list.ownerDid}>
+                <svg className="w-4 h-4 flex-shrink-0 text-amber-600 dark:text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-                {truncateDid(list.ownerDid)}
+                <span className="font-medium">{truncateDid(list.ownerDid)}</span>
               </span>
             ) : (
-              <span className="flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-amber-600 dark:text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                Shared
+                <span className="font-medium">Shared</span>
               </span>
             )}
             <span className="text-gray-300 dark:text-gray-600">•</span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -112,9 +110,9 @@ export const ListCard = memo(function ListCard({ list, currentUserDid, showOwner
           </div>
         </div>
 
-        {/* Arrow indicator */}
-        <div className="flex-shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors group-hover:translate-x-1 transform duration-200">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* Arrow indicator - minimal */}
+        <div className="hidden sm:flex flex-shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-all group-hover:translate-x-1 duration-300">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>
