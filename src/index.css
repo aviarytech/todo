@@ -9,6 +9,40 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
+
+  /* Warm Cream/Amber Design System - 💩 Brand Colors */
+  --cream-50: #fffcf5;
+  --cream-100: #fef8ed;
+  --cream-200: #fcefd5;
+  --cream-300: #fae5bd;
+  
+  --amber-400: #fbbf24;
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --amber-700: #b45309;
+  --amber-800: #92400e;
+  --amber-900: #78350f;
+  
+  --warm-50: #fafaf9;
+  --warm-100: #f5f5f4;
+  --warm-200: #e7e5e4;
+  --warm-300: #d6d3d1;
+  --warm-400: #a8a29e;
+  --warm-500: #78716c;
+  --warm-600: #57534e;
+  --warm-700: #44403c;
+  --warm-800: #292524;
+  --warm-900: #1c1917;
+  
+  --bg-primary: var(--cream-50);
+  --bg-secondary: var(--cream-100);
+  --bg-tertiary: var(--cream-200);
+  --text-primary: var(--warm-900);
+  --text-secondary: var(--warm-700);
+  --text-tertiary: var(--warm-600);
+  --border-color: var(--cream-300);
+  --accent-primary: var(--amber-600);
+  --accent-hover: var(--amber-500);
 }
 
 /* Apply to the main layout */
