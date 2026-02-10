@@ -39,24 +39,26 @@ class WebStorage implements StorageAdapter {
 
 class NativeStorage implements StorageAdapter {
   private prefs: any = null;
+  private prefsReady: Promise<any> | null = null;
   private fallbackToWeb = false;
   private webStorage = new WebStorage();
   
-  private async getPrefs() {
-    if (this.fallbackToWeb) return null;
-    if (!this.prefs) {
-      try {
-        const mod = await import('@capacitor/preferences');
-        this.prefs = mod.Preferences;
-        // Test that it actually works
-        await this.prefs.get({ key: '__test__' });
-      } catch (e) {
-        console.warn('[storageAdapter] Preferences not available, falling back to localStorage', e);
-        this.fallbackToWeb = true;
-        return null;
-      }
+  private getPrefs(): Promise<any> {
+    if (this.fallbackToWeb) return Promise.resolve(null);
+    if (!this.prefsReady) {
+      this.prefsReady = import('@capacitor/preferences').then(
+        (mod) => {
+          this.prefs = mod.Preferences;
+          return this.prefs;
+        },
+        (err) => {
+          console.warn('[storageAdapter] Preferences not available, falling back to localStorage', err);
+          this.fallbackToWeb = true;
+          return null;
+        }
+      );
     }
-    return this.prefs;
+    return this.prefsReady;
   }
   
   async get(key: string) {
