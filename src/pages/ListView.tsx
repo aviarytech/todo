@@ -605,8 +605,7 @@ export function ListView() {
   return (
     <div
       ref={pullRef}
-      className="max-w-3xl mx-auto overflow-y-auto overscroll-contain"
-      style={{ WebkitOverflowScrolling: "touch" }}
+      className="max-w-3xl mx-auto"
     >
       {/* Pull-to-refresh indicator */}
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
