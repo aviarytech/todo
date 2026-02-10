@@ -39,38 +39,56 @@ class WebStorage implements StorageAdapter {
 
 class NativeStorage implements StorageAdapter {
   private prefs: any = null;
+  private prefsReady: Promise<any> | null = null;
+  private fallbackToWeb = false;
+  private webStorage = new WebStorage();
   
-  private async getPrefs() {
-    if (!this.prefs) {
-      const mod = await import('@capacitor/preferences');
-      this.prefs = mod.Preferences;
+  private getPrefs(): Promise<any> {
+    if (this.fallbackToWeb) return Promise.resolve(null);
+    if (!this.prefsReady) {
+      this.prefsReady = import('@capacitor/preferences').then(
+        (mod) => {
+          this.prefs = mod.Preferences;
+          return this.prefs;
+        },
+        (err) => {
+          console.warn('[storageAdapter] Preferences not available, falling back to localStorage', err);
+          this.fallbackToWeb = true;
+          return null;
+        }
+      );
     }
-    return this.prefs;
+    return this.prefsReady;
   }
   
   async get(key: string) {
     const prefs = await this.getPrefs();
+    if (!prefs) return this.webStorage.get(key);
     const { value } = await prefs.get({ key });
     return value;
   }
   
   async set(key: string, value: string) {
     const prefs = await this.getPrefs();
+    if (!prefs) return this.webStorage.set(key, value);
     await prefs.set({ key, value });
   }
   
   async remove(key: string) {
     const prefs = await this.getPrefs();
+    if (!prefs) return this.webStorage.remove(key);
     await prefs.remove({ key });
   }
   
   async clear() {
     const prefs = await this.getPrefs();
+    if (!prefs) return this.webStorage.clear();
     await prefs.clear();
   }
   
   async keys() {
     const prefs = await this.getPrefs();
+    if (!prefs) return this.webStorage.keys();
     const { keys } = await prefs.keys();
     return keys;
   }
