@@ -31,7 +31,7 @@ export function VerificationBadge({ did, didDocument }: VerificationBadgeProps) 
       {/* Badge button */}
       <button
         onClick={() => setShowDetails(!showDetails)}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm font-medium hover:bg-green-200 transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
         aria-expanded={showDetails}
         aria-label="Verification details"
       >

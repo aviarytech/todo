@@ -72,18 +72,13 @@ export function Landing() {
             into breakthrough moments. 🚽✨
           </p>
 
-          {/* Join the movement CTA */}
-          <p className="text-lg sm:text-xl md:text-2xl font-bold text-amber-900 mb-8 sm:mb-10 px-2">
-            🚀 Join the movement. One flush at a time.
-          </p>
-
           {/* CTA Buttons - full width on mobile, touch-friendly */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-10 sm:mb-16 px-4 sm:px-0">
             <Link
               to={isAuthenticated ? '/' : '/login'}
               className="w-full sm:w-auto px-6 sm:px-8 py-4 sm:py-4 bg-gradient-to-r from-amber-600 to-orange-500 text-white rounded-2xl font-bold text-base sm:text-lg hover:from-amber-500 hover:to-orange-400 active:from-amber-700 active:to-orange-600 transition-all shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:shadow-amber-500/40 hover:-translate-y-1 text-center min-h-[52px] flex items-center justify-center"
             >
-              {isAuthenticated ? 'Go to My Lists' : 'Get Started — It\'s Free'}
+              {isAuthenticated ? 'Go to My Lists' : 'Join the Movement'}
             </Link>
             <a
               href="#features"
