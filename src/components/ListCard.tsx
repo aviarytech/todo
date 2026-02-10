@@ -9,7 +9,6 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
-import { ItemVerificationBadge } from "./VerificationBadge";
 
 interface ListCardProps {
   list: Doc<"lists">;
@@ -68,14 +67,9 @@ export const ListCard = memo(function ListCard({ list, currentUserDid, showOwner
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 sm:truncate group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
                 {list.name}
               </h3>
-              {/* Verification badge showing VC status */}
-              <ItemVerificationBadge
-                hasVC={!!list.assetDid}
-                did={list.assetDid}
-              />
             </div>
             {!isOwner && (
-              <span className="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
+              <span className="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
                 <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
