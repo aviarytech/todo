@@ -33,7 +33,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 transition-colors overflow-hidden">
+    <div className="min-h-screen-safe flex flex-col bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 transition-colors">
       {/* Skip to main content link */}
       <a
         href="#main-content"
@@ -43,7 +43,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       </a>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800 safe-area-inset-top">
+      <header className="flex-shrink-0 sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800 safe-area-inset-top">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <Link 
             to="/app" 
@@ -98,7 +98,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main id="main-content" className="container mx-auto px-4 py-6 safe-area-inset-bottom flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch" }}>
+      <main id="main-content" className="container mx-auto px-4 py-6 safe-area-inset-bottom flex-1 overflow-y-auto">
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
 
