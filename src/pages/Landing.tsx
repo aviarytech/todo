@@ -78,7 +78,7 @@ export function Landing() {
               to={isAuthenticated ? '/' : '/login'}
               className="w-full sm:w-auto px-6 sm:px-8 py-4 sm:py-4 bg-gradient-to-r from-amber-600 to-orange-500 text-white rounded-2xl font-bold text-base sm:text-lg hover:from-amber-500 hover:to-orange-400 active:from-amber-700 active:to-orange-600 transition-all shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:shadow-amber-500/40 hover:-translate-y-1 text-center min-h-[52px] flex items-center justify-center"
             >
-              {isAuthenticated ? 'Go to My Lists' : 'Join the Movement 💩'}
+              {isAuthenticated ? 'Go to My Lists' : 'Join the Movement'}
             </Link>
             <a
               href="#features"
