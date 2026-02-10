@@ -19,6 +19,7 @@ import { useSettings } from "../hooks/useSettings";
 import { useTouchDrag } from "../hooks/useTouchDrag";
 import { useNotifications } from "../hooks/useNotifications";
 import { useKeyboardShortcuts, KeyboardShortcutsHelp, type Shortcut } from "../hooks/useKeyboardShortcuts";
+import { usePullToRefresh, PullToRefreshIndicator } from "../hooks/usePullToRefresh";
 import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { groupByAisle, classifyItem } from "../lib/groceryAisles";
 import { useCategories } from "../hooks/useCategories";
@@ -50,6 +51,18 @@ export function ListView() {
   const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
   const { haptic } = useSettings();
   const { scheduleItemsNotifications, isEnabled: notificationsEnabled } = useNotifications({ userDid: did });
+
+  // Pull-to-refresh
+  const handleRefresh = useCallback(async () => {
+    haptic('medium');
+    await new Promise(resolve => setTimeout(resolve, 800));
+    haptic('success');
+  }, [haptic]);
+
+  const { isRefreshing, pullDistance, pullRef } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    threshold: 80,
+  });
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -592,7 +605,14 @@ export function ListView() {
   const totalCount = items.length;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div ref={pullRef} className="max-w-3xl mx-auto">
+      {/* Pull-to-refresh indicator */}
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        threshold={80}
+        isRefreshing={isRefreshing}
+      />
+
       {/* Header - Redesigned for less crowding */}
       <div className="mb-6">
         <div className="flex items-start gap-3">
