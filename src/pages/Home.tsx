@@ -194,7 +194,7 @@ export function Home() {
   const hasFilteredResults = processedLists && processedLists.length > 0;
 
   return (
-    <div ref={pullRef} className="min-h-full">
+    <div ref={pullRef} className="min-h-full pb-24">
       {/* Pull-to-refresh indicator */}
       <PullToRefreshIndicator
         pullDistance={pullDistance}
@@ -202,40 +202,36 @@ export function Home() {
         isRefreshing={isRefreshing}
       />
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+      {/* Header - Modern Minimal */}
+      <div className="mb-8 mt-2">
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-50 mb-3 tracking-tight">
           Your Lists
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
           <Link
             to="/priority"
             onClick={() => haptic('light')}
-            className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 px-3.5 py-2 rounded-full font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
+            className="inline-flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400 px-4 py-2.5 rounded-2xl font-medium bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/60 border border-amber-200/50 dark:border-amber-800/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
           >
-            🎯 Focus
+            <span className="text-base">🎯</span>
+            <span>Focus</span>
           </Link>
           <button
             onClick={() => {
               haptic('light');
               setIsCategoryManagerOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 px-3.5 py-2 rounded-full font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
+            className="inline-flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400 px-4 py-2.5 rounded-2xl font-medium bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/60 border border-amber-200/50 dark:border-amber-800/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
           >
-            📁 Categories
-          </button>
-          <button
-            onClick={handleOpenCreate}
-            className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-4 py-2 rounded-full font-semibold shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
-          >
-            ✨ New List
+            <span className="text-base">📁</span>
+            <span>Categories</span>
           </button>
         </div>
       </div>
 
       {/* Search and Sort */}
       {hasLists && (
-        <div className="flex gap-3 mb-6 animate-slide-up">
+        <div className="flex gap-3 mb-8 animate-slide-up">
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
@@ -247,7 +243,7 @@ export function Home() {
 
       {/* Cached data indicator */}
       {usingCache && (
-        <div className="mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400 text-sm flex items-center gap-3 animate-slide-up">
+        <div className="mb-6 px-5 py-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 rounded-3xl text-amber-800 dark:text-amber-300 text-sm flex items-center gap-3 animate-slide-up">
           <span className="text-xl">📡</span>
           <span>You're offline. Showing cached lists — some info may be outdated.</span>
         </div>
@@ -270,9 +266,9 @@ export function Home() {
         </div>
       )}
 
-      {/* Lists */}
+      {/* Lists - Modern Card Layout */}
       {!isLoading && hasFilteredResults && did && (
-        <div className="space-y-8 animate-slide-up">
+        <div className="space-y-10 animate-slide-up">
           {/* Your Lists section (owned by user) */}
           {(ownedLists.uncategorized.length > 0 || Array.from(ownedLists.categorized.values()).some(l => l.length > 0)) && (
             <section>
@@ -287,7 +283,7 @@ export function Home() {
                     name={category.name}
                     listCount={categoryLists.length}
                   >
-                    <div className="grid gap-4 grid-cols-1">
+                    <div className="grid gap-5 grid-cols-1">
                       {categoryLists.map((list, index) => (
                         <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                           <ListCard list={list} currentUserDid={did} />
@@ -304,7 +300,7 @@ export function Home() {
                   name="Uncategorized"
                   listCount={ownedLists.uncategorized.length}
                 >
-                  <div className="grid gap-4 grid-cols-1">
+                  <div className="grid gap-5 grid-cols-1">
                     {ownedLists.uncategorized.map((list, index) => (
                       <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                         <ListCard list={list} currentUserDid={did} />
@@ -318,9 +314,10 @@ export function Home() {
 
           {/* Shared with me section */}
           {(sharedLists.uncategorized.length > 0 || Array.from(sharedLists.categorized.values()).some(l => l.length > 0)) && (
-            <section>
-              <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-                <span>🤝</span> Shared with me
+            <section className="pt-6">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6 flex items-center gap-3">
+                <span className="text-2xl">🤝</span> 
+                <span>Shared with me</span>
               </h2>
 
               {/* Categorized shared lists */}
@@ -334,7 +331,7 @@ export function Home() {
                     name={category.name}
                     listCount={categoryLists.length}
                   >
-                    <div className="grid gap-4 grid-cols-1">
+                    <div className="grid gap-5 grid-cols-1">
                       {categoryLists.map((list, index) => (
                         <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                           <ListCard list={list} currentUserDid={did} showOwner />
@@ -351,7 +348,7 @@ export function Home() {
                   name="Uncategorized"
                   listCount={sharedLists.uncategorized.length}
                 >
-                  <div className="grid gap-4 grid-cols-1">
+                  <div className="grid gap-5 grid-cols-1">
                     {sharedLists.uncategorized.map((list, index) => (
                       <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                         <ListCard list={list} currentUserDid={did} showOwner />
@@ -364,6 +361,22 @@ export function Home() {
           )}
         </div>
       )}
+
+      {/* Floating Action Button (FAB) - Modern Material Design 3 */}
+      <button
+        onClick={handleOpenCreate}
+        className="fixed bottom-6 right-6 z-30 w-16 h-16 bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white rounded-full shadow-2xl shadow-amber-500/40 hover:shadow-3xl hover:shadow-amber-500/50 focus:outline-none focus:ring-4 focus:ring-amber-500/30 transition-all active:scale-95 flex items-center justify-center group"
+        aria-label="Create new list"
+      >
+        <svg 
+          className="w-7 h-7 transition-transform group-hover:rotate-90 group-hover:scale-110" 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
 
       {/* Modals */}
       {isTemplatePickerOpen && (
