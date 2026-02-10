@@ -16,6 +16,11 @@ const config: CapacitorConfig = {
     ],
   },
   plugins: {
+    CapacitorHttp: {
+      // Route fetch() through native HTTP on iOS/Android to avoid
+      // CORS issues when the WebView origin is https://localhost
+      enabled: true,
+    },
     SplashScreen: {
       launchShowDuration: 2000,
       backgroundColor: '#FFFFFF',
