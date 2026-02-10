@@ -707,7 +707,7 @@ export function ListView() {
                 haptic('light');
                 setIsShareModalOpen(true);
               }}
-              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 transition-all active:scale-95"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95"
               aria-label="Share"
               title="Share list"
             >
