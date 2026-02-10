@@ -28,6 +28,16 @@ body {
   }
 }
 
+/* Ensure smooth momentum scrolling on all iOS scrollable containers */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Better touch scrolling behavior */
+html {
+  touch-action: manipulation;
+}
+
 /* Prevent pull-to-refresh in native WebView */
 html, body {
   overscroll-behavior-y: none;
