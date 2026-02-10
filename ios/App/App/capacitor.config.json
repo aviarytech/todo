@@ -3,9 +3,19 @@
 	"appName": "Poo App",
 	"webDir": "dist",
 	"server": {
-		"androidScheme": "https"
+
+		"androidScheme": "https",
+		"iosScheme": "https",
+		"allowNavigation": [
+			"convex-backend-production-8e02.up.railway.app",
+			"convex.x51.ca"
+		]
+
 	},
 	"plugins": {
+		"CapacitorHttp": {
+			"enabled": true
+		},
 		"SplashScreen": {
 			"launchShowDuration": 2000,
 			"backgroundColor": "#FFFFFF",

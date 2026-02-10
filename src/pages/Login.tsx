@@ -27,6 +27,7 @@ export function Login({ embedded = false }: LoginProps) {
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSendingCode, setIsSendingCode] = useState(false);
 
   // Redirect if already authenticated (unless embedded)
   if (isAuthenticated && !embedded) {
@@ -55,11 +56,14 @@ export function Login({ embedded = false }: LoginProps) {
     }
 
     try {
+      setIsSendingCode(true);
       await startOtp(trimmedEmail);
       setStep("otp");
     } catch (err) {
       console.error("Failed to send OTP:", err);
       setError("Failed to send verification code. Please try again.");
+    } finally {
+      setIsSendingCode(false);
     }
   };
 
@@ -139,7 +143,7 @@ export function Login({ embedded = false }: LoginProps) {
               disabled={isLoading || !email.trim()}
               className="mt-4 w-full bg-gradient-to-r from-amber-600 to-orange-500 text-white py-3 px-4 rounded-xl font-semibold hover:from-amber-500 hover:to-orange-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-500/20"
             >
-              {isLoading ? "Sending code..." : "Send Code"}
+              {isSendingCode ? "Sending code..." : "Send Code"}
             </button>
           </form>
         ) : (

@@ -12,8 +12,8 @@
  * The JWT token is stored in localStorage and sent with API requests.
  * All signing operations (credentials, DIDs) are handled server-side.
  * 
- * TODO: Migrate to async storageAdapter for native support (see lib/storageAdapter.ts)
- * This will require refactoring the useEffect and callback functions to handle async storage.
+ * Storage uses the async storageAdapter (Capacitor Preferences on native, localStorage on web)
+ * for reliable persistence across platforms.
  */
 
 /* eslint-disable react-refresh/only-export-components */
@@ -27,6 +27,7 @@ import {
   type ReactNode,
 } from "react";
 import { createUserWebVHDid } from "../lib/webvh";
+import { storageAdapter } from "../lib/storageAdapter";
 
 /**
  * Get the Convex HTTP endpoint base URL from the Convex URL.
@@ -149,7 +150,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const restoreSession = async () => {
       try {
-        const storedState = localStorage.getItem(AUTH_STORAGE_KEY);
+        const storedState = await storageAdapter.get(AUTH_STORAGE_KEY);
         if (!storedState) {
           console.log("[useAuth] No stored session found");
           if (isMountedRef.current) setIsLoading(false);
@@ -162,10 +163,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Restore auth state
         setUser(parsed.user);
         setToken(parsed.token);
-        localStorage.setItem(JWT_STORAGE_KEY, parsed.token);
+        await storageAdapter.set(JWT_STORAGE_KEY, parsed.token);
       } catch (err) {
         console.error("[useAuth] Error restoring session:", err);
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+        await storageAdapter.remove(AUTH_STORAGE_KEY);
       } finally {
         if (isMountedRef.current) setIsLoading(false);
       }
@@ -259,7 +260,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log("[useAuth] OTP verified, got JWT for:", serverUser.email);
 
         // Store JWT
-        localStorage.setItem(JWT_STORAGE_KEY, jwtToken);
+        await storageAdapter.set(JWT_STORAGE_KEY, jwtToken);
         setToken(jwtToken);
 
         // Start with server-provided DID. If it is not already did:webvh,
@@ -302,7 +303,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           user: authUser,
           token: jwtToken,
         };
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(persistedState));
+        await storageAdapter.set(AUTH_STORAGE_KEY, JSON.stringify(persistedState));
 
         // Update state
         setUser(authUser);
@@ -342,8 +343,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
     setToken(null);
     setOtpFlowState({ sessionId: null, email: null, legacyDid: null });
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    localStorage.removeItem(JWT_STORAGE_KEY);
+    await storageAdapter.remove(AUTH_STORAGE_KEY);
+    await storageAdapter.remove(JWT_STORAGE_KEY);
   }, []);
 
   const value: AuthContextValue = {
