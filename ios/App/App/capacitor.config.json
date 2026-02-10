@@ -2,7 +2,18 @@
 	"appId": "app.trypoo.app",
 	"appName": "Poo App",
 	"webDir": "dist",
+	"server": {
+		"androidScheme": "https",
+		"iosScheme": "https",
+		"allowNavigation": [
+			"convex-backend-production-8e02.up.railway.app",
+			"convex.x51.ca"
+		]
+	},
 	"plugins": {
+		"CapacitorHttp": {
+			"enabled": true
+		},
 		"SplashScreen": {
 			"launchShowDuration": 2000,
 			"backgroundColor": "#FFFFFF",
@@ -10,13 +21,24 @@
 			"showSpinner": false,
 			"splashFullScreen": true,
 			"splashImmersive": true
+		},
+		"Keyboard": {
+			"resize": "native",
+			"resizeOnFullScreen": true
 		}
+	},
+	"ios": {
+		"allowsLinkPreview": false
 	},
 	"packageClassList": [
 		"AppPlugin",
+		"CAPCameraPlugin",
 		"HapticsPlugin",
 		"KeyboardPlugin",
 		"CAPNetworkPlugin",
+		"PreferencesPlugin",
+		"PushNotificationsPlugin",
+		"SharePlugin",
 		"StatusBarPlugin",
 		"NativeBiometric"
 	]
