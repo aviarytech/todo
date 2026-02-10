@@ -12,13 +12,22 @@
 }
 
 /* Apply to the main layout */
+html {
+  /* Prevent overscroll bounce on iOS — keeps app feeling native */
+  overscroll-behavior-y: none;
+  /* Smooth momentum scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   padding-top: var(--safe-area-top);
   padding-bottom: var(--safe-area-bottom);
-  /* Prevent overscroll bounce on iOS — keeps app feeling native */
+  /* Prevent overscroll bounce on iOS */
   overscroll-behavior: none;
   /* Use dvh for proper mobile viewport (accounts for browser chrome) */
   min-height: 100dvh;
+  /* Enable smooth touch scrolling */
+  touch-action: pan-y pinch-zoom;
 }
 
 /* Prevent iOS Safari input zoom — inputs must be >= 16px */
@@ -28,9 +37,11 @@ body {
   }
 }
 
-/* Prevent pull-to-refresh in native WebView */
-html, body {
-  overscroll-behavior-y: none;
+/* Ensure root container takes full height for proper flex layout */
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Custom animations */
