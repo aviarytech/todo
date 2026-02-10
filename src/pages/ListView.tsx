@@ -857,7 +857,7 @@ export function ListView() {
                   {/* Aisle section header — highlights when dragging over */}
                   <div className={`flex items-center gap-2 px-3 py-2 rounded-t-xl border-b transition-colors duration-150 ${
                     dragOverAisleId === aisle.id && groceryTouchDrag.state.draggedId
-                      ? "bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border-blue-300 dark:border-blue-600 ring-2 ring-blue-300 dark:ring-blue-600"
+                      ? "bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-400 dark:ring-amber-600"
                       : "bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700 dark:to-gray-750 border-amber-100 dark:border-gray-600"
                   }`}>
                     <span className="text-lg">{aisle.emoji}</span>
@@ -944,7 +944,7 @@ export function ListView() {
                             setShowAddAisle(false);
                           }
                         }}
-                        className="text-sm font-medium text-blue-600 dark:text-blue-400 px-2 py-1"
+                        className="text-sm font-medium text-amber-700 dark:text-amber-400 px-2 py-1 hover:text-amber-800 dark:hover:text-amber-300"
                       >
                         Add
                       </button>

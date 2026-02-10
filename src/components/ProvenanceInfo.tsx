@@ -229,8 +229,8 @@ function AnchorStatusBadge({ status }: { status: "pending" | "inscribed" | "conf
       label: "Pending",
     },
     inscribed: {
-      bg: "bg-blue-100 dark:bg-blue-900/30",
-      text: "text-blue-700 dark:text-blue-400",
+      bg: "bg-amber-100 dark:bg-amber-900/30",
+      text: "text-amber-800 dark:text-amber-400",
       icon: "📝",
       label: "Inscribed",
     },

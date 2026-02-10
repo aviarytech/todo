@@ -288,7 +288,7 @@ export function Attachments({ itemId, userDid, legacyDid, canEdit }: Attachments
           <button
             onClick={handleCameraCapture}
             disabled={isUploading}
-            className="flex items-center justify-center gap-2 flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors disabled:opacity-50"
+            className="flex items-center justify-center gap-2 flex-1 px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-lg text-sm transition-all disabled:opacity-50"
           >
             {isUploading ? (
               <>

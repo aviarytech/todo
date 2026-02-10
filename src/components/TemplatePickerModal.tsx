@@ -241,7 +241,7 @@ export function TemplatePickerModal({ onClose, onCreateBlank }: TemplatePickerMo
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
                         item.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                         item.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                        'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
                       }`}>
                         {item.priority}
                       </span>

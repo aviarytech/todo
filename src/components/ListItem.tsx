@@ -204,7 +204,7 @@ export const ListItem = memo(function ListItem({
           : ""
       } ${
         isFocused && !isSelected
-          ? "bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-400 dark:ring-blue-600"
+          ? "bg-amber-50 dark:bg-amber-900/20 ring-2 ring-amber-300 dark:ring-amber-700"
           : ""
       } ${
         isSelectMode
@@ -330,7 +330,7 @@ export const ListItem = memo(function ListItem({
               className={`flex-shrink-0 w-2 h-2 rounded-full ${
                 item.priority === "high" ? "bg-red-500" :
                 item.priority === "medium" ? "bg-yellow-500" :
-                "bg-blue-500"
+                "bg-amber-500"
               }`}
               role="img"
               aria-label={`${item.priority} priority`}
@@ -347,7 +347,7 @@ export const ListItem = memo(function ListItem({
           </p>
           {/* Indicators for extras */}
           {item.url && (
-            <span className="text-blue-500 flex-shrink-0 inline-flex items-center text-xs leading-none" role="img" aria-label="Has link">
+            <span className="text-amber-600 flex-shrink-0 inline-flex items-center text-xs leading-none" role="img" aria-label="Has link">
               🔗
               <span className="sr-only">Link attached</span>
             </span>
