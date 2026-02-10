@@ -39,39 +39,64 @@ class WebStorage implements StorageAdapter {
 
 class NativeStorage implements StorageAdapter {
   private prefs: any = null;
-  
-  private async getPrefs() {
-    if (!this.prefs) {
-      const mod = await import('@capacitor/preferences');
-      this.prefs = mod.Preferences;
+  private initDone: Promise<void> | null = null;
+  private fallbackToWeb = false;
+  private webStorage = new WebStorage();
+
+  /**
+   * Ensure Preferences plugin is loaded. Stores result on this.prefs.
+   *
+   * NOTE: We intentionally do NOT return the Preferences object from the
+   * promise chain. Capacitor plugin proxies intercept all property access
+   * (including .then), so returning a plugin from a Promise causes JS to
+   * treat it as a thenable — triggering "Preferences.then() is not
+   * implemented on ios".
+   */
+  private ensurePrefs(): Promise<void> {
+    if (this.fallbackToWeb) return Promise.resolve();
+    if (!this.initDone) {
+      this.initDone = import('@capacitor/preferences').then(
+        (mod) => {
+          this.prefs = mod.Preferences;
+        },
+        (err) => {
+          console.warn('[storageAdapter] Preferences not available, falling back to localStorage', err);
+          this.fallbackToWeb = true;
+        }
+      );
     }
-    return this.prefs;
+    return this.initDone;
   }
-  
+
   async get(key: string) {
-    const prefs = await this.getPrefs();
-    const { value } = await prefs.get({ key });
+    await this.ensurePrefs();
+    if (!this.prefs) return this.webStorage.get(key);
+    const { value } = await this.prefs.get({ key });
     return value;
   }
-  
+
   async set(key: string, value: string) {
-    const prefs = await this.getPrefs();
-    await prefs.set({ key, value });
+    await this.ensurePrefs();
+    if (!this.prefs) return this.webStorage.set(key, value);
+    await this.prefs.set({ key, value });
   }
-  
+
   async remove(key: string) {
-    const prefs = await this.getPrefs();
-    await prefs.remove({ key });
+    await this.ensurePrefs();
+    if (!this.prefs) return this.webStorage.remove(key);
+    await this.prefs.remove({ key });
   }
-  
+
   async clear() {
-    const prefs = await this.getPrefs();
-    await prefs.clear();
+    await this.ensurePrefs();
+    if (!this.prefs) return this.webStorage.clear();
+    await this.prefs.clear();
   }
-  
+
   async keys() {
-    const prefs = await this.getPrefs();
-    const { keys } = await prefs.keys();
+    await this.ensurePrefs();
+    if (!this.prefs) return this.webStorage.keys();
+    const { keys } = await this.prefs.keys();
     return keys;
   }
 }

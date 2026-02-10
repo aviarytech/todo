@@ -23,6 +23,7 @@ import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { groupByAisle, classifyItem } from "../lib/groceryAisles";
 import { useCategories } from "../hooks/useCategories";
 import { shareList } from "../lib/share";
+import { usePullToRefresh, PullToRefreshIndicator } from "../hooks/usePullToRefresh";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
 import { CollaboratorList } from "../components/sharing/CollaboratorList";
@@ -74,6 +75,16 @@ export function ListView() {
   // Store only ID to avoid stale snapshots - we'll look up live item from the reactive items array
   const [editingItemId, setEditingItemId] = useState<Id<"items"> | null>(null);
   const addItemInputRef = useRef<HTMLInputElement>(null);
+
+  // Pull-to-refresh
+  const handlePullRefresh = useCallback(async () => {
+    // Convex auto-refreshes via subscriptions; add slight delay for UX feedback
+    await new Promise<void>((resolve) => setTimeout(resolve, 600));
+  }, []);
+  const { pullRef, pullDistance, isRefreshing } = usePullToRefresh({
+    onRefresh: handlePullRefresh,
+    threshold: 80,
+  });
 
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
@@ -592,7 +603,13 @@ export function ListView() {
   const totalCount = items.length;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div
+      ref={pullRef}
+      className="max-w-3xl mx-auto overflow-y-auto overscroll-contain"
+      style={{ WebkitOverflowScrolling: "touch" }}
+    >
+      {/* Pull-to-refresh indicator */}
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       {/* Header - Redesigned for less crowding */}
       <div className="mb-6">
         <div className="flex items-start gap-3">
@@ -707,7 +724,7 @@ export function ListView() {
                 haptic('light');
                 setIsShareModalOpen(true);
               }}
-              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 transition-all active:scale-95"
+              className="inline-flex items-center justify-center p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95"
               aria-label="Share"
               title="Share list"
             >
