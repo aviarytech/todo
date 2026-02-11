@@ -47,7 +47,7 @@ export function ConfirmDialog({
   const confirmButtonClasses =
     confirmVariant === "danger"
       ? "bg-red-600 text-white hover:bg-red-700"
-      : "bg-blue-600 text-white hover:bg-blue-700";
+      : "bg-gradient-to-r from-amber-600 to-orange-500 text-white hover:from-amber-500 hover:to-orange-400 transition-all";
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
