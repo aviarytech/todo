@@ -43,9 +43,9 @@ export function JoinList() {
   // Show login if not authenticated (but don't unmount during loading to preserve OTP state)
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-amber-50">
         <Login embedded />
-        <div className="text-center text-gray-500 -mt-4 pb-8">
+        <div className="text-center text-amber-700 -mt-4 pb-8">
           Sign in to join this list.
         </div>
       </div>
@@ -56,7 +56,7 @@ export function JoinList() {
   if (isUserLoading || validation === undefined) {
     return (
       <div className="text-center py-12">
-        <div className="text-gray-500">Validating invite...</div>
+        <div className="text-amber-700">Validating invite...</div>
       </div>
     );
   }
@@ -64,11 +64,11 @@ export function JoinList() {
   // Invalid invite
   if (!validation.valid) {
     return (
-      <div className="max-w-md mx-auto text-center py-12 bg-white rounded-lg shadow p-6">
+      <div className="max-w-md mx-auto text-center py-12 bg-cream-50 rounded-lg shadow p-6">
         <div className="text-red-500 text-5xl mb-4">:(</div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Invalid Invite</h2>
-        <p className="text-gray-500 mb-4">{validation.error}</p>
-        <Link to="/" className="text-blue-600 hover:text-blue-700">
+        <h2 className="text-xl font-semibold text-amber-900 mb-2">Invalid Invite</h2>
+        <p className="text-amber-700 mb-4">{validation.error}</p>
+        <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">
           Go to your lists
         </Link>
       </div>
@@ -100,17 +100,17 @@ export function JoinList() {
   };
 
   return (
-    <div className="max-w-md mx-auto text-center py-12 bg-white rounded-lg shadow p-6">
+    <div className="max-w-md mx-auto text-center py-12 bg-cream-50 rounded-lg shadow-lg shadow-amber-200/50 p-6">
       {/* Debug: Show DID being used */}
-      <div className="mb-4 p-2 bg-gray-100 rounded text-xs font-mono text-left">
+      <div className="mb-4 p-2 bg-amber-50 rounded text-xs font-mono text-left">
         <div>Your DID: {did ?? "null"}</div>
       </div>
 
       <div className="text-5xl mb-4">+</div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-2">
+      <h2 className="text-xl font-semibold text-amber-900 mb-2">
         You're invited to join "{validation.listName}"
       </h2>
-      <p className="text-gray-500 mb-6">
+      <p className="text-amber-700 mb-6">
         Accept this invite to start collaborating on the list.
       </p>
 
@@ -121,14 +121,14 @@ export function JoinList() {
       <div className="flex gap-3 justify-center">
         <Link
           to="/"
-          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md font-medium hover:bg-gray-200"
+          className="px-4 py-2 text-amber-800 bg-amber-100 rounded-md font-medium hover:bg-amber-200"
         >
           Cancel
         </Link>
         <button
           onClick={handleJoin}
           disabled={isJoining}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 disabled:opacity-50"
+          className="px-6 py-2 bg-gradient-to-r from-amber-600 to-orange-500 text-white rounded-md font-medium hover:from-amber-500 hover:to-orange-400 disabled:opacity-50 transition-all"
         >
           {isJoining ? "Joining..." : "Join List"}
         </button>

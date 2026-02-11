@@ -62,6 +62,7 @@ export function ListView() {
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [doneCollapsed, setDoneCollapsed] = useState(true);
   // Store only IDs to avoid stale snapshots - we'll look up live items from the reactive items array
   const [selectedCalendarItemId, setSelectedCalendarItemId] = useState<Id<"items"> | null>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -605,8 +606,7 @@ export function ListView() {
   return (
     <div
       ref={pullRef}
-      className="max-w-3xl mx-auto overflow-y-auto overscroll-contain"
-      style={{ WebkitOverflowScrolling: "touch" }}
+      className="max-w-3xl mx-auto"
     >
       {/* Pull-to-refresh indicator */}
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
@@ -776,11 +776,11 @@ export function ListView() {
         </div>
       )}
 
-      {/* Progress bar */}
+      {/* Amber progress bar */}
       {totalCount > 0 && (
-        <div className="mb-4 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+        <div className="mb-4 bg-amber-100 dark:bg-amber-900/30 rounded-full h-2.5 overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-500 ease-out"
+            className="h-full bg-gradient-to-r from-amber-400 to-amber-500 dark:from-amber-500 dark:to-amber-400 transition-all duration-500 ease-out rounded-full"
             style={{ width: `${(checkedCount / totalCount) * 100}%` }}
           />
         </div>
@@ -827,13 +827,6 @@ export function ListView() {
         </div>
       )}
 
-      {/* Add Item Input - at top of list, only show if user can edit */}
-      {canUserEdit && (
-        <div className="mb-4 animate-slide-up">
-          <AddItemInput ref={addItemInputRef} assetDid={list.assetDid} onAddItem={addItem} />
-        </div>
-      )}
-
       {/* Items - List View */}
       {viewMode === "list" && (
         <div className="overflow-hidden">
@@ -857,7 +850,7 @@ export function ListView() {
                   {/* Aisle section header — highlights when dragging over */}
                   <div className={`flex items-center gap-2 px-3 py-2 rounded-t-xl border-b transition-colors duration-150 ${
                     dragOverAisleId === aisle.id && groceryTouchDrag.state.draggedId
-                      ? "bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border-blue-300 dark:border-blue-600 ring-2 ring-blue-300 dark:ring-blue-600"
+                      ? "bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-400 dark:ring-amber-600"
                       : "bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700 dark:to-gray-750 border-amber-100 dark:border-gray-600"
                   }`}>
                     <span className="text-lg">{aisle.emoji}</span>
@@ -944,7 +937,7 @@ export function ListView() {
                             setShowAddAisle(false);
                           }
                         }}
-                        className="text-sm font-medium text-blue-600 dark:text-blue-400 px-2 py-1"
+                        className="text-sm font-medium text-amber-700 dark:text-amber-400 px-2 py-1 hover:text-amber-800 dark:hover:text-amber-300"
                       >
                         Add
                       </button>
@@ -1008,45 +1001,115 @@ export function ListView() {
               )}
             </div>
           ) : (
-            /* Standard flat list view */
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
-              <div
-                ref={itemsContainerRef}
-                className="divide-y divide-gray-100 dark:divide-gray-700"
-                onTouchMove={touchDrag.handleTouchMove}
-                onTouchEnd={touchDrag.handleTouchEnd}
-              >
-                {sortedItems.map((item: OptimisticItem, index) => (
-                  <div 
-                    key={item._id} 
-                    data-item-id={item._id}
-                    className="animate-slide-up"
-                    style={{ animationDelay: `${index * 30}ms` }}
-                  >
-                    <ListItem
-                      item={item}
-                      userDid={did}
-                      legacyDid={legacyDid ?? undefined}
-                      canEdit={canUserEdit}
-                      isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
-                      isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
-                      isFocused={focusedIndex === index}
-                      onDragStart={() => handleDragStart(item._id)}
-                      onDragOver={(e) => handleDragOver(e, item._id)}
-                      onDragEnd={handleDragEnd}
-                      onTouchStart={touchDrag.handleTouchStart}
-                      onCheck={checkItem}
-                      onUncheck={uncheckItem}
-                      isSelectMode={isSelectMode}
-                      isSelected={selectedIds.has(item._id)}
-                      onToggleSelect={() => toggleSelection(item._id)}
-                      onLongPress={() => enterSelectMode(item._id)}
-                    />
-                  </div>
-                ))}
+            /* Standard flat list view — rounded cards with collapsed Done section */
+            <div
+              ref={itemsContainerRef}
+              onTouchMove={touchDrag.handleTouchMove}
+              onTouchEnd={touchDrag.handleTouchEnd}
+            >
+              {/* Active (unchecked) items as rounded cards */}
+              <div className="space-y-2">
+                {sortedItems.filter(item => !item.checked).map((item: OptimisticItem) => {
+                  const globalIndex = sortedItems.findIndex(si => si._id === item._id);
+                  return (
+                    <div 
+                      key={item._id} 
+                      data-item-id={item._id}
+                      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-amber-100/60 dark:border-gray-700 overflow-hidden animate-slide-up"
+                    >
+                      <ListItem
+                        item={item}
+                        userDid={did}
+                        legacyDid={legacyDid ?? undefined}
+                        canEdit={canUserEdit}
+                        isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
+                        isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
+                        isFocused={focusedIndex === globalIndex}
+                        onDragStart={() => handleDragStart(item._id)}
+                        onDragOver={(e) => handleDragOver(e, item._id)}
+                        onDragEnd={handleDragEnd}
+                        onTouchStart={touchDrag.handleTouchStart}
+                        onCheck={checkItem}
+                        onUncheck={uncheckItem}
+                        isSelectMode={isSelectMode}
+                        isSelected={selectedIds.has(item._id)}
+                        onToggleSelect={() => toggleSelection(item._id)}
+                        onLongPress={() => enterSelectMode(item._id)}
+                      />
+                    </div>
+                  );
+                })}
               </div>
+
+              {/* Collapsed Done section */}
+              {checkedCount > 0 && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => {
+                      haptic('light');
+                      setDoneCollapsed(!doneCollapsed);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition-colors"
+                  >
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 ${doneCollapsed ? "" : "rotate-90"}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    <span>Done</span>
+                    <span className="ml-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-full text-xs tabular-nums">
+                      {checkedCount}
+                    </span>
+                  </button>
+
+                  {!doneCollapsed && (
+                    <div className="mt-2 space-y-2">
+                      {sortedItems.filter(item => item.checked).map((item: OptimisticItem) => {
+                        const globalIndex = sortedItems.findIndex(si => si._id === item._id);
+                        return (
+                          <div
+                            key={item._id}
+                            data-item-id={item._id}
+                            className="bg-white/70 dark:bg-gray-800/70 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden animate-slide-up"
+                          >
+                            <ListItem
+                              item={item}
+                              userDid={did}
+                              legacyDid={legacyDid ?? undefined}
+                              canEdit={canUserEdit}
+                              isDragging={draggedItemId === item._id || touchDrag.state.draggedId === item._id}
+                              isDragOver={dragOverItemId === item._id || touchDrag.state.dragOverId === item._id}
+                              isFocused={focusedIndex === globalIndex}
+                              onDragStart={() => handleDragStart(item._id)}
+                              onDragOver={(e) => handleDragOver(e, item._id)}
+                              onDragEnd={handleDragEnd}
+                              onTouchStart={touchDrag.handleTouchStart}
+                              onCheck={checkItem}
+                              onUncheck={uncheckItem}
+                              isSelectMode={isSelectMode}
+                              isSelected={selectedIds.has(item._id)}
+                              onToggleSelect={() => toggleSelection(item._id)}
+                              onLongPress={() => enterSelectMode(item._id)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Add Item Input - at bottom of list */}
+      {canUserEdit && viewMode === "list" && (
+        <div className="mt-4 mb-2 animate-slide-up">
+          <AddItemInput ref={addItemInputRef} assetDid={list.assetDid} onAddItem={addItem} />
         </div>
       )}
 

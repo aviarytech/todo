@@ -11,11 +11,13 @@
   --safe-area-right: env(safe-area-inset-right, 0px);
 
   /* Warm Cream/Amber Design System - 💩 Brand Colors */
+  /* Backgrounds - Cream tones */
   --cream-50: #fffcf5;
   --cream-100: #fef8ed;
   --cream-200: #fcefd5;
   --cream-300: #fae5bd;
   
+  /* Amber Accents - Primary interactive colors */
   --amber-400: #fbbf24;
   --amber-500: #f59e0b;
   --amber-600: #d97706;
@@ -23,6 +25,7 @@
   --amber-800: #92400e;
   --amber-900: #78350f;
   
+  /* Warm Neutrals - Replacing grays */
   --warm-50: #fafaf9;
   --warm-100: #f5f5f4;
   --warm-200: #e7e5e4;
@@ -34,6 +37,7 @@
   --warm-800: #292524;
   --warm-900: #1c1917;
   
+  /* Semantic colors using warm palette */
   --bg-primary: var(--cream-50);
   --bg-secondary: var(--cream-100);
   --bg-tertiary: var(--cream-200);
@@ -60,6 +64,8 @@ body {
 
 #root {
   height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -75,14 +81,10 @@ html, body {
   overscroll-behavior-y: none;
 }
 
-/* Enable smooth momentum scrolling on iOS for all scrollable containers */
+/* Contain overscroll for scrollable containers — prevents parent scroll bleed */
 .overflow-auto,
 .overflow-y-auto,
-.overflow-x-auto,
-[style*="overflow: auto"],
-[style*="overflow-y: auto"],
-[style*="overflow-x: auto"] {
-  -webkit-overflow-scrolling: touch;
+.overflow-x-auto {
   overscroll-behavior-y: contain;
 }
 
