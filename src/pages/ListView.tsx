@@ -78,16 +78,6 @@ export function ListView() {
   const [editingItemId, setEditingItemId] = useState<Id<"items"> | null>(null);
   const addItemInputRef = useRef<HTMLInputElement>(null);
 
-  // Pull-to-refresh
-  const handlePullRefresh = useCallback(async () => {
-    // Convex auto-refreshes via subscriptions; add slight delay for UX feedback
-    await new Promise<void>((resolve) => setTimeout(resolve, 600));
-  }, []);
-  const { pullRef, pullDistance, isRefreshing } = usePullToRefresh({
-    onRefresh: handlePullRefresh,
-    threshold: 80,
-  });
-
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
 

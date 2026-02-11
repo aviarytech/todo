@@ -3,8 +3,6 @@
  * Shows a spinner/arrow that responds to pull distance.
  */
 
-import React from "react";
-
 interface PullToRefreshIndicatorProps {
   pullDistance: number;
   isRefreshing: boolean;
