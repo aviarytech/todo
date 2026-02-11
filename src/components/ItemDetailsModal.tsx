@@ -145,7 +145,7 @@ export function ItemDetailsModal({
       ariaLabelledBy="item-details-title"
     >
       {/* Content */}
-      <div className="p-5 space-y-4">
+      <div className="p-5 space-y-4 overflow-x-hidden">
         {/* Name */}
         <div>
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">

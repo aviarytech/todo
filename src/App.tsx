@@ -98,7 +98,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main id="main-content" className="container mx-auto px-4 py-6 safe-area-inset-bottom flex-1 overflow-y-auto">
+      <main id="main-content" className="container mx-auto px-4 py-6 safe-area-inset-bottom flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain" style={{ touchAction: "pan-y pinch-zoom" }}>
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
 
