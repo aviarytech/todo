@@ -1,6 +1,7 @@
 /**
  * Home page showing user's lists.
  *
+ * Modern minimal design with card layout, FAB, warm cream/amber palette.
  * Displays lists grouped by category with collapsible sections.
  * Includes search, sorting, pull-to-refresh, and improved empty states.
  */
@@ -55,7 +56,6 @@ export function Home() {
   // Pull-to-refresh handler
   const handleRefresh = useCallback(async () => {
     haptic('medium');
-    // Lists auto-refresh via Convex, but we can force a small delay for UX
     await new Promise(resolve => setTimeout(resolve, 800));
     haptic('success');
   }, [haptic]);
@@ -98,7 +98,6 @@ export function Home() {
   const processedLists = useMemo(() => {
     if (!lists) return undefined;
 
-    // Filter by search query
     let filtered = lists;
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -107,7 +106,6 @@ export function Home() {
       );
     }
 
-    // Sort lists
     return [...filtered].sort((a, b) => {
       switch (listSort) {
         case 'name-asc':
@@ -123,13 +121,11 @@ export function Home() {
     });
   }, [lists, searchQuery, listSort]);
 
-  // Type for grouped lists by category
   type GroupedLists = {
     categorized: Map<Id<"categories">, Doc<"lists">[]>;
     uncategorized: Doc<"lists">[];
   };
 
-  // Split lists into owned and shared, then group each by category
   const { ownedLists, sharedLists } = useMemo<{ ownedLists: GroupedLists; sharedLists: GroupedLists }>(() => {
     const isOwnedByUser = (list: Doc<"lists">) => {
       const ownerDid = list.ownerDid;
@@ -186,15 +182,16 @@ export function Home() {
   };
 
   if (!did && !userLoading) {
-    return null; // Login page will show instead
+    return null;
   }
 
   const isLoading = lists === undefined || categoriesLoading;
   const hasLists = lists && lists.length > 0;
   const hasFilteredResults = processedLists && processedLists.length > 0;
+  const totalListCount = lists?.length ?? 0;
 
   return (
-    <div ref={pullRef} className="min-h-full pb-24">
+    <div ref={pullRef} className="min-h-full pb-28">
       {/* Pull-to-refresh indicator */}
       <PullToRefreshIndicator
         pullDistance={pullDistance}
@@ -202,18 +199,29 @@ export function Home() {
         isRefreshing={isRefreshing}
       />
 
-      {/* Header - Modern Minimal */}
-      <div className="mb-8 mt-2">
-        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-50 mb-3 tracking-tight">
-          Your Lists
-        </h1>
-        <div className="flex items-center gap-3 flex-wrap">
+      {/* Header */}
+      <div className="pt-2 pb-6">
+        <div className="flex items-end justify-between mb-4">
+          <div>
+            <h1 className="text-[2rem] sm:text-4xl font-extrabold text-stone-900 dark:text-stone-50 tracking-tight leading-none">
+              Your Lists
+            </h1>
+            {hasLists && (
+              <p className="mt-1.5 text-sm font-medium text-stone-400 dark:text-stone-500">
+                {totalListCount} {totalListCount === 1 ? 'list' : 'lists'}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Actions - pill chips */}
+        <div className="flex items-center gap-2.5">
           <Link
             to="/priority"
             onClick={() => haptic('light')}
-            className="inline-flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400 px-4 py-2.5 rounded-2xl font-medium bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/60 border border-amber-200/50 dark:border-amber-800/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 text-[13px] text-amber-700 dark:text-amber-400 pl-3 pr-3.5 py-2 rounded-full font-semibold bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200/60 dark:border-amber-800/50 transition-all active:scale-95"
           >
-            <span className="text-base">🎯</span>
+            <span>🎯</span>
             <span>Focus</span>
           </Link>
           <button
@@ -221,9 +229,9 @@ export function Home() {
               haptic('light');
               setIsCategoryManagerOpen(true);
             }}
-            className="inline-flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400 px-4 py-2.5 rounded-2xl font-medium bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/60 border border-amber-200/50 dark:border-amber-800/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 text-[13px] text-stone-600 dark:text-stone-400 pl-3 pr-3.5 py-2 rounded-full font-semibold bg-stone-100 dark:bg-stone-800/60 hover:bg-stone-200 dark:hover:bg-stone-800 border border-stone-200/60 dark:border-stone-700/50 transition-all active:scale-95"
           >
-            <span className="text-base">📁</span>
+            <span>📁</span>
             <span>Categories</span>
           </button>
         </div>
@@ -231,7 +239,7 @@ export function Home() {
 
       {/* Search and Sort */}
       {hasLists && (
-        <div className="flex gap-3 mb-8 animate-slide-up">
+        <div className="flex gap-2.5 mb-6 animate-slide-up">
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
@@ -241,18 +249,18 @@ export function Home() {
         </div>
       )}
 
-      {/* Cached data indicator */}
+      {/* Offline indicator */}
       {usingCache && (
-        <div className="mb-6 px-5 py-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 rounded-3xl text-amber-800 dark:text-amber-300 text-sm flex items-center gap-3 animate-slide-up">
-          <span className="text-xl">📡</span>
-          <span>You're offline. Showing cached lists — some info may be outdated.</span>
+        <div className="mb-5 px-4 py-3 bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 rounded-2xl text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2.5 animate-slide-up">
+          <span>📡</span>
+          <span>Offline — showing cached lists</span>
         </div>
       )}
 
-      {/* Loading state */}
+      {/* Loading */}
       {isLoading && <HomePageSkeleton />}
 
-      {/* Empty state - no lists at all */}
+      {/* Empty state - no lists */}
       {!isLoading && !hasLists && (
         <div className="animate-slide-up">
           <NoListsEmptyState onCreateList={handleOpenCreate} />
@@ -266,13 +274,12 @@ export function Home() {
         </div>
       )}
 
-      {/* Lists - Modern Card Layout */}
+      {/* Lists */}
       {!isLoading && hasFilteredResults && did && (
-        <div className="space-y-10 animate-slide-up">
-          {/* Your Lists section (owned by user) */}
+        <div className="space-y-8 animate-slide-up">
+          {/* Owned lists */}
           {(ownedLists.uncategorized.length > 0 || Array.from(ownedLists.categorized.values()).some(l => l.length > 0)) && (
             <section>
-              {/* Categorized owned lists */}
               {categories.map((category) => {
                 const categoryLists = ownedLists.categorized.get(category._id);
                 if (!categoryLists || categoryLists.length === 0) return null;
@@ -283,9 +290,9 @@ export function Home() {
                     name={category.name}
                     listCount={categoryLists.length}
                   >
-                    <div className="grid gap-5 grid-cols-1">
+                    <div className="space-y-3">
                       {categoryLists.map((list, index) => (
-                        <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                        <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 40}ms` }}>
                           <ListCard list={list} currentUserDid={did} />
                         </div>
                       ))}
@@ -294,15 +301,14 @@ export function Home() {
                 );
               })}
 
-              {/* Uncategorized owned lists */}
               {ownedLists.uncategorized.length > 0 && (
                 <CategoryHeader
                   name="Uncategorized"
                   listCount={ownedLists.uncategorized.length}
                 >
-                  <div className="grid gap-5 grid-cols-1">
+                  <div className="space-y-3">
                     {ownedLists.uncategorized.map((list, index) => (
-                      <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                      <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 40}ms` }}>
                         <ListCard list={list} currentUserDid={did} />
                       </div>
                     ))}
@@ -312,15 +318,16 @@ export function Home() {
             </section>
           )}
 
-          {/* Shared with me section */}
+          {/* Shared lists */}
           {(sharedLists.uncategorized.length > 0 || Array.from(sharedLists.categorized.values()).some(l => l.length > 0)) && (
-            <section className="pt-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6 flex items-center gap-3">
-                <span className="text-2xl">🤝</span> 
-                <span>Shared with me</span>
-              </h2>
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">🤝</span>
+                <h2 className="text-lg font-bold text-stone-800 dark:text-stone-200">
+                  Shared with me
+                </h2>
+              </div>
 
-              {/* Categorized shared lists */}
               {categories.map((category) => {
                 const categoryLists = sharedLists.categorized.get(category._id);
                 if (!categoryLists || categoryLists.length === 0) return null;
@@ -331,9 +338,9 @@ export function Home() {
                     name={category.name}
                     listCount={categoryLists.length}
                   >
-                    <div className="grid gap-5 grid-cols-1">
+                    <div className="space-y-3">
                       {categoryLists.map((list, index) => (
-                        <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                        <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 40}ms` }}>
                           <ListCard list={list} currentUserDid={did} showOwner />
                         </div>
                       ))}
@@ -342,15 +349,14 @@ export function Home() {
                 );
               })}
 
-              {/* Uncategorized shared lists */}
               {sharedLists.uncategorized.length > 0 && (
                 <CategoryHeader
                   name="Uncategorized"
                   listCount={sharedLists.uncategorized.length}
                 >
-                  <div className="grid gap-5 grid-cols-1">
+                  <div className="space-y-3">
                     {sharedLists.uncategorized.map((list, index) => (
-                      <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                      <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 40}ms` }}>
                         <ListCard list={list} currentUserDid={did} showOwner />
                       </div>
                     ))}
@@ -362,14 +368,14 @@ export function Home() {
         </div>
       )}
 
-      {/* Floating Action Button (FAB) - Modern Material Design 3 */}
+      {/* FAB */}
       <button
         onClick={handleOpenCreate}
-        className="fixed bottom-6 right-6 z-30 w-16 h-16 bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white rounded-full shadow-2xl shadow-amber-500/40 hover:shadow-3xl hover:shadow-amber-500/50 focus:outline-none focus:ring-4 focus:ring-amber-500/30 transition-all active:scale-95 flex items-center justify-center group"
+        className="fixed bottom-6 right-6 z-30 w-14 h-14 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-white rounded-2xl shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 focus:outline-none focus:ring-4 focus:ring-amber-400/30 transition-all active:scale-90 flex items-center justify-center group"
         aria-label="Create new list"
       >
         <svg 
-          className="w-7 h-7 transition-transform group-hover:rotate-90 group-hover:scale-110" 
+          className="w-6 h-6 transition-transform duration-200 group-hover:rotate-90" 
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
