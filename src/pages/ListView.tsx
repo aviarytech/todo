@@ -1113,9 +1113,9 @@ export function ListView() {
         </div>
       )}
 
-      {/* Add Item Input - at bottom of list */}
+      {/* Add Item Input - sticky at bottom of viewport */}
       {canUserEdit && viewMode === "list" && (
-        <div className="mt-4 mb-2 animate-slide-up">
+        <div className="sticky bottom-0 z-10 pt-2 pb-3 mt-4 bg-gradient-to-t from-white via-white dark:from-gray-900 dark:via-gray-900 to-transparent animate-slide-up">
           <AddItemInput ref={addItemInputRef} assetDid={list.assetDid} onAddItem={addItem} />
         </div>
       )}
