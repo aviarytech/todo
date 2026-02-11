@@ -23,7 +23,8 @@ import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { groupByAisle, classifyItem } from "../lib/groceryAisles";
 import { useCategories } from "../hooks/useCategories";
 import { shareList } from "../lib/share";
-import { usePullToRefresh, PullToRefreshIndicator } from "../hooks/usePullToRefresh";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import { PullToRefreshIndicator } from "../components/PullToRefreshIndicator";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
 import { CollaboratorList } from "../components/sharing/CollaboratorList";
@@ -522,6 +523,17 @@ export function ListView() {
     shortcuts,
   });
 
+  // Pull-to-refresh for mobile — Convex queries are reactive, so this
+  // just provides visual feedback that data is live/fresh
+  const { pullRef, pullDistance, isRefreshing, isPastThreshold } = usePullToRefresh({
+    onRefresh: async () => {
+      haptic('light');
+      // Brief delay for visual feedback — data is already live via Convex
+      await new Promise(resolve => setTimeout(resolve, 500));
+    },
+    enabled: viewMode === "list",
+  });
+
   // Reset focus when items change significantly
   useEffect(() => {
     if (focusedIndex !== null && focusedIndex >= sortedItems.length) {
@@ -608,8 +620,6 @@ export function ListView() {
       ref={pullRef}
       className="max-w-3xl mx-auto"
     >
-      {/* Pull-to-refresh indicator */}
-      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       {/* Header - Redesigned for less crowding */}
       <div className="mb-6">
         <div className="flex items-start gap-3">
@@ -775,6 +785,13 @@ export function ListView() {
           <span>Showing cached items. Some info may be outdated.</span>
         </div>
       )}
+
+      {/* Pull-to-refresh indicator */}
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        isRefreshing={isRefreshing}
+        isPastThreshold={isPastThreshold}
+      />
 
       {/* Amber progress bar */}
       {totalCount > 0 && (
