@@ -239,7 +239,7 @@ export function Home() {
 
       {/* Search and Sort */}
       {hasLists && (
-        <div className="flex gap-2.5 mb-6 animate-slide-up">
+        <div className="relative z-20 flex gap-2.5 mb-6 animate-slide-up">
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
