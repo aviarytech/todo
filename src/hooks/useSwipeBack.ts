@@ -3,6 +3,7 @@
  * Mimics iOS back gesture for PWA/web views with visual slide animation.
  */
 import { useEffect, useRef, useCallback } from "react";
+import { Capacitor } from "@capacitor/core";
 
 const EDGE_THRESHOLD = 30; // px from left edge to start
 const SWIPE_MIN_DISTANCE = 100; // px to trigger back
@@ -30,6 +31,10 @@ export function useSwipeBack() {
   }, []);
 
   useEffect(() => {
+    // Only enable swipe-back on native platforms; on web the browser
+    // already provides its own back-swipe gesture, causing "double back".
+    if (!Capacitor.isNativePlatform()) return;
+
     function onTouchStart(e: TouchEvent) {
       const touch = e.touches[0];
       if (touch.clientX <= EDGE_THRESHOLD) {
