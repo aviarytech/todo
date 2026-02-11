@@ -192,7 +192,7 @@ export function CalendarView({ listId, onItemClick }: CalendarViewProps) {
                         ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
                         : item.priority === "medium"
                         ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
-                        : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                        : "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400"
                     }`}
                   >
                     {item.name}

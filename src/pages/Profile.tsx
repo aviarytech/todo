@@ -141,20 +141,20 @@ export function Profile() {
               </p>
             </div>
             
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-center">
-              <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+            <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 text-center">
+              <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
                 {completedItems}
               </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+              <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
                 Items Done
               </p>
             </div>
             
-            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 text-center">
-              <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 text-center border border-amber-200 dark:border-amber-800">
+              <p className="text-3xl font-bold text-amber-700 dark:text-amber-400">
                 {completionRate}%
               </p>
-              <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
+              <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
                 Completion Rate
               </p>
             </div>
@@ -224,9 +224,9 @@ export function Profile() {
         
         {completionRate < 80 && completionRate >= 50 && (
           <div className="px-6 pb-6">
-            <div className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl p-4 text-center">
+            <div className="bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-xl p-4 text-center">
               <p className="text-2xl mb-2">💪</p>
-              <p className="font-medium text-blue-800 dark:text-blue-200">
+              <p className="font-medium text-amber-800 dark:text-amber-200">
                 Great progress! Keep up the momentum!
               </p>
             </div>
@@ -235,9 +235,9 @@ export function Profile() {
         
         {completionRate < 50 && totalItems > 0 && (
           <div className="px-6 pb-6">
-            <div className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl p-4 text-center">
+            <div className="bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-xl p-4 text-center">
               <p className="text-2xl mb-2">🚀</p>
-              <p className="font-medium text-purple-800 dark:text-purple-200">
+              <p className="font-medium text-orange-800 dark:text-orange-200">
                 You've got this! Every item counts!
               </p>
             </div>

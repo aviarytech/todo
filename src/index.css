@@ -9,6 +9,44 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
+
+  /* Warm Cream/Amber Design System - 💩 Brand Colors */
+  /* Backgrounds - Cream tones */
+  --cream-50: #fffcf5;
+  --cream-100: #fef8ed;
+  --cream-200: #fcefd5;
+  --cream-300: #fae5bd;
+  
+  /* Amber Accents - Primary interactive colors */
+  --amber-400: #fbbf24;
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --amber-700: #b45309;
+  --amber-800: #92400e;
+  --amber-900: #78350f;
+  
+  /* Warm Neutrals - Replacing grays */
+  --warm-50: #fafaf9;
+  --warm-100: #f5f5f4;
+  --warm-200: #e7e5e4;
+  --warm-300: #d6d3d1;
+  --warm-400: #a8a29e;
+  --warm-500: #78716c;
+  --warm-600: #57534e;
+  --warm-700: #44403c;
+  --warm-800: #292524;
+  --warm-900: #1c1917;
+  
+  /* Semantic colors using warm palette */
+  --bg-primary: var(--cream-50);
+  --bg-secondary: var(--cream-100);
+  --bg-tertiary: var(--cream-200);
+  --text-primary: var(--warm-900);
+  --text-secondary: var(--warm-700);
+  --text-tertiary: var(--warm-600);
+  --border-color: var(--cream-300);
+  --accent-primary: var(--amber-600);
+  --accent-hover: var(--amber-500);
 }
 
 /* Apply to the main layout */
@@ -19,6 +57,16 @@ body {
   overscroll-behavior: none;
   /* Use dvh for proper mobile viewport (accounts for browser chrome) */
   min-height: 100dvh;
+  /* Ensure body doesn't create its own scroll context */
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* Prevent iOS Safari input zoom — inputs must be >= 16px */
@@ -31,6 +79,13 @@ body {
 /* Prevent pull-to-refresh in native WebView */
 html, body {
   overscroll-behavior-y: none;
+}
+
+/* Contain overscroll for scrollable containers — prevents parent scroll bleed */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto {
+  overscroll-behavior-y: contain;
 }
 
 /* Custom animations */

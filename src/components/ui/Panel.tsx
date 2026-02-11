@@ -206,7 +206,7 @@ export function Panel({
         {/* Content */}
         <div
           ref={contentRef}
-          className="flex-1 overflow-y-auto overscroll-contain"
+          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
         >
           {children}
         </div>
