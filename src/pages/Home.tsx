@@ -234,6 +234,13 @@ export function Home() {
             <span>📁</span>
             <span>Categories</span>
           </button>
+          <button
+            onClick={handleOpenCreate}
+            className="inline-flex items-center gap-1.5 text-[13px] text-amber-900 dark:text-amber-100 pl-3 pr-3.5 py-2 rounded-full font-semibold bg-amber-400/90 dark:bg-amber-500/80 hover:bg-amber-300 dark:hover:bg-amber-400 border border-amber-500/70 dark:border-amber-400/70 shadow-sm shadow-amber-500/30 transition-all active:scale-95"
+          >
+            <span>➕</span>
+            <span>New list</span>
+          </button>
         </div>
       </div>
 
