@@ -51,7 +51,7 @@
 
 /* Apply to the main layout */
 body {
-  padding-top: var(--safe-area-top);
+  /* Safe area top is applied by the sticky header, not here */
   padding-bottom: var(--safe-area-bottom);
   /* Prevent overscroll bounce on iOS — keeps app feeling native */
   overscroll-behavior: none;
