@@ -71,23 +71,35 @@ export function usePullToRefresh({
     const handleTouchMove = (e: TouchEvent) => {
       if (!pullingRef.current || startYRef.current === null || isRefreshing) return;
 
+      // Re-check scroll position — if we've scrolled away from top, cancel pull
+      const scrollTop = container === document.body 
+        ? window.scrollY 
+        : container.scrollTop;
+      if (scrollTop > 0) {
+        pullingRef.current = false;
+        startYRef.current = null;
+        setPullDistance(0);
+        return;
+      }
+
       const currentY = e.touches[0].clientY;
       const distance = currentY - startYRef.current;
 
-      // Only track downward pulls
+      // Only track downward pulls; cancel if user scrolls up
       if (distance > 0) {
         // Apply resistance (diminishing returns)
         const resistance = 0.4;
         const adjustedDistance = distance * resistance;
         setPullDistance(Math.min(adjustedDistance, threshold * 1.5));
         
-        // Prevent default scroll only when actually pulling from top
-        const scrollTop = container === document.body 
-          ? window.scrollY 
-          : container.scrollTop;
-        if (distance > 10 && pullingRef.current && scrollTop === 0) {
+        if (distance > 10) {
           e.preventDefault();
         }
+      } else {
+        // User is scrolling up, not pulling down — cancel
+        pullingRef.current = false;
+        startYRef.current = null;
+        setPullDistance(0);
       }
     };
 

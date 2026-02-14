@@ -6,7 +6,7 @@
  * Includes search, sorting, pull-to-refresh, and improved empty states.
  */
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "convex/react";
 import { useSearchParams, Link } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
@@ -60,9 +60,16 @@ export function Home() {
     haptic('success');
   }, [haptic]);
 
+  // Get the actual scrollable container (<main> element) for pull-to-refresh
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    scrollContainerRef.current = document.getElementById('main-content');
+  }, []);
+
   const { isRefreshing, pullDistance, pullRef } = usePullToRefresh({
     onRefresh: handleRefresh,
     threshold: 80,
+    containerRef: scrollContainerRef,
   });
 
   // Cache lists when online and data is available

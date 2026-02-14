@@ -518,12 +518,19 @@ export function ListView() {
 
   // Pull-to-refresh for mobile — Convex queries are reactive, so this
   // just provides visual feedback that data is live/fresh
+  // Get the actual scrollable container (<main> element) for pull-to-refresh
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    scrollContainerRef.current = document.getElementById('main-content');
+  }, []);
+
   const { pullRef, pullDistance, isRefreshing, isPastThreshold } = usePullToRefresh({
     onRefresh: async () => {
       haptic('light');
       // Brief delay for visual feedback — data is already live via Convex
       await new Promise(resolve => setTimeout(resolve, 500));
     },
+    containerRef: scrollContainerRef,
     enabled: viewMode === "list",
   });
 
