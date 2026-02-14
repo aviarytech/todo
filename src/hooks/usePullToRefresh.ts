@@ -6,7 +6,7 @@
  * re-fetching. It can optionally call a callback for additional refresh logic.
  */
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 
 interface PullToRefreshOptions {
   /** Called when user completes a pull-to-refresh gesture */
@@ -17,6 +17,8 @@ interface PullToRefreshOptions {
   maxPull?: number;
   /** Whether pull-to-refresh is enabled (default: true) */
   enabled?: boolean;
+  /** Scrollable container ref — if omitted, uses document.scrollingElement */
+  containerRef?: React.RefObject<HTMLElement | null>;
 }
 
 export function usePullToRefresh(options: PullToRefreshOptions = {}) {
@@ -25,6 +27,7 @@ export function usePullToRefresh(options: PullToRefreshOptions = {}) {
     threshold = 80,
     maxPull = 150,
     enabled = true,
+    containerRef,
   } = options;
 
   const [pullDistance, setPullDistance] = useState(0);
@@ -38,16 +41,25 @@ export function usePullToRefresh(options: PullToRefreshOptions = {}) {
     (e: TouchEvent) => {
       if (!enabled || isRefreshing) return;
       // Only start pull if scrolled to top
-      const scrollEl = document.scrollingElement || document.documentElement;
+      const scrollEl = containerRef?.current || document.scrollingElement || document.documentElement;
       if (scrollEl.scrollTop > 5) return;
       touchStartY.current = e.touches[0].clientY;
     },
-    [enabled, isRefreshing]
+    [enabled, isRefreshing, containerRef]
   );
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
       if (!enabled || isRefreshing || touchStartY.current === null) return;
+
+      // Re-check scroll position — cancel if scrolled away from top
+      const scrollEl = containerRef?.current || document.scrollingElement || document.documentElement;
+      if (scrollEl.scrollTop > 5) {
+        touchStartY.current = null;
+        setPullDistance(0);
+        setIsPastThreshold(false);
+        return;
+      }
 
       const currentY = e.touches[0].clientY;
       const diff = currentY - touchStartY.current;
@@ -64,7 +76,7 @@ export function usePullToRefresh(options: PullToRefreshOptions = {}) {
         setIsPastThreshold(false);
       }
     },
-    [enabled, isRefreshing, threshold, maxPull]
+    [enabled, isRefreshing, threshold, maxPull, containerRef]
   );
 
   const handleTouchEnd = useCallback(async () => {
