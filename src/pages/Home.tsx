@@ -171,6 +171,12 @@ export function Home() {
     };
   }, [processedLists, did, legacyDid]);
 
+  // Flatten all shared lists (don't group by sharer's categories)
+  const allSharedLists = useMemo(() => {
+    const fromCategorized = Array.from(sharedLists.categorized.values()).flat();
+    return [...fromCategorized, ...sharedLists.uncategorized];
+  }, [sharedLists]);
+
   const handleOpenCreate = () => {
     haptic('light');
     setIsTemplatePickerOpen(true);
@@ -325,51 +331,24 @@ export function Home() {
             </section>
           )}
 
-          {/* Shared lists */}
-          {(sharedLists.uncategorized.length > 0 || Array.from(sharedLists.categorized.values()).some(l => l.length > 0)) && (
+          {/* Shared lists - shown flat (categories belong to the sharer, not the viewer) */}
+          {allSharedLists.length > 0 && (
             <section>
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg">🤝</span>
                 <h2 className="text-lg font-bold text-stone-800 dark:text-stone-200">
                   Shared with me
                 </h2>
+                <span className="text-sm font-normal text-stone-500 dark:text-stone-400">({allSharedLists.length})</span>
               </div>
 
-              {categories.map((category) => {
-                const categoryLists = sharedLists.categorized.get(category._id);
-                if (!categoryLists || categoryLists.length === 0) return null;
-
-                return (
-                  <CategoryHeader
-                    key={`shared-${category._id}`}
-                    name={category.name}
-                    listCount={categoryLists.length}
-                  >
-                    <div className="space-y-3">
-                      {categoryLists.map((list, index) => (
-                        <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 40}ms` }}>
-                          <ListCard list={list} currentUserDid={did} showOwner />
-                        </div>
-                      ))}
-                    </div>
-                  </CategoryHeader>
-                );
-              })}
-
-              {sharedLists.uncategorized.length > 0 && (
-                <CategoryHeader
-                  name="Uncategorized"
-                  listCount={sharedLists.uncategorized.length}
-                >
-                  <div className="space-y-3">
-                    {sharedLists.uncategorized.map((list, index) => (
-                      <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 40}ms` }}>
-                        <ListCard list={list} currentUserDid={did} showOwner />
-                      </div>
-                    ))}
+              <div className="space-y-3">
+                {allSharedLists.map((list, index) => (
+                  <div key={list._id} className="animate-slide-up" style={{ animationDelay: `${index * 40}ms` }}>
+                    <ListCard list={list} currentUserDid={did} showOwner />
                   </div>
-                </CategoryHeader>
-              )}
+                ))}
+              </div>
             </section>
           )}
         </div>
