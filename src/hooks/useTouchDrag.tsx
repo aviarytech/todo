@@ -102,6 +102,9 @@ export function useTouchDrag({ onReorder, containerRef }: UseTouchDragOptions) {
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!state.isDragging || !state.draggedId || !containerRef.current) return;
 
+    // Only prevent default scrolling when actively dragging
+    e.preventDefault();
+
     const touch = e.touches[0];
     currentTouchYRef.current = touch.clientY;
     const container = containerRef.current;
