@@ -158,7 +158,10 @@ export function ListView() {
   const isGroceryList = useMemo(() => {
     if (!list || !list.categoryId) return false;
     const cat = categories.find((c: { _id: Id<"categories">; name: string }) => c._id === list.categoryId);
-    return cat ? cat.name.toLowerCase().includes("grocer") : false;
+    if (cat) return cat.name.toLowerCase().includes("grocer");
+    // Fallback: for shared lists, the category belongs to the owner's data,
+    // so check the list name instead.
+    return list.name?.toLowerCase().includes("grocer") ?? false;
   }, [list, categories]);
 
   // Grocery aisle grouping for grocery lists
