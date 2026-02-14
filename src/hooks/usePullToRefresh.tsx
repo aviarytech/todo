@@ -80,8 +80,11 @@ export function usePullToRefresh({
         const adjustedDistance = distance * resistance;
         setPullDistance(Math.min(adjustedDistance, threshold * 1.5));
         
-        // Prevent default scroll when pulling
-        if (distance > 10) {
+        // Prevent default scroll only when actually pulling from top
+        const scrollTop = container === document.body 
+          ? window.scrollY 
+          : container.scrollTop;
+        if (distance > 10 && pullingRef.current && scrollTop === 0) {
           e.preventDefault();
         }
       }
