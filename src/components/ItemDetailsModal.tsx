@@ -4,11 +4,14 @@
  * Supports notes, due dates, URLs/links, and recurrence settings.
  */
 
-import { useState, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useState, useEffect, useMemo } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
+import { useCategories } from "../hooks/useCategories";
+import { AISLES, classifyItem } from "../lib/groceryAisles";
+import type { GroceryAisle } from "../lib/groceryAisles";
 import { TagSelector } from "./TagSelector";
 import { SubItems } from "./SubItems";
 import { Attachments } from "./Attachments";
@@ -54,7 +57,37 @@ export function ItemDetailsModal({
     item.recurrence?.frequency ?? "daily"
   );
   const [priority, setPriority] = useState<Priority>(item.priority ?? "");
+  const [selectedCategory, setSelectedCategory] = useState(item.groceryAisle ?? "");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Load list to get custom aisles
+  const list = useQuery(api.lists.getList, { listId: item.listId });
+  const { categories } = useCategories();
+
+  // Determine if this is a grocery list (for auto-classification hint)
+  const isGroceryList = useMemo(() => {
+    if (!list || !list.categoryId) return false;
+    const cat = categories.find((c: { _id: string; name: string }) => c._id === list.categoryId);
+    if (cat) return cat.name.toLowerCase().includes("grocer");
+    return list.name?.toLowerCase().includes("grocer") ?? false;
+  }, [list, categories]);
+
+  // Available categories: built-in aisles + custom aisles from the list
+  const availableCategories: GroceryAisle[] = useMemo(() => {
+    const customAisles = (list as any)?.customAisles as GroceryAisle[] | undefined;
+    const all = customAisles?.length
+      ? [...AISLES, ...customAisles].sort((a, b) => a.order - b.order)
+      : [...AISLES];
+    return all;
+  }, [list]);
+
+  // Auto-classified category (what the system would pick)
+  const autoCategory = useMemo(() => {
+    return isGroceryList ? classifyItem(item.name) : "other";
+  }, [item.name, isGroceryList]);
+
+  // Effective category (user override or auto)
+  const effectiveCategory = selectedCategory || autoCategory;
 
   // Reset state when item changes
   useEffect(() => {
@@ -65,6 +98,7 @@ export function ItemDetailsModal({
     setHasRecurrence(!!item.recurrence);
     setRecurrenceFrequency(item.recurrence?.frequency ?? "daily");
     setPriority(item.priority ?? "");
+    setSelectedCategory(item.groceryAisle ?? "");
   }, [item]);
 
   const handleSave = async () => {
@@ -86,10 +120,12 @@ export function ItemDetailsModal({
           ? { frequency: recurrenceFrequency, interval: 1 }
           : undefined,
         priority: priority || undefined,
+        groceryAisle: selectedCategory || undefined,
         clearDueDate: !dueDate && !!item.dueDate,
         clearUrl: !url && !!item.url,
         clearRecurrence: !hasRecurrence && !!item.recurrence,
         clearPriority: !priority && !!item.priority,
+        clearGroceryAisle: !selectedCategory && !!item.groceryAisle,
       });
       haptic("success");
       onClose();
@@ -211,6 +247,45 @@ export function ItemDetailsModal({
                 } disabled:opacity-50`}
               >
                 {p ? p.charAt(0).toUpperCase() + p.slice(1) : "None"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Category / Aisle */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+            🏷️ Category
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {/* "Auto" chip - clears override */}
+            <button
+              type="button"
+              onClick={() => canEdit && setSelectedCategory("")}
+              disabled={!canEdit}
+              className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                !selectedCategory
+                  ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+                  : "bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+              } disabled:opacity-50`}
+            >
+              ✨ Auto{isGroceryList && !selectedCategory ? ` (${availableCategories.find(a => a.id === autoCategory)?.name ?? "Other"})` : ""}
+            </button>
+            {availableCategories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => canEdit && setSelectedCategory(cat.id)}
+                disabled={!canEdit}
+                className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                  selectedCategory === cat.id
+                    ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+                    : effectiveCategory === cat.id && !selectedCategory
+                      ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-500 border-amber-200 dark:border-amber-800"
+                      : "bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                } disabled:opacity-50`}
+              >
+                {cat.emoji} {cat.name}
               </button>
             ))}
           </div>

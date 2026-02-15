@@ -43,6 +43,7 @@ const RenameListDialog = lazy(() => import("../components/RenameListDialog").the
 const ChangeCategoryDialog = lazy(() => import("../components/ChangeCategoryDialog").then(m => ({ default: m.ChangeCategoryDialog })));
 
 type ViewMode = "list" | "calendar";
+type ItemViewMode = "alphabetical" | "categorized";
 
 export function ListView() {
   const { id } = useParams<{ id: string }>();
@@ -162,14 +163,18 @@ export function ListView() {
     return list.name?.toLowerCase().includes("grocer") ?? false;
   }, [list, categories]);
 
-  // Grocery aisle grouping for grocery lists
+  // Item view mode (alphabetical vs categorized) — persisted on the list doc
+  const updateItemViewModeMutation = useMutation(api.lists.updateItemViewMode);
+  const itemViewMode: ItemViewMode = (list as any)?.itemViewMode ?? (isGroceryList ? "categorized" : "alphabetical");
+
+  // Grocery aisle grouping when in categorized mode
   const aisleGroups = useMemo(() => {
-    if (!isGroceryList) return null;
+    if (itemViewMode !== "categorized") return null;
     const unchecked = sortedItems.filter(item => !item.checked);
     const checked = sortedItems.filter(item => item.checked);
     const customAisles = (list as any)?.customAisles as { id: string; name: string; emoji: string; order: number }[] | undefined;
     return { groups: groupByAisle(unchecked.map(item => ({ ...item, name: item.name ?? "" })), customAisles ?? undefined), checked, customAisles: customAisles ?? [] };
-  }, [isGroceryList, sortedItems, list]);
+  }, [itemViewMode, sortedItems, list]);
 
   // Look up live items by ID to avoid stale snapshots in modals
   // This ensures tags and other fields update in real-time
@@ -676,17 +681,40 @@ export function ListView() {
               onClick={() => {
                 haptic('light');
                 setViewMode("list");
+                if (itemViewMode !== "alphabetical") {
+                  updateItemViewModeMutation({ listId, itemViewMode: "alphabetical" });
+                }
               }}
               className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-full transition-all active:scale-95 ${
-                viewMode === "list"
+                viewMode === "list" && itemViewMode === "alphabetical"
                   ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               }`}
-              aria-label="List view"
-              title="List view"
+              aria-label="Alphabetical view"
+              title="Alphabetical view (A-Z)"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </button>
+            <button
+              onClick={() => {
+                haptic('light');
+                setViewMode("list");
+                if (itemViewMode !== "categorized") {
+                  updateItemViewModeMutation({ listId, itemViewMode: "categorized" });
+                }
+              }}
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-full transition-all active:scale-95 ${
+                viewMode === "list" && itemViewMode === "categorized"
+                  ? "bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              }`}
+              aria-label="Categorized view"
+              title="Categorized view (grouped by category)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </button>
             <button
@@ -825,8 +853,8 @@ export function ListView() {
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
               <NoItemsEmptyState />
             </div>
-          ) : isGroceryList && aisleGroups ? (
-            /* Grocery aisle-grouped view — drag between aisles to override classification */
+          ) : aisleGroups ? (
+            /* Categorized view — items grouped by category/aisle */
             <div
               ref={itemsContainerRef}
               onTouchMove={groceryTouchDrag.handleTouchMove}
