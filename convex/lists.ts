@@ -470,6 +470,24 @@ export const addCustomAisle = mutation({
 });
 
 /**
+ * Update the item view mode for a list (alphabetical or categorized).
+ */
+export const updateItemViewMode = mutation({
+  args: {
+    listId: v.id("lists"),
+    itemViewMode: v.union(v.literal("alphabetical"), v.literal("categorized")),
+  },
+  handler: async (ctx, args) => {
+    const list = await ctx.db.get(args.listId);
+    if (!list) throw new Error("List not found");
+
+    await ctx.db.patch(args.listId, {
+      itemViewMode: args.itemViewMode,
+    });
+  },
+});
+
+/**
  * Remove a custom grocery aisle from a list.
  */
 export const removeCustomAisle = mutation({

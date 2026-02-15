@@ -105,6 +105,8 @@ export default defineSchema({
       emoji: v.string(),
       order: v.number(),
     }))),
+    // Item view mode preference: "alphabetical" (flat A-Z) or "categorized" (grouped by category)
+    itemViewMode: v.optional(v.union(v.literal("alphabetical"), v.literal("categorized"))),
   })
     .index("by_owner", ["ownerDid"])
     .index("by_asset_did", ["assetDid"])
