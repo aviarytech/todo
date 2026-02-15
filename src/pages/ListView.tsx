@@ -163,9 +163,18 @@ export function ListView() {
     return list.name?.toLowerCase().includes("grocer") ?? false;
   }, [list, categories]);
 
-  // Item view mode (alphabetical vs categorized) — persisted on the list doc
+  // Item view mode (alphabetical vs categorized) — local state for instant feedback, persisted to list doc
   const updateItemViewModeMutation = useMutation(api.lists.updateItemViewMode);
-  const itemViewMode: ItemViewMode = (list as any)?.itemViewMode ?? (isGroceryList ? "categorized" : "alphabetical");
+  const serverItemViewMode: ItemViewMode = (list as any)?.itemViewMode ?? (isGroceryList ? "categorized" : "alphabetical");
+  const [localItemViewMode, setLocalItemViewMode] = useState<ItemViewMode | null>(null);
+  const itemViewMode: ItemViewMode = localItemViewMode ?? serverItemViewMode;
+
+  // Sync local override back to null when server catches up
+  useEffect(() => {
+    if (localItemViewMode && localItemViewMode === serverItemViewMode) {
+      setLocalItemViewMode(null);
+    }
+  }, [localItemViewMode, serverItemViewMode]);
 
   // Grocery aisle grouping when in categorized mode
   const aisleGroups = useMemo(() => {
@@ -682,6 +691,7 @@ export function ListView() {
                 haptic('light');
                 setViewMode("list");
                 if (itemViewMode !== "alphabetical") {
+                  setLocalItemViewMode("alphabetical");
                   updateItemViewModeMutation({ listId, itemViewMode: "alphabetical" });
                 }
               }}
@@ -702,6 +712,7 @@ export function ListView() {
                 haptic('light');
                 setViewMode("list");
                 if (itemViewMode !== "categorized") {
+                  setLocalItemViewMode("categorized");
                   updateItemViewModeMutation({ listId, itemViewMode: "categorized" });
                 }
               }}
