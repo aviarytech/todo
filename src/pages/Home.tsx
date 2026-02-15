@@ -6,7 +6,7 @@
  * Includes search, sorting, pull-to-refresh, and improved empty states.
  */
 
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { useSearchParams, Link } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
@@ -24,7 +24,6 @@ import { SearchInput } from "../components/ui/SearchInput";
 import { SortDropdown } from "../components/ui/SortDropdown";
 import { HomePageSkeleton } from "../components/ui/Skeleton";
 import { NoListsEmptyState, NoSearchResultsEmptyState } from "../components/ui/EmptyState";
-import { usePullToRefresh, PullToRefreshIndicator } from "../hooks/usePullToRefresh";
 import { cacheAllLists, getAllCachedLists, type OfflineList } from "../lib/offline";
 
 export function Home() {
@@ -53,24 +52,6 @@ export function Home() {
     did ? { userDid: did, legacyDid: legacyDid ?? undefined } : "skip"
   );
 
-  // Pull-to-refresh handler
-  const handleRefresh = useCallback(async () => {
-    haptic('medium');
-    await new Promise(resolve => setTimeout(resolve, 800));
-    haptic('success');
-  }, [haptic]);
-
-  // Get the actual scrollable container (<main> element) for pull-to-refresh
-  const scrollContainerRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    scrollContainerRef.current = document.getElementById('main-content');
-  }, []);
-
-  const { isRefreshing, pullDistance, pullRef } = usePullToRefresh({
-    onRefresh: handleRefresh,
-    threshold: 80,
-    containerRef: scrollContainerRef,
-  });
 
   // Cache lists when online and data is available
   useEffect(() => {
@@ -204,13 +185,7 @@ export function Home() {
   const totalListCount = lists?.length ?? 0;
 
   return (
-    <div ref={pullRef} className="min-h-full pb-28">
-      {/* Pull-to-refresh indicator */}
-      <PullToRefreshIndicator
-        pullDistance={pullDistance}
-        threshold={80}
-        isRefreshing={isRefreshing}
-      />
+    <div className="min-h-full pb-28">
 
       {/* Header */}
       <div className="pt-2 pb-6">

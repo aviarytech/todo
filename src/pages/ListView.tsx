@@ -23,8 +23,6 @@ import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
 import { groupByAisle, classifyItem } from "../lib/groceryAisles";
 import { useCategories } from "../hooks/useCategories";
 import { shareList } from "../lib/share";
-import { usePullToRefresh } from "../hooks/usePullToRefresh";
-import { PullToRefreshIndicator } from "../components/PullToRefreshIndicator";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
 import { CollaboratorList } from "../components/sharing/CollaboratorList";
@@ -516,23 +514,6 @@ export function ListView() {
     shortcuts,
   });
 
-  // Pull-to-refresh for mobile — Convex queries are reactive, so this
-  // just provides visual feedback that data is live/fresh
-  // Get the actual scrollable container (<main> element) for pull-to-refresh
-  const scrollContainerRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    scrollContainerRef.current = document.getElementById('main-content');
-  }, []);
-
-  const { pullRef, pullDistance, isRefreshing, isPastThreshold } = usePullToRefresh({
-    onRefresh: async () => {
-      haptic('light');
-      // Brief delay for visual feedback — data is already live via Convex
-      await new Promise(resolve => setTimeout(resolve, 500));
-    },
-    containerRef: scrollContainerRef,
-    enabled: viewMode === "list",
-  });
 
   // Reset focus when items change significantly
   useEffect(() => {
@@ -617,7 +598,7 @@ export function ListView() {
 
   return (
     <div
-      ref={pullRef}
+
       className="max-w-3xl mx-auto"
     >
       {/* Header - Redesigned for less crowding */}
@@ -785,13 +766,6 @@ export function ListView() {
           <span>Showing cached items. Some info may be outdated.</span>
         </div>
       )}
-
-      {/* Pull-to-refresh indicator */}
-      <PullToRefreshIndicator
-        pullDistance={pullDistance}
-        isRefreshing={isRefreshing}
-        isPastThreshold={isPastThreshold}
-      />
 
       {/* Amber progress bar */}
       {totalCount > 0 && (
