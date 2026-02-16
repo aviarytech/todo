@@ -51,7 +51,11 @@ export const AddItemInput = forwardRef<HTMLInputElement, AddItemInputProps>(func
       haptic('success');
       
       // Keep focus on input for quick consecutive adds
-      inputRef.current?.focus();
+      // Use requestAnimationFrame to ensure focus works after React re-render,
+      // especially on mobile browsers where async focus can be tricky
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
     } catch (err) {
       console.error("Failed to add item:", err);
       haptic('error');
