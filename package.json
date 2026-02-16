@@ -37,7 +37,6 @@
     "@originals/sdk": "^1.8.2",
     "@turnkey/core": "^1.11.0",
     "capacitor-native-biometric": "^4.2.2",
-    "chrono-node": "^2.9.0",
     "convex": "^1.31.6",
     "idb": "^8.0.3",
     "jose": "^6.1.3",

@@ -1,11 +1,60 @@
 /**
  * Natural language date input component.
  * Allows users to type dates like "tomorrow at 3pm", "next Friday", etc.
- * Uses chrono-node for parsing and shows a preview of the parsed date.
+ * Uses a lightweight built-in parser (no external dependencies).
  */
 
 import { useState, useEffect } from "react";
-import * as chrono from "chrono-node";
+
+const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+function parseNaturalDate(text: string, ref: Date = new Date()): Date | null {
+  const t = text.trim().toLowerCase();
+  if (!t) return null;
+
+  const today = new Date(ref);
+  today.setHours(0, 0, 0, 0);
+
+  if (t === "today" || t === "now") return today;
+
+  if (t === "tomorrow") {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+
+  if (t === "yesterday") {
+    const d = new Date(today);
+    d.setDate(d.getDate() - 1);
+    return d;
+  }
+
+  // "next <day>" or just "<day>"
+  for (let i = 0; i < DAY_NAMES.length; i++) {
+    const day = DAY_NAMES[i];
+    if (t === day || t === `next ${day}` || t === day.slice(0, 3) || t === `next ${day.slice(0, 3)}`) {
+      const d = new Date(today);
+      const diff = (i - d.getDay() + 7) % 7 || 7;
+      d.setDate(d.getDate() + diff);
+      return d;
+    }
+  }
+
+  // "in N days/weeks"
+  const inMatch = t.match(/^in\s+(\d+)\s+(day|days|week|weeks)$/);
+  if (inMatch) {
+    const n = parseInt(inMatch[1]);
+    const d = new Date(today);
+    d.setDate(d.getDate() + (inMatch[2].startsWith("week") ? n * 7 : n));
+    return d;
+  }
+
+  // Try native Date.parse as fallback (handles "Feb 21", "2026-03-01", etc.)
+  const parsed = new Date(t);
+  if (!isNaN(parsed.getTime())) return parsed;
+
+  return null;
+}
 
 interface NaturalDateInputProps {
   value: string; // YYYY-MM-DD format
@@ -67,10 +116,9 @@ export function NaturalDateInput({
     }
 
     // Try to parse the natural language input
-    const results = chrono.parse(text, new Date(), { forwardDate: true });
+    const parsed = parseNaturalDate(text);
 
-    if (results.length > 0) {
-      const parsed = results[0].start.date();
+    if (parsed) {
       setParsedDate(parsed);
       
       // Convert to YYYY-MM-DD format
