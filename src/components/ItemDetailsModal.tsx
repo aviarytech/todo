@@ -9,7 +9,9 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
+import { useOffline } from "../hooks/useOffline";
 import { useCategories } from "../hooks/useCategories";
+import { queueMutation } from "../lib/offline";
 import { AISLES, classifyItem } from "../lib/groceryAisles";
 import type { GroceryAisle } from "../lib/groceryAisles";
 import { TagSelector } from "./TagSelector";
@@ -45,6 +47,7 @@ export function ItemDetailsModal({
   onClose,
 }: ItemDetailsModalProps) {
   const { haptic } = useSettings();
+  const { isOnline } = useOffline();
   const updateItem = useMutation(api.items.updateItem);
 
   const [name, setName] = useState(item.name);
@@ -117,7 +120,7 @@ export function ItemDetailsModal({
     setIsSaving(true);
 
     try {
-      await updateItem({
+      const payload = {
         itemId: item._id,
         userDid,
         legacyDid,
@@ -139,7 +142,19 @@ export function ItemDetailsModal({
         clearRecurrence: !hasRecurrence && !!item.recurrence,
         clearPriority: !priority && !!item.priority,
         clearGroceryAisle: !selectedCategory && !!item.groceryAisle,
-      });
+      };
+      
+      if (isOnline) {
+        await updateItem(payload);
+      } else {
+        await queueMutation({
+          type: "updateItem",
+          payload,
+          timestamp: Date.now(),
+          retryCount: 0,
+        });
+      }
+      
       haptic("success");
       onClose();
     } catch (err) {

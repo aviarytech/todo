@@ -50,7 +50,19 @@ export interface OfflineItem {
 }
 
 /** Mutation types supported offline */
-export type MutationType = "addItem" | "checkItem" | "uncheckItem" | "reorderItem";
+export type MutationType = 
+  | "addItem" 
+  | "checkItem" 
+  | "uncheckItem" 
+  | "reorderItem"
+  | "updateItem"
+  | "removeItem"
+  | "batchCheckItems"
+  | "batchUncheckItems"
+  | "batchDeleteItems"
+  | "createList"
+  | "renameList"
+  | "deleteList";
 
 /** A mutation queued for later sync */
 export interface QueuedMutation {

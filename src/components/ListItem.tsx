@@ -12,6 +12,8 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { ItemAttribution } from "./ItemAttribution";
 import { useSettings } from "../hooks/useSettings";
+import { useOffline } from "../hooks/useOffline";
+import { queueMutation } from "../lib/offline";
 import type { OptimisticItem } from "../hooks/useOptimisticItems";
 import { useSubItemProgress } from "./SubItems";
 import { shareItem } from "../lib/share";
@@ -60,6 +62,7 @@ export const ListItem = memo(function ListItem({
   onLongPress,
 }: ListItemProps) {
   const { haptic } = useSettings();
+  const { isOnline } = useOffline();
   
   // Fallback mutations for when callbacks aren't provided
   const checkItemMutation = useMutation(api.items.checkItem);
@@ -144,7 +147,18 @@ export const ListItem = memo(function ListItem({
     setIsUpdating(true);
 
     try {
-      await removeItem({ itemId: item._id, userDid, legacyDid });
+      const payload = { itemId: item._id, userDid, legacyDid };
+      
+      if (isOnline) {
+        await removeItem(payload);
+      } else {
+        await queueMutation({
+          type: "removeItem",
+          payload,
+          timestamp: Date.now(),
+          retryCount: 0,
+        });
+      }
     } catch (err) {
       console.error("Failed to remove item:", err);
       haptic('error');

@@ -128,6 +128,8 @@ export function useOptimisticItems(listId: Id<"lists">) {
   const checkItemMutation = useMutation(api.items.checkItem);
   const uncheckItemMutation = useMutation(api.items.uncheckItem);
   const reorderItemsMutation = useMutation(api.items.reorderItems);
+  const updateItemMutation = useMutation(api.items.updateItem);
+  const removeItemMutation = useMutation(api.items.removeItem);
 
   /**
    * Add item with optimistic update.
@@ -337,6 +339,7 @@ export function useOptimisticItems(listId: Id<"lists">) {
    *
    * - Apply optimistic updates to matching server items (only if server hasn't caught up)
    * - Include new optimistic items (temp IDs) that don't exist on server yet
+   * - Filter out removed items (marked for deletion)
    * - Use last known server items during brief Convex reconnections to prevent flicker
    */
   const items = useMemo((): OptimisticItem[] => {
@@ -348,12 +351,20 @@ export function useOptimisticItems(listId: Id<"lists">) {
         ? (cachedItems as unknown as Doc<"items">[])
         : undefined);
 
-    if (!baseItems) return optimisticItems;
+    if (!baseItems) return optimisticItems.filter((o) => !(o as any)._removed);
 
     const baseIds = new Set(baseItems.map((i) => i._id));
+    
+    // Get IDs of items marked for removal
+    const removedIds = new Set(
+      optimisticItems.filter((o) => (o as any)._removed).map((o) => o._id)
+    );
 
     // Filter optimistic items to only keep those that are still relevant
     const activeOptimisticItems = optimisticItems.filter((o) => {
+      // Filter out removed items
+      if ((o as any)._removed) return false;
+      
       // For check/uncheck updates on existing items
       if (!(o._id as string).startsWith("temp-")) {
         const baseItem = baseItems.find((s) => s._id === o._id);
@@ -370,11 +381,13 @@ export function useOptimisticItems(listId: Id<"lists">) {
       return !existsInBase;
     });
 
-    // Apply active optimistic updates to base items
-    const merged = baseItems.map((baseItem) => {
-      const optimistic = activeOptimisticItems.find((o) => o._id === baseItem._id);
-      return optimistic ?? baseItem;
-    });
+    // Apply active optimistic updates to base items, filtering out removed items
+    const merged = baseItems
+      .filter((baseItem) => !removedIds.has(baseItem._id))
+      .map((baseItem) => {
+        const optimistic = activeOptimisticItems.find((o) => o._id === baseItem._id);
+        return optimistic ?? baseItem;
+      });
 
     // Add optimistic items that don't exist in base yet (temp IDs)
     const newOptimistic = activeOptimisticItems.filter(
@@ -385,12 +398,132 @@ export function useOptimisticItems(listId: Id<"lists">) {
     return [...merged, ...newOptimistic];
   }, [serverItems, optimisticItems, isOnline, cachedItems]);
 
+  /**
+   * Update item with optimistic update.
+   * Shows changes immediately, then syncs with server or queues for offline.
+   */
+  const updateItem = useCallback(
+    async (args: {
+      itemId: Id<"items">;
+      userDid: string;
+      legacyDid?: string;
+      name?: string;
+      description?: string;
+      dueDate?: number;
+      url?: string;
+      recurrence?: {
+        frequency: "daily" | "weekly" | "monthly";
+        interval?: number;
+        nextDue?: number;
+      };
+      priority?: "high" | "medium" | "low";
+      groceryAisle?: string;
+      clearGroceryAisle?: boolean;
+      clearDueDate?: boolean;
+      clearRecurrence?: boolean;
+      clearUrl?: boolean;
+      clearPriority?: boolean;
+    }) => {
+      const currentServerItems = lastServerItemsRef.current ?? [];
+
+      setOptimisticItems((prev) => {
+        const exists = prev.some((i) => i._id === args.itemId);
+        if (exists) {
+          return prev.map((i) =>
+            i._id === args.itemId
+              ? {
+                  ...i,
+                  name: args.name ?? i.name,
+                  description: args.clearDueDate ? undefined : (args.description ?? i.description),
+                  dueDate: args.clearDueDate ? undefined : (args.dueDate ?? i.dueDate),
+                  url: args.clearUrl ? undefined : (args.url ?? i.url),
+                  recurrence: args.clearRecurrence ? undefined : (args.recurrence ?? i.recurrence),
+                  priority: args.clearPriority ? undefined : (args.priority ?? i.priority),
+                  groceryAisle: args.clearGroceryAisle ? undefined : (args.groceryAisle ?? i.groceryAisle),
+                  _isOptimistic: true,
+                }
+              : i
+          );
+        }
+        const originalItem = [...currentServerItems, ...prev].find(
+          (i) => i._id === args.itemId
+        );
+        if (originalItem) {
+          return [
+            ...prev,
+            {
+              ...originalItem,
+              name: args.name ?? originalItem.name,
+              description: args.clearDueDate ? undefined : (args.description ?? originalItem.description),
+              dueDate: args.clearDueDate ? undefined : (args.dueDate ?? originalItem.dueDate),
+              url: args.clearUrl ? undefined : (args.url ?? originalItem.url),
+              recurrence: args.clearRecurrence ? undefined : (args.recurrence ?? originalItem.recurrence),
+              priority: args.clearPriority ? undefined : (args.priority ?? originalItem.priority),
+              groceryAisle: args.clearGroceryAisle ? undefined : (args.groceryAisle ?? originalItem.groceryAisle),
+              _isOptimistic: true,
+            },
+          ];
+        }
+        return prev;
+      });
+
+      if (isOnline) {
+        try {
+          await updateItemMutation(args);
+        } catch (err) {
+          // Rollback: remove the optimistic state
+          setOptimisticItems((prev) => prev.filter((i) => i._id !== args.itemId));
+          throw err;
+        }
+      } else {
+        await queueMutation({
+          type: "updateItem",
+          payload: args,
+          timestamp: Date.now(),
+          retryCount: 0,
+        });
+      }
+    },
+    [isOnline, updateItemMutation]
+  );
+
+  /**
+   * Remove item with optimistic update.
+   * Hides the item immediately, then syncs with server or queues for offline.
+   */
+  const removeItem = useCallback(
+    async (itemId: Id<"items">, userDid: string, legacyDid?: string) => {
+      // Optimistically remove from display
+      setOptimisticItems((prev) => [...prev, { _id: itemId, _removed: true } as any]);
+
+      if (isOnline) {
+        try {
+          await removeItemMutation({ itemId, userDid, legacyDid });
+        } catch (err) {
+          // Rollback: remove the marker
+          setOptimisticItems((prev) => prev.filter((i) => i._id !== itemId));
+          throw err;
+        }
+      } else {
+        await queueMutation({
+          type: "removeItem",
+          payload: { itemId, userDid, legacyDid },
+          timestamp: Date.now(),
+          retryCount: 0,
+        });
+      }
+    },
+    [isOnline, removeItemMutation]
+  );
+
   return {
     items,
     addItem,
     checkItem,
     uncheckItem,
     reorderItems,
+    updateItem,
+    removeItem,
     isLoading: serverItems === undefined && (!usingCache || cachedItems.length === 0),
     /** Whether items are being displayed from cache (offline fallback) */
     usingCache,
