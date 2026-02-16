@@ -24,7 +24,7 @@ import { groupByAisle, classifyItem } from "../lib/groceryAisles";
 import { useCategories } from "../hooks/useCategories";
 import { shareList } from "../lib/share";
 import { AddItemInput } from "../components/AddItemInput";
-import { ListItem } from "../components/ListItem";
+import { NestedListItem } from "../components/NestedListItem";
 import { CollaboratorList } from "../components/sharing/CollaboratorList";
 import { NoItemsEmptyState } from "../components/ui/EmptyState";
 import { ListViewSkeleton } from "../components/ui/Skeleton";
@@ -176,11 +176,11 @@ export function ListView() {
     }
   }, [localItemViewMode, serverItemViewMode]);
 
-  // Grocery aisle grouping when in categorized mode
+  // Grocery aisle grouping when in categorized mode - only top-level items
   const aisleGroups = useMemo(() => {
     if (itemViewMode !== "categorized") return null;
-    const unchecked = sortedItems.filter(item => !item.checked);
-    const checked = sortedItems.filter(item => item.checked);
+    const unchecked = sortedItems.filter(item => !item.checked && !item.parentId);
+    const checked = sortedItems.filter(item => item.checked && !item.parentId);
     const customAisles = (list as any)?.customAisles as { id: string; name: string; emoji: string; order: number }[] | undefined;
     return { groups: groupByAisle(unchecked.map(item => ({ ...item, name: item.name ?? "" })), customAisles ?? undefined), checked, customAisles: customAisles ?? [] };
   }, [itemViewMode, sortedItems, list]);
@@ -902,7 +902,7 @@ export function ListView() {
                           {hasAisleOverride && (
                             <span className="absolute top-1 right-1 z-10 text-[10px] opacity-60" title="Manually placed in this aisle">📌</span>
                           )}
-                          <ListItem
+                          <NestedListItem
                             item={item}
                             userDid={did}
                             legacyDid={legacyDid ?? undefined}
@@ -1009,7 +1009,7 @@ export function ListView() {
                           data-item-id={item._id}
                           className="animate-slide-up"
                         >
-                          <ListItem
+                          <NestedListItem
                             item={item}
                             userDid={did}
                             legacyDid={legacyDid ?? undefined}
@@ -1037,9 +1037,9 @@ export function ListView() {
               onTouchMove={touchDrag.handleTouchMove}
               onTouchEnd={touchDrag.handleTouchEnd}
             >
-              {/* Active (unchecked) items as rounded cards */}
+              {/* Active (unchecked) items as rounded cards - only top-level items (no parentId) */}
               <div className="space-y-2">
-                {sortedItems.filter(item => !item.checked).map((item: OptimisticItem) => {
+                {sortedItems.filter(item => !item.checked && !item.parentId).map((item: OptimisticItem) => {
                   const globalIndex = sortedItems.findIndex(si => si._id === item._id);
                   return (
                     <div 
@@ -1047,7 +1047,7 @@ export function ListView() {
                       data-item-id={item._id}
                       className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-amber-100/60 dark:border-gray-700 overflow-hidden animate-slide-up"
                     >
-                      <ListItem
+                      <NestedListItem
                         item={item}
                         userDid={did}
                         legacyDid={legacyDid ?? undefined}
@@ -1097,7 +1097,7 @@ export function ListView() {
 
                   {!doneCollapsed && (
                     <div className="mt-2 space-y-2">
-                      {sortedItems.filter(item => item.checked).map((item: OptimisticItem) => {
+                      {sortedItems.filter(item => item.checked && !item.parentId).map((item: OptimisticItem) => {
                         const globalIndex = sortedItems.findIndex(si => si._id === item._id);
                         return (
                           <div
@@ -1105,7 +1105,7 @@ export function ListView() {
                             data-item-id={item._id}
                             className="bg-white/70 dark:bg-gray-800/70 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden animate-slide-up"
                           >
-                            <ListItem
+                            <NestedListItem
                               item={item}
                               userDid={did}
                               legacyDid={legacyDid ?? undefined}
