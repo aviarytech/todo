@@ -32,12 +32,17 @@ export const AddItemInput = forwardRef<HTMLInputElement, AddItemInputProps>(func
     e.preventDefault();
 
     const trimmedName = name.trim();
-    if (!trimmedName || !did) {
+    if (!trimmedName || !did || isAdding) {
       return;
     }
 
     haptic('medium');
     setIsAdding(true);
+    setName("");
+
+    // Keep focus on the input immediately — don't wait for async.
+    // Clear the value first so the user sees it's ready for the next item.
+    inputRef.current?.focus();
 
     try {
       await onAddItem({
@@ -46,23 +51,18 @@ export const AddItemInput = forwardRef<HTMLInputElement, AddItemInputProps>(func
         legacyDid: legacyDid ?? undefined,
         createdAt: Date.now(),
       });
-
-      setName("");
       haptic('success');
-      
-      // Keep focus on input for quick consecutive adds
-      // Use double requestAnimationFrame to ensure focus works after React re-render,
-      // especially on mobile browsers where async focus can be tricky
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          inputRef.current?.focus();
-        });
-      });
     } catch (err) {
       console.error("Failed to add item:", err);
       haptic('error');
+      // Restore the text on error so the user doesn't lose it
+      setName(trimmedName);
     } finally {
       setIsAdding(false);
+      // Refocus after re-enable, in case focus was lost
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
     }
   };
 
