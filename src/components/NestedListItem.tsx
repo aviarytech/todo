@@ -143,7 +143,7 @@ export function NestedListItem({
 
           {/* Show progress indicator if has subtasks */}
           {hasSubItems && (
-            <div className="flex items-center gap-2 px-3 pb-2 text-xs">
+            <div className="flex items-center gap-2 px-3 pb-0.5 text-xs">
               <div className="flex-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-purple-500 to-violet-600 rounded-full transition-all duration-300"
@@ -160,7 +160,7 @@ export function NestedListItem({
 
       {/* Subtasks (recursive, only if expanded and within depth limit) */}
       {hasSubItems && isExpanded && depth < maxDepth && (
-        <div className="mt-1 space-y-1">
+        <div className="space-y-0">
           {sortedSubItems.map((subItem) => (
             <NestedListItem
               key={subItem._id}

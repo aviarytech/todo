@@ -196,7 +196,7 @@ export const ListItem = memo(function ListItem({
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerLeave}
       onClick={isSelectMode ? onToggleSelect : undefined}
-      className={`flex items-center gap-2 px-3 py-2.5 transition-all touch-manipulation ${
+      className={`flex items-center gap-1.5 px-3 py-1 transition-all touch-manipulation ${
         isDragging 
           ? "opacity-50 bg-gray-100 dark:bg-gray-700 scale-[1.02]" 
           : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
@@ -229,7 +229,7 @@ export const ListItem = memo(function ListItem({
       {/* Selection checkbox - show in select mode */}
       {isSelectMode && canUserEdit && (
         <div
-          className={`flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center transition-all -ml-2`}
+          className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all -ml-2`}
           role="checkbox"
           aria-checked={isSelected}
           aria-label={`Select ${item.name}`}
@@ -255,7 +255,7 @@ export const ListItem = memo(function ListItem({
       {/* Drag handle - only show if user can edit and not in select mode */}
       {canUserEdit && !isSelectMode && (
         <button
-          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 dark:hover:text-gray-500 transition-colors touch-none select-none -ml-2"
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 dark:hover:text-gray-500 transition-colors touch-none select-none -ml-2"
           aria-label="Drag to reorder"
           onTouchStart={(e) => {
             if (itemRef.current && onTouchStart) {
@@ -278,7 +278,7 @@ export const ListItem = memo(function ListItem({
             handleToggleCheck();
           }}
           disabled={isUpdating}
-          className={`flex-shrink-0 w-11 h-11 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-50 -ml-2`}
+          className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-50 -ml-2`}
           aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
         >
           <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
@@ -449,7 +449,7 @@ export const ListItem = memo(function ListItem({
             handleRemove();
           }}
           disabled={isUpdating}
-          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50 transition-all active:scale-90 -mr-2"
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50 transition-all active:scale-90 -mr-2"
           aria-label={`Remove ${item.name}`}
         >
           <svg
