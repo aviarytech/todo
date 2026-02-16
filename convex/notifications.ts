@@ -1,3 +1,4 @@
+"use node";
 /**
  * Push notification management — APNs (iOS) + Web Push/VAPID (Android/Web).
  * No Firebase dependency.
