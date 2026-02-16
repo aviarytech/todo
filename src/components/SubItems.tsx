@@ -3,7 +3,7 @@
  * Each sub-item has its own checkbox that can be checked off independently.
  */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
@@ -36,6 +36,7 @@ export function SubItems({
   const [newItemName, setNewItemName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [showInput, setShowInput] = useState(false);
+  const subItemInputRef = useRef<HTMLInputElement>(null);
 
   // Skip query for temporary IDs (optimistic items not yet persisted)
   const isTemp = isTempId(parentId as string);
@@ -74,6 +75,12 @@ export function SubItems({
       haptic("success");
       setNewItemName("");
       // Keep input open for adding more items
+      // Use double requestAnimationFrame to ensure focus works after React re-render
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          subItemInputRef.current?.focus();
+        });
+      });
     } catch (err) {
       console.error("Failed to add sub-item:", err);
       haptic("error");
@@ -236,6 +243,7 @@ export function SubItems({
           {showInput ? (
             <form onSubmit={handleAddSubItem} className="flex items-center gap-2">
               <input
+                ref={subItemInputRef}
                 type="text"
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
