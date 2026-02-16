@@ -65,10 +65,11 @@ export function NestedListItem({
   const { haptic } = useSettings();
   const [isExpanded, setIsExpanded] = useState(true);
 
-  // Fetch subtasks for this item
+  // Fetch subtasks for this item (skip for optimistic temp IDs)
+  const isTempItem = typeof item._id === "string" && (item._id as string).startsWith("temp-");
   const subItems = useQuery(
     api.items.getSubItems,
-    { parentId: item._id }
+    isTempItem ? "skip" : { parentId: item._id }
   ) ?? [];
 
   // Sort subtasks: unchecked first, then by order/createdAt
