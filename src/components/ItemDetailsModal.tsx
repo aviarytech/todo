@@ -57,6 +57,12 @@ export function ItemDetailsModal({
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<RecurrenceFrequency>(
     item.recurrence?.frequency ?? "daily"
   );
+  const [recurrenceInterval, setRecurrenceInterval] = useState(
+    item.recurrence?.interval ?? 1
+  );
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState(
+    item.recurrence?.endDate ? new Date(item.recurrence.endDate).toISOString().split("T")[0] : ""
+  );
   const [priority, setPriority] = useState<Priority>(item.priority ?? "");
   const [selectedCategory, setSelectedCategory] = useState(item.groceryAisle ?? "");
   const [isSaving, setIsSaving] = useState(false);
@@ -98,6 +104,8 @@ export function ItemDetailsModal({
     setDueDate(item.dueDate ? new Date(item.dueDate).toISOString().split("T")[0] : "");
     setHasRecurrence(!!item.recurrence);
     setRecurrenceFrequency(item.recurrence?.frequency ?? "daily");
+    setRecurrenceInterval(item.recurrence?.interval ?? 1);
+    setRecurrenceEndDate(item.recurrence?.endDate ? new Date(item.recurrence.endDate).toISOString().split("T")[0] : "");
     setPriority(item.priority ?? "");
     setSelectedCategory(item.groceryAisle ?? "");
   }, [item]);
@@ -118,7 +126,11 @@ export function ItemDetailsModal({
         dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
         url: url || undefined,
         recurrence: hasRecurrence
-          ? { frequency: recurrenceFrequency, interval: 1 }
+          ? {
+              frequency: recurrenceFrequency,
+              interval: recurrenceInterval || 1,
+              ...(recurrenceEndDate ? { endDate: new Date(recurrenceEndDate).getTime() } : {}),
+            }
           : undefined,
         priority: priority || undefined,
         groceryAisle: selectedCategory || undefined,
@@ -317,16 +329,44 @@ export function ItemDetailsModal({
             🔁 Recurring
           </label>
           {hasRecurrence && (
-            <select
-              value={recurrenceFrequency}
-              onChange={(e) => setRecurrenceFrequency(e.target.value as RecurrenceFrequency)}
-              disabled={!canEdit}
-              className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+            <div className="space-y-3 pl-1">
+              {/* Frequency + Interval row */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">Every</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={recurrenceInterval}
+                  onChange={(e) => setRecurrenceInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                  disabled={!canEdit}
+                  className="w-16 px-2 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-center text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+                />
+                <select
+                  value={recurrenceFrequency}
+                  onChange={(e) => setRecurrenceFrequency(e.target.value as RecurrenceFrequency)}
+                  disabled={!canEdit}
+                  className="flex-1 px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+                >
+                  <option value="daily">{recurrenceInterval === 1 ? "day" : "days"}</option>
+                  <option value="weekly">{recurrenceInterval === 1 ? "week" : "weeks"}</option>
+                  <option value="monthly">{recurrenceInterval === 1 ? "month" : "months"}</option>
+                </select>
+              </div>
+              {/* End date (optional) */}
+              <div>
+                <label className="block text-xs text-gray-400 dark:text-gray-500 mb-1">
+                  End date (optional)
+                </label>
+                <input
+                  type="date"
+                  value={recurrenceEndDate}
+                  onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                  disabled={!canEdit}
+                  className="w-full px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+                />
+              </div>
+            </div>
           )}
         </div>
 

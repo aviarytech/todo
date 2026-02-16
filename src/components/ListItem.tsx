@@ -353,9 +353,13 @@ export const ListItem = memo(function ListItem({
             </span>
           )}
           {item.recurrence && (
-            <span className="text-purple-500 flex-shrink-0 inline-flex items-center text-xs leading-none" role="img" aria-label={`Repeats ${item.recurrence.frequency}`}>
+            <span 
+              className="text-purple-500 flex-shrink-0 inline-flex items-center text-[10px] leading-none gap-0.5 px-1 py-0.5 bg-purple-50 dark:bg-purple-900/20 rounded" 
+              role="img" 
+              aria-label={`Repeats every ${item.recurrence.interval && item.recurrence.interval > 1 ? `${item.recurrence.interval} ` : ""}${item.recurrence.frequency.replace("ly", item.recurrence.interval && item.recurrence.interval > 1 ? "s" : "")}`}
+              title={`Repeats every ${item.recurrence.interval && item.recurrence.interval > 1 ? `${item.recurrence.interval} ` : ""}${item.recurrence.frequency === "daily" ? (item.recurrence.interval && item.recurrence.interval > 1 ? "days" : "day") : item.recurrence.frequency === "weekly" ? (item.recurrence.interval && item.recurrence.interval > 1 ? "weeks" : "week") : (item.recurrence.interval && item.recurrence.interval > 1 ? "months" : "month")}`}
+            >
               🔁
-              <span className="sr-only">Recurring {item.recurrence.frequency}</span>
             </span>
           )}
         </div>
