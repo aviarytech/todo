@@ -18,6 +18,7 @@ import { Attachments } from "./Attachments";
 import { Comments } from "./Comments";
 import { Panel } from "./ui/Panel";
 import { ItemProvenanceInfo } from "./ProvenanceInfo";
+import { NaturalDateInput } from "./ui/NaturalDateInput";
 
 interface ItemDetailsModalProps {
   item: Doc<"items">;
@@ -296,12 +297,10 @@ export function ItemDetailsModal({
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
             📅 Due Date
           </label>
-          <input
-            type="date"
+          <NaturalDateInput
             value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
+            onChange={setDueDate}
             disabled={!canEdit}
-            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
           />
         </div>
 
