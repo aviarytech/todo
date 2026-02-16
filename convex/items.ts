@@ -172,6 +172,7 @@ export const addItem = mutation({
       frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
       interval: v.optional(v.number()),
       nextDue: v.optional(v.number()),
+      endDate: v.optional(v.number()),
     })),
     priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
     parentId: v.optional(v.id("items")), // For sub-items
@@ -267,6 +268,7 @@ export const updateItem = mutation({
       frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
       interval: v.optional(v.number()),
       nextDue: v.optional(v.number()),
+      endDate: v.optional(v.number()),
     })),
     priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
     groceryAisle: v.optional(v.string()),
@@ -400,36 +402,38 @@ export const checkItem = mutation({
         item.recurrence.interval ?? 1
       );
 
-      // Get min order to add new item at the top
-      const existingItems = await ctx.db
-        .query("items")
-        .withIndex("by_list", (q) => q.eq("listId", item.listId))
-        .collect();
-      const sameParentItems = existingItems.filter(i => i.parentId === item.parentId);
-      const minOrder = sameParentItems.reduce(
-        (min, i) => Math.min(min, i.order ?? 0),
-        0
-      );
+      // Check if end date has passed - if so, don't create next occurrence
+      const endDate = item.recurrence.endDate;
+      if (!endDate || nextDueDate <= endDate) {
+        // Get min order to add new item at the top
+        const existingItems = await ctx.db
+          .query("items")
+          .withIndex("by_list", (q) => q.eq("listId", item.listId))
+          .collect();
+        const sameParentItems = existingItems.filter(i => i.parentId === item.parentId);
+        const minOrder = sameParentItems.reduce(
+          (min, i) => Math.min(min, i.order ?? 0),
+          0
+        );
 
-      // Create the new recurring item
-      await ctx.db.insert("items", {
-        listId: item.listId,
-        name: item.name,
-        checked: false,
-        createdByDid: args.checkedByDid, // The user who checked becomes creator of new item
-        createdAt: now,
-        order: minOrder - 1,
-        updatedAt: now,
-        // Copy over all the enhanced fields
-        description: item.description,
-        dueDate: nextDueDate,
-        url: item.url,
-        recurrence: item.recurrence, // Keep the same recurrence settings
-        priority: item.priority,
-        tags: item.tags,
-        parentId: item.parentId,
-        // Don't copy attachments - those belong to the original item
-      });
+        // Create the new recurring item
+        await ctx.db.insert("items", {
+          listId: item.listId,
+          name: item.name,
+          checked: false,
+          createdByDid: args.checkedByDid,
+          createdAt: now,
+          order: minOrder - 1,
+          updatedAt: now,
+          description: item.description,
+          dueDate: nextDueDate,
+          url: item.url,
+          recurrence: item.recurrence,
+          priority: item.priority,
+          tags: item.tags,
+          parentId: item.parentId,
+        });
+      }
     }
   },
 });
@@ -661,34 +665,38 @@ export const batchCheckItems = mutation({
           item.recurrence.interval ?? 1
         );
 
-        // Get min order to add new item at the top
-        const existingItems = await ctx.db
-          .query("items")
-          .withIndex("by_list", (q) => q.eq("listId", item.listId))
-          .collect();
-        const sameParentItems = existingItems.filter(i => i.parentId === item.parentId);
-        const minOrder = sameParentItems.reduce(
-          (min, i) => Math.min(min, i.order ?? 0),
-          0
-        );
+        // Check if end date has passed
+        const endDate = item.recurrence.endDate;
+        if (!endDate || nextDueDate <= endDate) {
+          // Get min order to add new item at the top
+          const existingItems = await ctx.db
+            .query("items")
+            .withIndex("by_list", (q) => q.eq("listId", item.listId))
+            .collect();
+          const sameParentItems = existingItems.filter(i => i.parentId === item.parentId);
+          const minOrder = sameParentItems.reduce(
+            (min, i) => Math.min(min, i.order ?? 0),
+            0
+          );
 
-        // Create the new recurring item
-        await ctx.db.insert("items", {
-          listId: item.listId,
-          name: item.name,
-          checked: false,
-          createdByDid: args.checkedByDid,
-          createdAt: checkedAt,
-          order: minOrder - 1,
-          updatedAt: checkedAt,
-          description: item.description,
-          dueDate: nextDueDate,
-          url: item.url,
-          recurrence: item.recurrence,
-          priority: item.priority,
-          tags: item.tags,
-          parentId: item.parentId,
-        });
+          // Create the new recurring item
+          await ctx.db.insert("items", {
+            listId: item.listId,
+            name: item.name,
+            checked: false,
+            createdByDid: args.checkedByDid,
+            createdAt: checkedAt,
+            order: minOrder - 1,
+            updatedAt: checkedAt,
+            description: item.description,
+            dueDate: nextDueDate,
+            url: item.url,
+            recurrence: item.recurrence,
+            priority: item.priority,
+            tags: item.tags,
+            parentId: item.parentId,
+          });
+        }
       }
     }
   },

@@ -43,6 +43,7 @@ export interface OfflineItem {
     frequency: "daily" | "weekly" | "monthly";
     interval?: number;
     nextDue?: number;
+    endDate?: number;
   };
   // Timestamp when cached locally
   _cachedAt: number;

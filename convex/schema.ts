@@ -131,6 +131,7 @@ export default defineSchema({
       frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
       interval: v.optional(v.number()), // Every N days/weeks/months (default 1)
       nextDue: v.optional(v.number()), // Next occurrence timestamp
+      endDate: v.optional(v.number()), // Optional end date - stop recurring after this
     })),
     // Priority levels (high/medium/low)
     priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
