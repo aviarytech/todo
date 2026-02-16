@@ -77,6 +77,73 @@ interface ReorderItemPayload {
   legacyDid?: string;
 }
 
+interface UpdateItemPayload {
+  itemId: Id<"items">;
+  userDid: string;
+  legacyDid?: string;
+  name?: string;
+  description?: string;
+  dueDate?: number;
+  url?: string;
+  recurrence?: {
+    frequency: "daily" | "weekly" | "monthly";
+    interval?: number;
+    nextDue?: number;
+  };
+  priority?: "high" | "medium" | "low";
+  groceryAisle?: string;
+  clearGroceryAisle?: boolean;
+  clearDueDate?: boolean;
+  clearRecurrence?: boolean;
+  clearUrl?: boolean;
+  clearPriority?: boolean;
+}
+
+interface RemoveItemPayload {
+  itemId: Id<"items">;
+  userDid: string;
+  legacyDid?: string;
+}
+
+interface BatchCheckItemsPayload {
+  itemIds: Id<"items">[];
+  checkedByDid: string;
+  legacyDid?: string;
+}
+
+interface BatchUncheckItemsPayload {
+  itemIds: Id<"items">[];
+  userDid: string;
+  legacyDid?: string;
+}
+
+interface BatchDeleteItemsPayload {
+  itemIds: Id<"items">[];
+  userDid: string;
+  legacyDid?: string;
+}
+
+interface CreateListPayload {
+  assetDid: string;
+  name: string;
+  ownerDid: string;
+  categoryId?: Id<"categories">;
+  createdAt: number;
+}
+
+interface RenameListPayload {
+  listId: Id<"lists">;
+  name: string;
+  userDid: string;
+  legacyDid?: string;
+}
+
+interface DeleteListPayload {
+  listId: Id<"lists">;
+  userDid: string;
+  legacyDid?: string;
+}
+
 // ============================================================================
 // SyncManager Class
 // ============================================================================
@@ -180,7 +247,7 @@ export class SyncManager {
 
   /**
    * Check for conflicts before executing a mutation.
-   * Only applies to check/uncheck operations on items.
+   * Applies to check/uncheck/update operations on items.
    *
    * Strategy: If server item's updatedAt > mutation's timestamp, there's a conflict.
    */
@@ -188,12 +255,16 @@ export class SyncManager {
     convex: ConvexReactClient,
     mutation: QueuedMutation
   ): Promise<ConflictCheckResult> {
-    // Only check conflicts for check/uncheck mutations
-    if (mutation.type !== "checkItem" && mutation.type !== "uncheckItem") {
+    // Only check conflicts for item mutations that modify state
+    if (
+      mutation.type !== "checkItem" && 
+      mutation.type !== "uncheckItem" &&
+      mutation.type !== "updateItem"
+    ) {
       return { hasConflict: false };
     }
 
-    const payload = mutation.payload as CheckItemPayload | UncheckItemPayload;
+    const payload = mutation.payload as CheckItemPayload | UncheckItemPayload | UpdateItemPayload;
     const itemId = payload.itemId;
 
     try {
@@ -252,6 +323,54 @@ export class SyncManager {
       case "reorderItem": {
         const payload = mutation.payload as ReorderItemPayload;
         await convex.mutation(api.items.reorderItems, payload);
+        break;
+      }
+
+      case "updateItem": {
+        const payload = mutation.payload as UpdateItemPayload;
+        await convex.mutation(api.items.updateItem, payload);
+        break;
+      }
+
+      case "removeItem": {
+        const payload = mutation.payload as RemoveItemPayload;
+        await convex.mutation(api.items.removeItem, payload);
+        break;
+      }
+
+      case "batchCheckItems": {
+        const payload = mutation.payload as BatchCheckItemsPayload;
+        await convex.mutation(api.items.batchCheckItems, payload);
+        break;
+      }
+
+      case "batchUncheckItems": {
+        const payload = mutation.payload as BatchUncheckItemsPayload;
+        await convex.mutation(api.items.batchUncheckItems, payload);
+        break;
+      }
+
+      case "batchDeleteItems": {
+        const payload = mutation.payload as BatchDeleteItemsPayload;
+        await convex.mutation(api.items.batchDeleteItems, payload);
+        break;
+      }
+
+      case "createList": {
+        const payload = mutation.payload as CreateListPayload;
+        await convex.mutation(api.lists.createList, payload);
+        break;
+      }
+
+      case "renameList": {
+        const payload = mutation.payload as RenameListPayload;
+        await convex.mutation(api.lists.renameList, payload);
+        break;
+      }
+
+      case "deleteList": {
+        const payload = mutation.payload as DeleteListPayload;
+        await convex.mutation(api.lists.deleteList, payload);
         break;
       }
 
