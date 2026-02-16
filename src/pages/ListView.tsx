@@ -26,6 +26,9 @@ import { shareList } from "../lib/share";
 import { AddItemInput } from "../components/AddItemInput";
 import { ListItem } from "../components/ListItem";
 import { CollaboratorList } from "../components/sharing/CollaboratorList";
+import { useStreaks } from "../hooks/useStreaks";
+import { StreakBadge } from "../components/StreakBadge";
+import { StreakCelebration } from "../components/StreakCelebration";
 import { NoItemsEmptyState } from "../components/ui/EmptyState";
 import { ListViewSkeleton } from "../components/ui/Skeleton";
 import { CalendarView } from "../components/CalendarView";
@@ -91,6 +94,22 @@ export function ListView() {
     usingCache,
   } = useOptimisticItems(listId);
   
+  // Streak tracking
+  const { streak, recordTaskCompletion } = useStreaks(did ?? undefined);
+  const [celebrationMilestone, setCelebrationMilestone] = useState<number | null>(null);
+
+  // Wrap checkItem to also record streak
+  const checkItemWithStreak = useCallback(
+    async (itemId: Id<"items">, checkedByDid: string, legacyDid?: string) => {
+      await checkItem(itemId, checkedByDid, legacyDid);
+      const milestone = recordTaskCompletion();
+      if (milestone !== null) {
+        setCelebrationMilestone(milestone);
+      }
+    },
+    [checkItem, recordTaskCompletion]
+  );
+
   // Mutation for removing items via keyboard
   const removeItemMutation = useMutation(api.items.removeItem);
   const updateItemMutation = useMutation(api.items.updateItem);
@@ -419,7 +438,7 @@ export function ListView() {
             if (item.checked) {
               uncheckItem(item._id, did, legacyDid ?? undefined);
             } else {
-              checkItem(item._id, did, legacyDid ?? undefined);
+              checkItemWithStreak(item._id, did, legacyDid ?? undefined);
             }
           }
         },
@@ -434,7 +453,7 @@ export function ListView() {
             if (item.checked) {
               uncheckItem(item._id, did, legacyDid ?? undefined);
             } else {
-              checkItem(item._id, did, legacyDid ?? undefined);
+              checkItemWithStreak(item._id, did, legacyDid ?? undefined);
             }
           }
         },
@@ -521,7 +540,7 @@ export function ListView() {
         },
       },
     ];
-  }, [sortedItems, focusedIndex, did, legacyDid, userRole, checkItem, uncheckItem, removeItemMutation, haptic, isSelectMode, clearSelection]);
+  }, [sortedItems, focusedIndex, did, legacyDid, userRole, checkItemWithStreak, uncheckItem, removeItemMutation, haptic, isSelectMode, clearSelection]);
 
   const { showHelp, setShowHelp } = useKeyboardShortcuts({
     enabled: viewMode === "list" && !editingItem,
@@ -636,6 +655,7 @@ export function ListView() {
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 break-words min-w-0">
                 {list.name}
               </h1>
+              {streak > 0 && <StreakBadge streak={streak} size="sm" />}
             {/* Verification badge for list */}
             <ListVerificationBadge
               hasVC={!!list.assetDid}
@@ -911,7 +931,7 @@ export function ListView() {
                             isDragOver={groceryTouchDrag.state.dragOverId === item._id}
                             isFocused={focusedIndex === globalIndex}
                             onTouchStart={groceryTouchDrag.handleTouchStart}
-                            onCheck={checkItem}
+                            onCheck={checkItemWithStreak}
                             onUncheck={uncheckItem}
                             isSelectMode={isSelectMode}
                             isSelected={selectedIds.has(item._id)}
@@ -1017,7 +1037,7 @@ export function ListView() {
                             isDragging={false}
                             isDragOver={false}
                             isFocused={focusedIndex === globalIndex}
-                            onCheck={checkItem}
+                            onCheck={checkItemWithStreak}
                             onUncheck={uncheckItem}
                             isSelectMode={isSelectMode}
                             isSelected={selectedIds.has(item._id)}
@@ -1059,7 +1079,7 @@ export function ListView() {
                         onDragOver={(e) => handleDragOver(e, item._id)}
                         onDragEnd={handleDragEnd}
                         onTouchStart={touchDrag.handleTouchStart}
-                        onCheck={checkItem}
+                        onCheck={checkItemWithStreak}
                         onUncheck={uncheckItem}
                         isSelectMode={isSelectMode}
                         isSelected={selectedIds.has(item._id)}
@@ -1117,7 +1137,7 @@ export function ListView() {
                               onDragOver={(e) => handleDragOver(e, item._id)}
                               onDragEnd={handleDragEnd}
                               onTouchStart={touchDrag.handleTouchStart}
-                              onCheck={checkItem}
+                              onCheck={checkItemWithStreak}
                               onUncheck={uncheckItem}
                               isSelectMode={isSelectMode}
                               isSelected={selectedIds.has(item._id)}
@@ -1245,6 +1265,14 @@ export function ListView() {
           onClearSelection={clearSelection}
           userDid={did}
           legacyDid={legacyDid ?? undefined}
+        />
+      )}
+
+      {/* Streak milestone celebration */}
+      {celebrationMilestone !== null && (
+        <StreakCelebration
+          milestone={celebrationMilestone}
+          onDismiss={() => setCelebrationMilestone(null)}
         />
       )}
     </div>

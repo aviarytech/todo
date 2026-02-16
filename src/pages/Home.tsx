@@ -25,9 +25,12 @@ import { SortDropdown } from "../components/ui/SortDropdown";
 import { HomePageSkeleton } from "../components/ui/Skeleton";
 import { NoListsEmptyState, NoSearchResultsEmptyState } from "../components/ui/EmptyState";
 import { cacheAllLists, getAllCachedLists, type OfflineList } from "../lib/offline";
+import { useStreaks } from "../hooks/useStreaks";
+import { StreakBadge } from "../components/StreakBadge";
 
 export function Home() {
   const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
+  const { streak } = useStreaks(did ?? undefined);
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { isOnline } = useOffline();
   const { listSort, haptic } = useSettings();
@@ -191,9 +194,12 @@ export function Home() {
       <div className="pt-2 pb-6">
         <div className="flex items-end justify-between mb-4">
           <div>
-            <h1 className="text-[2rem] sm:text-4xl font-extrabold text-stone-900 dark:text-stone-50 tracking-tight leading-none">
-              Your Lists
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-[2rem] sm:text-4xl font-extrabold text-stone-900 dark:text-stone-50 tracking-tight leading-none">
+                Your Lists
+              </h1>
+              {streak > 0 && <StreakBadge streak={streak} />}
+            </div>
             {hasLists && (
               <p className="mt-1.5 text-sm font-medium text-stone-400 dark:text-stone-500">
                 {totalListCount} {totalListCount === 1 ? 'list' : 'lists'}
