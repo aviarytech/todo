@@ -884,3 +884,86 @@ export const getHighPriorityItems = query({
     });
   },
 });
+
+/**
+ * Promote an item to a top-level item (remove parent).
+ */
+export const promoteItem = mutation({
+  args: {
+    itemId: v.id("items"),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+
+    const canEdit = await canUserEditList(ctx, item.listId, args.userDid, args.legacyDid);
+    if (!canEdit) {
+      throw new Error("Not authorized to edit this item");
+    }
+
+    // Remove parent to make it top-level
+    await ctx.db.patch(args.itemId, {
+      parentId: undefined,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Demote an item to become a subtask of another item.
+ * Ensures we don't exceed max nesting depth (2 levels).
+ */
+export const demoteItem = mutation({
+  args: {
+    itemId: v.id("items"),
+    newParentId: v.id("items"),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+
+    const newParent = await ctx.db.get(args.newParentId);
+    if (!newParent) {
+      throw new Error("Parent item not found");
+    }
+
+    // Verify both items are in the same list
+    if (item.listId !== newParent.listId) {
+      throw new Error("Items must be in the same list");
+    }
+
+    const canEdit = await canUserEditList(ctx, item.listId, args.userDid, args.legacyDid);
+    if (!canEdit) {
+      throw new Error("Not authorized to edit this item");
+    }
+
+    // Check nesting depth: new parent can't already have a parent (max 2 levels)
+    if (newParent.parentId) {
+      throw new Error("Cannot nest more than 2 levels deep");
+    }
+
+    // Prevent circular nesting: can't make an item a child of its own child
+    const childItems = await ctx.db
+      .query("items")
+      .withIndex("by_parent", (q) => q.eq("parentId", args.itemId))
+      .collect();
+    
+    if (childItems.some(child => child._id === args.newParentId)) {
+      throw new Error("Cannot create circular dependency");
+    }
+
+    // Set the new parent
+    await ctx.db.patch(args.itemId, {
+      parentId: args.newParentId,
+      updatedAt: Date.now(),
+    });
+  },
+});
