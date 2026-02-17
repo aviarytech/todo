@@ -160,6 +160,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const parsed: PersistedAuthState = JSON.parse(storedState);
         console.log("[useAuth] Found stored session, restoring...");
 
+        // Validate JWT is not expired before restoring
+        try {
+          const payload = JSON.parse(atob(parsed.token.split('.')[1]));
+          if (payload.exp && payload.exp * 1000 < Date.now()) {
+            console.log("[useAuth] Stored token expired, clearing session");
+            await storageAdapter.remove(AUTH_STORAGE_KEY);
+            await storageAdapter.remove(JWT_STORAGE_KEY);
+            if (isMountedRef.current) setIsLoading(false);
+            return;
+          }
+        } catch {
+          console.warn("[useAuth] Could not parse JWT for expiry check, proceeding anyway");
+        }
+
         // Restore auth state
         setUser(parsed.user);
         setToken(parsed.token);
