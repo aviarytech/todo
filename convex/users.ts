@@ -5,6 +5,7 @@
 
 import { v } from "convex/values";
 import { query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 /**
  * Look up display names for a list of DIDs.
