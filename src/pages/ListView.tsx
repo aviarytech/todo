@@ -18,7 +18,6 @@ import { useSettings } from "../hooks/useSettings";
 import { useTouchDrag } from "../hooks/useTouchDrag";
 import { useNotifications } from "../hooks/useNotifications";
 import { useKeyboardShortcuts, KeyboardShortcutsHelp, type Shortcut } from "../hooks/useKeyboardShortcuts";
-import { isOwner } from "../lib/permissions";
 import { groupByAisle, classifyItem } from "../lib/groceryAisles";
 import { useCategories } from "../hooks/useCategories";
 import { shareList } from "../lib/share";
