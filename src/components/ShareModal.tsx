@@ -1,15 +1,15 @@
 /**
- * Panel for sharing a list via invite link.
- * Uses Panel component for slide-up drawer experience.
- * Updated for Phase 3: supports role-based invites.
+ * Share modal - now triggers did:webvh publication for sharing.
+ * Publishing = sharing. Once published, anyone with the link can edit.
  */
 
-import { useState, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useState } from "react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
-import { getRoleDescription } from "../lib/permissions";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
+import { getPublicListUrl } from "../lib/publication";
 import { Panel } from "./ui/Panel";
 import { ListProvenanceInfo } from "./ProvenanceInfo";
 
@@ -18,60 +18,80 @@ interface ShareModalProps {
   onClose: () => void;
 }
 
-type InviteRole = "editor" | "viewer";
+const PUBLICATION_DOMAIN = "lisa.aviary.tech";
 
 export function ShareModal({ list, onClose }: ShareModalProps) {
-  const createInvite = useMutation(api.invites.createInvite);
+  const { did, subOrgId } = useCurrentUser();
   const { haptic } = useSettings();
+  const createListDID = useAction(api.didCreation.createListDID);
+  const publishListMutation = useMutation(api.publication.publishList);
+  const unpublishListMutation = useMutation(api.publication.unpublishList);
+  const publicationStatus = useQuery(api.publication.getPublicationStatus, {
+    listId: list._id,
+  });
 
-  const [selectedRole, setSelectedRole] = useState<InviteRole>("editor");
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generateInvite = async (role: InviteRole) => {
-    setIsCreating(true);
+  const isPublished = publicationStatus?.status === "active";
+  const publicUrl = isPublished
+    ? getPublicListUrl(publicationStatus.webvhDid)
+    : null;
+
+  const handlePublish = async () => {
+    if (!did || !subOrgId) {
+      setError("You must be logged in to share a list");
+      return;
+    }
+
+    setIsPublishing(true);
     setError(null);
-    setInviteLink(null);
+    haptic('medium');
 
     try {
-      const token = crypto.randomUUID();
-      await createInvite({
-        listId: list._id,
-        token,
-        role,
-        createdAt: Date.now(),
+      const slug = `list-${list._id.replace(/[^a-zA-Z0-9-]/g, "")}`;
+
+      const result = await createListDID({
+        subOrgId,
+        domain: PUBLICATION_DOMAIN,
+        slug,
       });
 
-      const link = `${window.location.origin}/join/${list._id}/${token}`;
-      setInviteLink(link);
+      await publishListMutation({
+        listId: list._id,
+        webvhDid: result.did,
+        didDocument: JSON.stringify(result.didDocument),
+        didLog: JSON.stringify(result.didLog),
+        publisherDid: did,
+      });
+
+      haptic('success');
     } catch (err) {
-      console.error("Failed to create invite:", err);
-      setError("Failed to create invite. Please try again.");
+      console.error("[ShareModal] Failed to publish:", err);
+      setError(err instanceof Error ? err.message : "Failed to share list");
+      haptic('error');
     } finally {
-      setIsCreating(false);
+      setIsPublishing(false);
     }
   };
 
-  useEffect(() => {
-    // Generate invite on modal open with default role
-    generateInvite(selectedRole);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleRoleChange = (role: InviteRole) => {
-    haptic('light');
-    setSelectedRole(role);
-    // Generate new invite with selected role
-    generateInvite(role);
+  const handleUnpublish = async () => {
+    if (!did) return;
+    setError(null);
+    try {
+      await unpublishListMutation({ listId: list._id, userDid: did });
+      haptic('success');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to unpublish");
+      haptic('error');
+    }
   };
 
   const handleCopy = async () => {
-    if (!inviteLink) return;
-
+    if (!publicUrl) return;
     try {
-      await navigator.clipboard.writeText(inviteLink);
+      await navigator.clipboard.writeText(publicUrl);
       haptic('success');
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
@@ -85,7 +105,7 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
     <>
       <div>
         <h2 id="share-dialog-title" className="text-lg font-bold text-gray-900 dark:text-gray-100">
-          🔗 Share List
+          {isPublished ? "🌐 Shared List" : "🔗 Share List"}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
           {list.name}
@@ -104,10 +124,18 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
   );
 
   const footer = (
-    <div className="px-5 py-4">
+    <div className="px-5 py-4 flex gap-3">
+      {isPublished && (
+        <button
+          onClick={handleUnpublish}
+          className="px-4 py-3 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+        >
+          Stop sharing
+        </button>
+      )}
       <button
         onClick={onClose}
-        className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors"
+        className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors"
       >
         Done
       </button>
@@ -122,62 +150,99 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
       footer={footer}
       ariaLabelledBy="share-dialog-title"
     >
-      {/* Content */}
       <div className="p-5 space-y-5">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Send this link to invite someone to collaborate on your list.
-        </p>
-
-        {/* Role selector */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Invite as
-          </label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleRoleChange("editor")}
-              disabled={isCreating}
-              className={`flex-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                selectedRole === "editor"
-                  ? "bg-amber-50 dark:bg-amber-900/20 border-amber-500 text-amber-700 dark:text-amber-400"
-                  : "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
-              } ${isCreating ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              <span className="text-lg block mb-1">✏️</span>
-              Editor
-            </button>
-            <button
-              onClick={() => handleRoleChange("viewer")}
-              disabled={isCreating}
-              className={`flex-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                selectedRole === "viewer"
-                  ? "bg-amber-50 dark:bg-amber-900/20 border-amber-500 text-amber-700 dark:text-amber-400"
-                  : "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
-              } ${isCreating ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              <span className="text-lg block mb-1">👁️</span>
-              Viewer
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            {getRoleDescription(selectedRole)}
-          </p>
-        </div>
-
-        {isCreating && (
-          <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl text-center">
-            <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
-              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Creating invite link...
+        {isPublished ? (
+          <>
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
+              <div className="flex items-center gap-2 text-green-800 dark:text-green-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-medium">This list is shared</span>
+              </div>
+              <p className="mt-1 text-sm text-green-700 dark:text-green-500">
+                Anyone with the link can view and edit this list.
+              </p>
             </div>
-          </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Share link
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={publicUrl ?? ""}
+                  readOnly
+                  className="flex-1 px-4 py-3 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm"
+                />
+                <button
+                  onClick={handleCopy}
+                  className={`px-4 py-3 rounded-xl font-medium transition-all ${
+                    isCopied
+                      ? "bg-green-500 text-white"
+                      : "bg-amber-500 hover:bg-amber-600 text-white"
+                  }`}
+                >
+                  {isCopied ? "✓" : "Copy"}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-medium">DID:</span>{" "}
+                <span className="font-mono text-xs break-all">
+                  {publicationStatus?.webvhDid}
+                </span>
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Share this list by publishing it with a verifiable <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">did:webvh</code> identity. 
+              Anyone with the link can view and edit the list.
+            </p>
+
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+              <div className="flex items-start gap-3 text-amber-800 dark:text-amber-400">
+                <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="font-medium">What happens when you share</p>
+                  <ul className="mt-2 text-sm space-y-1 text-amber-700 dark:text-amber-500">
+                    <li>• A verifiable DID is created for the list</li>
+                    <li>• Anyone with the link can view &amp; edit items</li>
+                    <li>• You can stop sharing at any time</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handlePublish}
+              disabled={isPublishing}
+              className="w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 disabled:opacity-50 transition-all"
+            >
+              {isPublishing ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Publishing...
+                </span>
+              ) : (
+                "Publish to Share"
+              )}
+            </button>
+          </>
         )}
 
         {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-400 text-sm flex items-center gap-2">
+          <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-400 text-sm flex items-center gap-2">
             <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -185,37 +250,6 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
           </div>
         )}
 
-        {inviteLink && !isCreating && (
-          <div className="space-y-3">
-            <label htmlFor="invite-link-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Invite link
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="invite-link-input"
-                type="text"
-                value={inviteLink}
-                readOnly
-                className="flex-1 px-4 py-3 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm"
-              />
-              <button
-                onClick={handleCopy}
-                className={`px-4 py-3 rounded-xl font-medium transition-all ${
-                  isCopied
-                    ? "bg-green-500 text-white"
-                    : "bg-amber-500 hover:bg-amber-600 text-white"
-                }`}
-              >
-                {isCopied ? "✓" : "Copy"}
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              This link expires in 24 hours and can only be used once.
-            </p>
-          </div>
-        )}
-
-        {/* Originals Provenance Info */}
         <ListProvenanceInfo list={list} />
       </div>
     </Panel>

@@ -174,6 +174,9 @@ export const getPublicList = query({
         ownerDid: list.ownerDid,
         ownerName: owner?.displayName ?? "Unknown",
         createdAt: list.createdAt,
+        assetDid: list.assetDid,
+        customAisles: list.customAisles,
+        itemViewMode: list.itemViewMode,
       },
       items: enrichedItems,
       publication: {
@@ -183,6 +186,85 @@ export const getPublicList = query({
         didLog: pub.didLog,
       },
     };
+  },
+});
+
+/**
+ * Bookmark a published list so it shows in the user's list view.
+ */
+export const bookmarkList = mutation({
+  args: {
+    listId: v.id("lists"),
+    userDid: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Verify list exists and is published
+    const pub = await ctx.db
+      .query("publications")
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
+      .first();
+
+    if (!pub || pub.status !== "active") {
+      throw new Error("List is not published");
+    }
+
+    // Check if already bookmarked
+    const existing = await ctx.db
+      .query("bookmarks")
+      .withIndex("by_user_list", (q) =>
+        q.eq("userDid", args.userDid).eq("listId", args.listId)
+      )
+      .first();
+
+    if (existing) return existing._id;
+
+    return await ctx.db.insert("bookmarks", {
+      userDid: args.userDid,
+      listId: args.listId,
+      bookmarkedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Remove a bookmark.
+ */
+export const unbookmarkList = mutation({
+  args: {
+    listId: v.id("lists"),
+    userDid: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("bookmarks")
+      .withIndex("by_user_list", (q) =>
+        q.eq("userDid", args.userDid).eq("listId", args.listId)
+      )
+      .first();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+  },
+});
+
+/**
+ * Check if a list is bookmarked by the user.
+ */
+export const isBookmarked = query({
+  args: {
+    listId: v.id("lists"),
+    userDid: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("bookmarks")
+      .withIndex("by_user_list", (q) =>
+        q.eq("userDid", args.userDid).eq("listId", args.listId)
+      )
+      .first();
+
+    return !!existing;
   },
 });
 

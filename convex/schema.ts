@@ -8,13 +8,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-// Collaborator roles
-export const roleValidator = v.union(
-  v.literal("owner"),
-  v.literal("editor"),
-  v.literal("viewer")
-);
-
 export default defineSchema({
   // Rate limits table - for tracking auth endpoint rate limits (Phase 9.2)
   rateLimits: defineTable({
@@ -68,17 +61,14 @@ export default defineSchema({
     .index("by_owner", ["ownerDid"])
     .index("by_owner_name", ["ownerDid", "name"]),
 
-  // Collaborators junction table - unlimited collaborators per list (Phase 3)
-  collaborators: defineTable({
-    listId: v.id("lists"),
+  // Bookmarks table - tracks which published lists a user has bookmarked
+  bookmarks: defineTable({
     userDid: v.string(),
-    role: v.union(v.literal("owner"), v.literal("editor"), v.literal("viewer")),
-    joinedAt: v.number(),
-    invitedByDid: v.optional(v.string()), // Who sent the invite
+    listId: v.id("lists"),
+    bookmarkedAt: v.number(),
   })
-    .index("by_list", ["listId"])
     .index("by_user", ["userDid"])
-    .index("by_list_user", ["listId", "userDid"]),
+    .index("by_user_list", ["userDid", "listId"]),
 
   // Lists table - each list is an Originals asset
   lists: defineTable({
@@ -213,19 +203,6 @@ export default defineSchema({
   })
     .index("by_user", ["userDid"])
     .index("by_token", ["token"]),
-
-  // Invites table - for sharing lists with partners
-  invites: defineTable({
-    listId: v.id("lists"),
-    token: v.string(), // Random unique string (uuid v4)
-    role: v.optional(v.union(v.literal("editor"), v.literal("viewer"))), // Role granted on accept (Phase 3, optional for backwards compat)
-    createdAt: v.number(),
-    expiresAt: v.number(), // createdAt + 24 hours
-    usedAt: v.optional(v.number()),
-    usedByDid: v.optional(v.string()),
-  })
-    .index("by_token", ["token"])
-    .index("by_list", ["listId"]),
 
   // Publications table - did:webvh publication tracking (Phase 4)
   publications: defineTable({

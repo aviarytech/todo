@@ -32,23 +32,14 @@ import { storageAdapter } from "../lib/storageAdapter";
 /**
  * Get the Convex HTTP endpoint base URL from the Convex URL.
  *
- * Convex URLs:
- * - Explicit: VITE_CONVEX_HTTP_URL (used for self-hosted deployments)
- * - Cloud: https://xxx.convex.cloud -> https://xxx.convex.site
- * - Local dev: http://127.0.0.1:3210 -> http://127.0.0.1:3211
+ * Convex Cloud: https://xxx.convex.cloud -> https://xxx.convex.site
+ * Local dev: http://127.0.0.1:3210 -> http://127.0.0.1:3211
  */
 function getConvexHttpUrl(): string {
-  // Self-hosted / explicit HTTP URL takes priority
-  const httpUrl = import.meta.env.VITE_CONVEX_HTTP_URL as string | undefined;
-  if (httpUrl) {
-    return httpUrl;
-  }
-
   const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
 
   // Local development
   if (convexUrl.includes("127.0.0.1") || convexUrl.includes("localhost")) {
-    // Replace port 3210 with 3211 for HTTP actions
     return convexUrl.replace(":3210", ":3211");
   }
 

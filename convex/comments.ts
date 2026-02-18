@@ -9,8 +9,8 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
 /**
- * Helper to check if a user can view a list (owner, editor, or viewer).
- * Checks collaborators table first, then falls back to legacy fields.
+ * Helper to check if a user can view a list.
+ * Owner can always view. Published lists are viewable by anyone.
  */
 async function canUserViewList(
   ctx: MutationCtx | QueryCtx,
@@ -18,42 +18,26 @@ async function canUserViewList(
   userDid: string,
   legacyDid?: string
 ): Promise<boolean> {
-  const didsToCheck = [userDid];
-  if (legacyDid) {
-    didsToCheck.push(legacyDid);
-  }
-
-  // Check collaborators table
-  for (const did of didsToCheck) {
-    const collab = await ctx.db
-      .query("collaborators")
-      .withIndex("by_list_user", (q) =>
-        q.eq("listId", listId).eq("userDid", did)
-      )
-      .first();
-
-    if (collab) {
-      return true;
-    }
-  }
-
-  // Fallback: Check legacy fields for unmigrated lists
   const list = await ctx.db.get(listId);
-  if (!list) {
-    return false;
-  }
+  if (!list) return false;
 
-  for (const did of didsToCheck) {
-    if (list.ownerDid === did) {
-      return true;
-    }
-  }
+  const dids = [userDid];
+  if (legacyDid) dids.push(legacyDid);
 
-  return false;
+  if (dids.includes(list.ownerDid)) return true;
+
+  // Published lists are viewable by anyone
+  const pub = await ctx.db
+    .query("publications")
+    .withIndex("by_list", (q) => q.eq("listId", listId))
+    .first();
+
+  return pub?.status === "active";
 }
 
 /**
- * Helper to check if a user can edit a list (owner or editor).
+ * Helper to check if a user can edit a list.
+ * Owner can always edit. Published lists are editable by anyone.
  */
 async function canUserEditList(
   ctx: MutationCtx | QueryCtx,
@@ -61,38 +45,7 @@ async function canUserEditList(
   userDid: string,
   legacyDid?: string
 ): Promise<boolean> {
-  const didsToCheck = [userDid];
-  if (legacyDid) {
-    didsToCheck.push(legacyDid);
-  }
-
-  // Check collaborators table
-  for (const did of didsToCheck) {
-    const collab = await ctx.db
-      .query("collaborators")
-      .withIndex("by_list_user", (q) =>
-        q.eq("listId", listId).eq("userDid", did)
-      )
-      .first();
-
-    if (collab && (collab.role === "owner" || collab.role === "editor")) {
-      return true;
-    }
-  }
-
-  // Fallback: Check legacy fields for unmigrated lists
-  const list = await ctx.db.get(listId);
-  if (!list) {
-    return false;
-  }
-
-  for (const did of didsToCheck) {
-    if (list.ownerDid === did) {
-      return true;
-    }
-  }
-
-  return false;
+  return canUserViewList(ctx, listId, userDid, legacyDid);
 }
 
 /**

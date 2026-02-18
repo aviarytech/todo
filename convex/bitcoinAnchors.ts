@@ -41,21 +41,15 @@ async function computeSha256(data: string): Promise<string> {
  */
 function buildCanonicalState(
   list: Doc<"lists">,
-  items: Doc<"items">[],
-  collaborators: Doc<"collaborators">[]
+  items: Doc<"items">[]
 ): string {
   // Sort items by ID for deterministic ordering
   const sortedItems = [...items].sort((a, b) =>
     a._id.toString().localeCompare(b._id.toString())
   );
 
-  // Sort collaborators by userDid
-  const sortedCollaborators = [...collaborators].sort((a, b) =>
-    a.userDid.localeCompare(b.userDid)
-  );
-
   const state = {
-    version: 1, // State schema version for future compatibility
+    version: 2, // State schema version - v2 removes collaborators
     list: {
       id: list._id.toString(),
       assetDid: list.assetDid,
@@ -75,11 +69,6 @@ function buildCanonicalState(
       description: item.description,
       dueDate: item.dueDate,
       priority: item.priority,
-    })),
-    collaborators: sortedCollaborators.map((c) => ({
-      userDid: c.userDid,
-      role: c.role,
-      joinedAt: c.joinedAt,
     })),
     anchoredAt: Date.now(),
   };
@@ -157,12 +146,7 @@ export const getListDataForAnchor = query({
       .withIndex("by_list", (q) => q.eq("listId", args.listId))
       .collect();
 
-    const collaborators = await ctx.db
-      .query("collaborators")
-      .withIndex("by_list", (q) => q.eq("listId", args.listId))
-      .collect();
-
-    return { list, items, collaborators };
+    return { list, items };
   },
 });
 
@@ -170,7 +154,7 @@ export const getListDataForAnchor = query({
  * Anchor list state to Bitcoin signet.
  *
  * This action:
- * 1. Fetches current list state (items, collaborators)
+ * 1. Fetches current list state (items)
  * 2. Computes SHA-256 hash of canonical state
  * 3. Creates anchor record with "pending" status
  * 4. Attempts Bitcoin inscription (when configured)
@@ -195,19 +179,15 @@ export const anchorListState = action({
       throw new Error("List not found");
     }
 
-    const { list, items, collaborators } = data;
+    const { list, items } = data;
 
-    // 2. Verify user has access (owner or editor)
-    const userCollab = collaborators.find((c) => c.userDid === args.userDid);
-    const isOwner = list.ownerDid === args.userDid;
-    const isEditor = userCollab?.role === "editor" || userCollab?.role === "owner";
-
-    if (!isOwner && !isEditor) {
-      throw new Error("Only owners and editors can anchor list state");
+    // 2. Verify user has access (owner)
+    if (list.ownerDid !== args.userDid) {
+      throw new Error("Only the owner can anchor list state");
     }
 
     // 3. Build canonical state and compute hash
-    const canonicalState = buildCanonicalState(list, items, collaborators);
+    const canonicalState = buildCanonicalState(list, items);
     const stateHash = await computeSha256(canonicalState);
 
     // 4. Create anchor record
@@ -381,8 +361,8 @@ export const verifyAnchorState = action({
     }
 
     // Compute current state hash
-    const { list, items, collaborators } = data;
-    const canonicalState = buildCanonicalState(list, items, collaborators);
+    const { list, items } = data;
+    const canonicalState = buildCanonicalState(list, items);
     const currentHash = await computeSha256(canonicalState);
 
     return {

@@ -100,18 +100,28 @@ export const getTokensForUser = internalQuery({
 export const getTokensForList = internalQuery({
   args: { listId: v.id("lists") },
   handler: async (ctx, args) => {
-    const collaborators = await ctx.db
-      .query("collaborators")
-      .withIndex("by_list", (q) => q.eq("listId", args.listId))
-      .collect();
+    // Get tokens for the list owner
+    const list = await ctx.db.get(args.listId);
+    if (!list) return [];
 
     const tokens = [];
-    for (const collab of collaborators) {
-      const userTokens = await ctx.db
-        .query("pushTokens")
-        .withIndex("by_user", (q) => q.eq("userDid", collab.userDid))
-        .collect();
-      tokens.push(...userTokens);
+    // Owner's tokens
+    const ownerTokens = await ctx.db
+      .query("pushTokens")
+      .withIndex("by_user", (q) => q.eq("userDid", list.ownerDid))
+      .collect();
+    tokens.push(...ownerTokens);
+
+    // Tokens for users who bookmarked this list
+    const bookmarks = await ctx.db.query("bookmarks").collect();
+    for (const bm of bookmarks) {
+      if (bm.listId === args.listId && bm.userDid !== list.ownerDid) {
+        const userTokens = await ctx.db
+          .query("pushTokens")
+          .withIndex("by_user", (q) => q.eq("userDid", bm.userDid))
+          .collect();
+        tokens.push(...userTokens);
+      }
     }
     return tokens;
   },

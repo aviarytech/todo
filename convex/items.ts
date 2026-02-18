@@ -110,8 +110,8 @@ function createItemCompletionVC(
 }
 
 /**
- * Helper to check if a user can edit a list (owner or editor).
- * Checks collaborators table first, then falls back to legacy fields.
+ * Helper to check if a user can edit a list.
+ * Owner can always edit. If the list has an active publication, anyone can edit.
  */
 async function canUserEditList(
   ctx: MutationCtx | QueryCtx,
@@ -119,36 +119,24 @@ async function canUserEditList(
   userDid: string,
   legacyDid?: string
 ): Promise<boolean> {
-  const didsToCheck = [userDid];
-  if (legacyDid) {
-    didsToCheck.push(legacyDid);
-  }
-
-  // Check collaborators table (Phase 3)
-  for (const did of didsToCheck) {
-    const collab = await ctx.db
-      .query("collaborators")
-      .withIndex("by_list_user", (q) =>
-        q.eq("listId", listId).eq("userDid", did)
-      )
-      .first();
-
-    if (collab && (collab.role === "owner" || collab.role === "editor")) {
-      return true;
-    }
-  }
-
-  // Fallback: Check legacy fields for unmigrated lists
   const list = await ctx.db.get(listId);
-  if (!list) {
-    return false;
-  }
+  if (!list) return false;
+
+  // Owner can always edit
+  const didsToCheck = [userDid];
+  if (legacyDid) didsToCheck.push(legacyDid);
 
   for (const did of didsToCheck) {
-    if (list.ownerDid === did) {
-      return true;
-    }
+    if (list.ownerDid === did) return true;
   }
+
+  // If list has an active publication, anyone can edit
+  const pub = await ctx.db
+    .query("publications")
+    .withIndex("by_list", (q) => q.eq("listId", listId))
+    .first();
+
+  if (pub && pub.status === "active") return true;
 
   return false;
 }
@@ -822,22 +810,9 @@ export const getHighPriorityItems = query({
       didsToCheck.push(args.legacyDid);
     }
 
-    // First, get all list IDs the user has access to
+    // Get all list IDs the user has access to (owned + bookmarked)
     const listIds = new Set<Id<"lists">>();
 
-    // Check collaborators table
-    for (const did of didsToCheck) {
-      const collabs = await ctx.db
-        .query("collaborators")
-        .withIndex("by_user", (q) => q.eq("userDid", did))
-        .collect();
-
-      for (const collab of collabs) {
-        listIds.add(collab.listId);
-      }
-    }
-
-    // Also check legacy ownerDid field
     for (const did of didsToCheck) {
       const ownedLists = await ctx.db
         .query("lists")
@@ -846,6 +821,15 @@ export const getHighPriorityItems = query({
 
       for (const list of ownedLists) {
         listIds.add(list._id);
+      }
+
+      const bookmarks = await ctx.db
+        .query("bookmarks")
+        .withIndex("by_user", (q) => q.eq("userDid", did))
+        .collect();
+
+      for (const bm of bookmarks) {
+        listIds.add(bm.listId);
       }
     }
 

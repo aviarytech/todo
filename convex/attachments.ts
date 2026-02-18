@@ -16,30 +16,21 @@ async function canUserEditList(
   userDid: string,
   legacyDid?: string
 ): Promise<boolean> {
-  const didsToCheck = [userDid];
-  if (legacyDid) didsToCheck.push(legacyDid);
-
-  for (const did of didsToCheck) {
-    const collab = await ctx.db
-      .query("collaborators")
-      .withIndex("by_list_user", (q) =>
-        q.eq("listId", listId).eq("userDid", did)
-      )
-      .first();
-
-    if (collab && (collab.role === "owner" || collab.role === "editor")) {
-      return true;
-    }
-  }
-
   const list = await ctx.db.get(listId);
   if (!list) return false;
 
-  for (const did of didsToCheck) {
-    if (list.ownerDid === did) return true;
-  }
+  const dids = [userDid];
+  if (legacyDid) dids.push(legacyDid);
 
-  return false;
+  if (dids.includes(list.ownerDid)) return true;
+
+  // Published lists are editable by anyone
+  const pub = await ctx.db
+    .query("publications")
+    .withIndex("by_list", (q) => q.eq("listId", listId))
+    .first();
+
+  return pub?.status === "active";
 }
 
 /**

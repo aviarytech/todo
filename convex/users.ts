@@ -67,24 +67,23 @@ export const getUserStats = query({
       )
       .collect();
 
-    // Get all collaborations where user is a member
-    const collaborations = await ctx.db
-      .query("collaborators")
-      .filter((q) =>
-        q.or(
-          q.eq(q.field("userDid"), userDid),
-          legacyDid ? q.eq(q.field("userDid"), legacyDid) : q.eq(1, 0)
-        )
-      )
-      .collect();
+    // Get bookmarked lists
+    const didsToCheck = [userDid];
+    if (legacyDid) didsToCheck.push(legacyDid);
 
-    // Combine list IDs from owned and collaborated lists
+    const bookmarkedListIds: Id<"lists">[] = [];
+    for (const did of didsToCheck) {
+      const bookmarks = await ctx.db
+        .query("bookmarks")
+        .withIndex("by_user", (q) => q.eq("userDid", did))
+        .collect();
+      bookmarkedListIds.push(...bookmarks.map((b) => b.listId));
+    }
+
     const ownedListIds = new Set(ownedLists.map((l) => l._id));
-    const collaboratedListIds = collaborations
-      .map((c) => c.listId)
-      .filter((id) => !ownedListIds.has(id));
+    const sharedListIds = bookmarkedListIds.filter((id) => !ownedListIds.has(id));
     
-    const allListIds = [...ownedListIds, ...collaboratedListIds];
+    const allListIds = [...ownedListIds, ...sharedListIds];
 
     // Count items across all lists
     let totalItems = 0;
@@ -103,7 +102,7 @@ export const getUserStats = query({
     return {
       totalLists: allListIds.length,
       ownedLists: ownedLists.length,
-      sharedLists: collaboratedListIds.length,
+      sharedLists: sharedListIds.length,
       totalItems,
       completedItems,
       pendingItems: totalItems - completedItems,

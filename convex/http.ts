@@ -21,11 +21,6 @@ import {
   removeItem,
   reorderItems,
 } from "./itemsHttp";
-import {
-  addCollaborator,
-  updateCollaboratorRole,
-  removeCollaborator,
-} from "./collaboratorsHttp";
 import { updateUserDID } from "./userHttp";
 import {
   getUserLists as agentGetUserLists,
@@ -382,14 +377,6 @@ http.route({ path: "/api/items/remove", method: "POST", handler: removeItem });
 http.route({ path: "/api/items/remove", method: "OPTIONS", handler: corsHandler });
 http.route({ path: "/api/items/reorder", method: "POST", handler: reorderItems });
 http.route({ path: "/api/items/reorder", method: "OPTIONS", handler: corsHandler });
-
-// --- Collaborator endpoints ---
-http.route({ path: "/api/collaborators/add", method: "POST", handler: addCollaborator });
-http.route({ path: "/api/collaborators/add", method: "OPTIONS", handler: corsHandler });
-http.route({ path: "/api/collaborators/updateRole", method: "POST", handler: updateCollaboratorRole });
-http.route({ path: "/api/collaborators/updateRole", method: "OPTIONS", handler: corsHandler });
-http.route({ path: "/api/collaborators/remove", method: "POST", handler: removeCollaborator });
-http.route({ path: "/api/collaborators/remove", method: "OPTIONS", handler: corsHandler });
 
 // --- User endpoints ---
 http.route({ path: "/api/user/updateDID", method: "POST", handler: updateUserDID });
