@@ -84,20 +84,18 @@ async function handleGetListWithItems(
     return errorResponse(request, "List not found", 404);
   }
 
-  // Check if user has access (via collaborators table)
-  const collaborators = await ctx.runQuery(api.collaborators.getListCollaborators, { listId });
-  const userCollab = collaborators.find(
-    (c: { userDid: string }) => c.userDid === user.did || c.userDid === user.legacyDid
-  );
-
-  // Also check legacy ownerDid
-  const isLegacyOwner = list.ownerDid === user.did || list.ownerDid === user.legacyDid;
-
-  if (!userCollab && !isLegacyOwner) {
-    return errorResponse(request, "Access denied", 403);
+  // Check if user has access (owner or published list)
+  const isOwner = list.ownerDid === user.did || list.ownerDid === user.legacyDid;
+  
+  if (!isOwner) {
+    // Check if list is published
+    const pubStatus = await ctx.runQuery(api.publication.getPublicationStatus, { listId });
+    if (!pubStatus || pubStatus.status !== "active") {
+      return errorResponse(request, "Access denied", 403);
+    }
   }
 
-  const role = userCollab?.role ?? (isLegacyOwner ? "owner" : "viewer");
+  const role = isOwner ? "owner" : "editor";
 
   // Get items for the list
   const items = await ctx.runQuery(api.items.getListItems, { listId });
@@ -298,12 +296,8 @@ async function handleGetUserLists(
   // Get roles for each list
   const listsWithRoles = await Promise.all(
     lists.map(async (list: { _id: Id<"lists">; name: string; ownerDid: string; createdAt: number; assetDid: string }) => {
-      const collaborators = await ctx.runQuery(api.collaborators.getListCollaborators, { listId: list._id });
-      const userCollab = collaborators.find(
-        (c: { userDid: string }) => c.userDid === user.did || c.userDid === user.legacyDid
-      );
-      const isLegacyOwner = list.ownerDid === user.did || list.ownerDid === user.legacyDid;
-      const role = userCollab?.role ?? (isLegacyOwner ? "owner" : "viewer");
+      const isOwner = list.ownerDid === user.did || list.ownerDid === user.legacyDid;
+      const role = isOwner ? "owner" : "editor";
 
       return {
         _id: list._id,

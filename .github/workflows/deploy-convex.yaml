@@ -21,9 +21,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Deploy to Convex
+      - name: Deploy to Convex Cloud
         env:
-          CONVEX_SELF_HOSTED_URL: ${{ secrets.CONVEX_SELF_HOSTED_URL }}
-          CONVEX_SELF_HOSTED_ADMIN_KEY: ${{ secrets.CONVEX_SELF_HOSTED_ADMIN_KEY }}
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
         run: npx convex deploy
-        

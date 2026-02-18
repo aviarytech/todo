@@ -207,25 +207,15 @@ export const setListCategory = mutation({
       didsToCheck.push(args.legacyDid);
     }
 
-    // Check user has access via collaborators table
-    let hasAccess = false;
-    for (const did of didsToCheck) {
-      const collab = await ctx.db
-        .query("collaborators")
-        .withIndex("by_list_user", (q) =>
-          q.eq("listId", args.listId).eq("userDid", did)
-        )
-        .first();
+    // Check user has access (owner or published list)
+    let hasAccess = didsToCheck.includes(list.ownerDid);
 
-      if (collab) {
-        hasAccess = true;
-        break;
-      }
-    }
-
-    // Fallback: Check legacy ownerDid field
     if (!hasAccess) {
-      hasAccess = didsToCheck.includes(list.ownerDid);
+      const pub = await ctx.db
+        .query("publications")
+        .withIndex("by_list", (q) => q.eq("listId", args.listId))
+        .first();
+      hasAccess = pub?.status === "active";
     }
 
     if (!hasAccess) {

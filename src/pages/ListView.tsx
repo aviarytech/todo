@@ -12,20 +12,18 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
-import { useCollaborators } from "../hooks/useCollaborators";
 import { useOptimisticItems, type OptimisticItem } from "../hooks/useOptimisticItems";
 import { useOffline } from "../hooks/useOffline";
 import { useSettings } from "../hooks/useSettings";
 import { useTouchDrag } from "../hooks/useTouchDrag";
 import { useNotifications } from "../hooks/useNotifications";
 import { useKeyboardShortcuts, KeyboardShortcutsHelp, type Shortcut } from "../hooks/useKeyboardShortcuts";
-import { canEdit, canInvite, canDeleteList } from "../lib/permissions";
+import { isOwner } from "../lib/permissions";
 import { groupByAisle, classifyItem } from "../lib/groceryAisles";
 import { useCategories } from "../hooks/useCategories";
 import { shareList } from "../lib/share";
 import { AddItemInput } from "../components/AddItemInput";
 import { NestedListItem } from "../components/NestedListItem";
-import { CollaboratorList } from "../components/sharing/CollaboratorList";
 import { useStreaks } from "../hooks/useStreaks";
 import { StreakBadge } from "../components/StreakBadge";
 import { StreakCelebration } from "../components/StreakCelebration";
@@ -61,7 +59,6 @@ export function ListView() {
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
-  const [showCollaborators, setShowCollaborators] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -216,9 +213,6 @@ export function ListView() {
     return items.find(item => item._id === selectedCalendarItemId) as Doc<"items"> | undefined ?? null;
   }, [items, selectedCalendarItemId]);
 
-  // Get user's role and collaborators
-  const { userRole, collaborators, isLoading: collabLoading } = useCollaborators(listId);
-
   // Get publication status
   const publicationStatus = useQuery(api.publication.getPublicationStatus, { listId });
 
@@ -363,7 +357,7 @@ export function ListView() {
 
   // Keyboard shortcuts for power users
   const shortcuts: Shortcut[] = useMemo(() => {
-    const canUserEditNow = userRole ? canEdit(userRole) : false;
+    const canUserEditNow = true; // Published lists or owned = can edit
     
     return [
       {
@@ -540,7 +534,7 @@ export function ListView() {
         },
       },
     ];
-  }, [sortedItems, focusedIndex, did, legacyDid, userRole, checkItemWithStreak, uncheckItem, removeItemMutation, haptic, isSelectMode, clearSelection]);
+  }, [sortedItems, focusedIndex, did, legacyDid, checkItemWithStreak, uncheckItem, removeItemMutation, haptic, isSelectMode, clearSelection]);
 
   const { showHelp, setShowHelp } = useKeyboardShortcuts({
     enabled: viewMode === "list" && !editingItem,
@@ -560,8 +554,7 @@ export function ListView() {
     userLoading ||
     !did ||
     list === undefined ||
-    itemsLoading ||
-    collabLoading
+    itemsLoading
   ) {
     return <ListViewSkeleton />;
   }
@@ -589,12 +582,12 @@ export function ListView() {
     );
   }
 
-  // Check authorization
-  const isAuthorized = userRole !== null;
+  // Check authorization: owner always has access, published lists are open
   const userDids = [did, legacyDid].filter(Boolean) as string[];
-  const legacyAuthorized = userDids.includes(list.ownerDid);
+  const userIsOwner = userDids.includes(list.ownerDid);
+  const isPublished = publicationStatus?.status === "active";
 
-  if (!isAuthorized && !legacyAuthorized) {
+  if (!userIsOwner && !isPublished) {
     return (
       <div className="text-center py-16">
         <div className="text-6xl mb-4">🔒</div>
@@ -602,7 +595,7 @@ export function ListView() {
           Access denied
         </h2>
         <p className="text-gray-500 dark:text-gray-400 mb-6">
-          You don't have permission to view this list.
+          This list is not shared. Ask the owner to publish it.
         </p>
         <Link 
           to="/app" 
@@ -617,13 +610,10 @@ export function ListView() {
     );
   }
 
-  // Determine effective role
-  const effectiveRole = userRole ?? (userDids.includes(list.ownerDid) ? "owner" : "editor");
-  const canUserEdit = canEdit(effectiveRole);
-  const canUserInvite = canInvite(effectiveRole);
-  const canUserDelete = canDeleteList(effectiveRole);
-
-  const collaboratorCount = collaborators?.length ?? 0;
+  // Everyone with access can edit (owner or published list visitor)
+  const canUserEdit = true;
+  const canUserInvite = userIsOwner;
+  const canUserDelete = userIsOwner;
 
   // Count checked/unchecked items
   const checkedCount = items.filter(item => item.checked).length;
@@ -674,29 +664,12 @@ export function ListView() {
               </span>
             )}
             
-            {collaboratorCount > 0 && (
+            {isPublished && (
               <>
                 <span className="text-gray-300 dark:text-gray-600">•</span>
-                <button
-                  onClick={() => {
-                    haptic('light');
-                    setShowCollaborators(!showCollaborators);
-                  }}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all active:scale-95 text-xs sm:text-sm"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {collaboratorCount}
-                  <svg
-                    className={`w-2.5 h-2.5 transition-transform ${showCollaborators ? "rotate-180" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs sm:text-sm">
+                  🌐 Shared
+                </span>
               </>
             )}
             </div>
@@ -807,16 +780,6 @@ export function ListView() {
           </div>
         </div>
       </div>
-
-      {/* Collaborators panel (collapsible) */}
-      {showCollaborators && (
-        <div className="mb-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 animate-slide-up">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-            <span>👥</span> Collaborators
-          </h3>
-          <CollaboratorList listId={listId} onLeave={() => navigate("/app")} />
-        </div>
-      )}
 
       {/* Cached data indicator */}
       {usingCache && (

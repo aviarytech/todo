@@ -192,14 +192,6 @@ export const createListFromTemplate = mutation({
       createdAt: now,
     });
 
-    // Add owner as collaborator
-    await ctx.db.insert("collaborators", {
-      listId,
-      userDid: args.userDid,
-      role: "owner",
-      joinedAt: now,
-    });
-
     // Create items from template
     for (const templateItem of template.items) {
       await ctx.db.insert("items", {
