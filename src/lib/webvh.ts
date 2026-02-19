@@ -60,7 +60,11 @@ class BrowserWebVHSigner {
   }
 }
 
-async function getOrCreateKeyPair(subOrgId: string) {
+/**
+ * Get (or create) the Ed25519 key pair for a user's subOrg.
+ * Exported so credential signing can access the same keys.
+ */
+export async function getOrCreateKeyPair(subOrgId: string) {
   const storageKey = `${KEY_STORAGE_PREFIX}:${subOrgId}`;
   const existingPrivateKey = localStorage.getItem(storageKey);
   const privateKey = existingPrivateKey

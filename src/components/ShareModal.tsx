@@ -10,7 +10,7 @@ import type { Doc } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
 import { buildListResourceDid, buildListResourceUrl } from "../lib/webvh";
-import { createListPublishedVC } from "../lib/credentials";
+import { createListPublishedVC, signCredential } from "../lib/credentials";
 import { Panel } from "./ui/Panel";
 import { ListProvenanceInfo } from "./ProvenanceInfo";
 
@@ -55,12 +55,13 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
       // The list is a resource under the user's DID — no separate DID needed.
       const listResourceDid = buildListResourceDid(did, list._id);
 
-      // Issue a ListPublished VC for provenance
-      const vc = createListPublishedVC({
+      // Issue and sign a ListPublished VC for provenance
+      const unsignedVc = createListPublishedVC({
         issuerDid: did,
         listResourceDid,
         listName: list.name,
       });
+      const vc = await signCredential(unsignedVc, subOrgId);
 
       await publishListMutation({
         listId: list._id,

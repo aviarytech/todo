@@ -150,3 +150,21 @@ export const addSharedItem = mutation({
     });
   },
 });
+
+/**
+ * Get the publication credential for a list (if published).
+ */
+export const getPublicationCredential = query({
+  args: {
+    listId: v.id("lists"),
+  },
+  handler: async (ctx, args) => {
+    const pub = await ctx.db
+      .query("publications")
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
+      .first();
+
+    if (!pub || pub.status !== "active") return null;
+    return { credential: pub.credential ?? null };
+  },
+});
