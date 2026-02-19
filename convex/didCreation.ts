@@ -81,11 +81,8 @@ export const createDIDWebVH = internalAction({
       `[didCreation] Creating user did:webvh for ${args.email} (subOrg: ${args.subOrgId})`
     );
 
-    // Create URL-safe slug from email
-    const slug = `user-${args.email
-      .replace(/[@.]/g, "-")
-      .replace(/[^a-zA-Z0-9-]/g, "")
-      .toLowerCase()}`;
+    // Use subOrgId only — no PII in the DID
+    const slug = `user-${args.subOrgId.slice(0, 16)}`;
 
     const result = await createDIDRecord(args.subOrgId, domain, slug);
 

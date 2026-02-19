@@ -79,12 +79,9 @@ async function getOrCreateKeyPair(subOrgId: string) {
   return { privateKey, publicKeyMultibase };
 }
 
-function toUserSlug(email: string, subOrgId: string) {
-  const emailPart = email
-    .replace(/[@.]/g, "-")
-    .replace(/[^a-zA-Z0-9-]/g, "")
-    .toLowerCase();
-  return `user-${emailPart}-${subOrgId.slice(0, 8)}`;
+function toUserSlug(_email: string, subOrgId: string) {
+  // Use subOrgId only — no PII in the DID
+  return `user-${subOrgId.slice(0, 16)}`;
 }
 
 export async function createUserWebVHDid(params: {
