@@ -20,6 +20,7 @@ const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Lan
 const ListView = lazy(() => import('./pages/ListView').then(m => ({ default: m.ListView })))
 const JoinList = lazy(() => import('./pages/JoinList').then(m => ({ default: m.JoinList })))
 const PublicList = lazy(() => import('./pages/PublicList').then(m => ({ default: m.PublicList })))
+const SharedListResource = lazy(() => import('./components/SharedListResource').then(m => ({ default: m.SharedListResource })))
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })))
 const Templates = lazy(() => import('./pages/Templates').then(m => ({ default: m.Templates })))
 const PriorityFocus = lazy(() => import('./pages/PriorityFocus').then(m => ({ default: m.PriorityFocus })))
@@ -164,6 +165,7 @@ function App() {
           <Route path="/login" element={isAuthenticated ? <Navigate to="/app" replace /> : <Login />} />
           <Route path="/join/:listId/:token" element={<JoinList />} />
           <Route path="/public/:did" element={<PublicList />} />
+          <Route path="/:userPath/resources/list-:listId" element={<SharedListResource />} />
 
           {/* Landing page for unauthenticated, redirect to app if logged in */}
           <Route path="/" element={isAuthenticated ? <Navigate to="/app" replace /> : <Landing />} />

@@ -9,8 +9,7 @@ import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
-import { getPublicListUrl } from "../lib/publication";
-import { createListWebVHDid } from "../lib/webvh";
+import { buildListResourceDid, buildListResourceUrl } from "../lib/webvh";
 import { Panel } from "./ui/Panel";
 import { ListProvenanceInfo } from "./ProvenanceInfo";
 
@@ -34,8 +33,11 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
   const [error, setError] = useState<string | null>(null);
 
   const isPublished = publicationStatus?.status === "active";
-  const publicUrl = isPublished
-    ? getPublicListUrl(publicationStatus.webvhDid)
+  const publicUrl = isPublished && did
+    ? buildListResourceUrl(did, list._id)
+    : null;
+  const resourceDid = isPublished && did
+    ? buildListResourceDid(did, list._id)
     : null;
 
   const handlePublish = async () => {
@@ -49,19 +51,13 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
     haptic('medium');
 
     try {
-      const slug = `list-${list._id.replace(/[^a-zA-Z0-9-]/g, "")}`;
-
-      const result = await createListWebVHDid({
-        subOrgId,
-        userDid: did,
-        slug,
-      });
+      // The list is a resource under the user's DID — no separate DID needed.
+      // The resource DID URI is: {userDid}/resources/list-{listId}
+      const listResourceDid = buildListResourceDid(did, list._id);
 
       await publishListMutation({
         listId: list._id,
-        webvhDid: result.did,
-        didDocument: JSON.stringify(result.didDocument),
-        didLog: JSON.stringify(result.didLog),
+        webvhDid: listResourceDid,
         publisherDid: did,
       });
 
@@ -192,7 +188,7 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 <span className="font-medium">DID:</span>{" "}
                 <span className="font-mono text-xs break-all">
-                  {publicationStatus?.webvhDid}
+                  {resourceDid}
                 </span>
               </p>
             </div>

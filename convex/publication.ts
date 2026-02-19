@@ -16,8 +16,8 @@ export const publishList = mutation({
   args: {
     listId: v.id("lists"),
     webvhDid: v.string(),
-    didDocument: v.string(),
-    didLog: v.string(),
+    didDocument: v.optional(v.string()),
+    didLog: v.optional(v.string()),
     publisherDid: v.string(),
   },
   handler: async (ctx, args) => {
