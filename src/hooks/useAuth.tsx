@@ -169,6 +169,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(parsed.user);
         setToken(parsed.token);
         await storageAdapter.set(JWT_STORAGE_KEY, parsed.token);
+
+        // If user is stuck on did:temp (or no DID), create did:webvh now
+        if (parsed.user && (!parsed.user.did || !parsed.user.did.startsWith("did:webvh:"))) {
+          try {
+            console.log("[useAuth] User has no did:webvh, creating client-side...");
+            const webvhResult = await createUserWebVHDid({
+              email: parsed.user.email,
+              subOrgId: parsed.user.turnkeySubOrgId,
+            });
+
+            const httpUrl = getConvexHttpUrl();
+            await fetch(`${httpUrl}/api/user/updateDID`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${parsed.token}`,
+              },
+              credentials: "include",
+              body: JSON.stringify({ did: webvhResult.did }),
+            });
+
+            const upgradedUser = { ...parsed.user, did: webvhResult.did };
+            setUser(upgradedUser);
+            const updatedState: PersistedAuthState = { user: upgradedUser, token: parsed.token };
+            await storageAdapter.set(AUTH_STORAGE_KEY, JSON.stringify(updatedState));
+            console.log("[useAuth] Upgraded DID on session restore:", webvhResult.did);
+          } catch (didErr) {
+            console.error("[useAuth] Failed to upgrade DID on restore:", didErr);
+          }
+        }
       } catch (err) {
         console.error("[useAuth] Error restoring session:", err);
         await storageAdapter.remove(AUTH_STORAGE_KEY);
