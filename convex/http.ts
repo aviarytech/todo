@@ -412,6 +412,7 @@ http.route({ pathPrefix: "/api/agent/items/", method: "OPTIONS", handler: agentC
 // These MUST come after all /api/ routes to avoid conflicts.
 // ============================================================================
 http.route({ pathPrefix: "/user-", method: "GET", handler: didResourceHandler });
+http.route({ pathPrefix: "/user-", method: "POST", handler: didResourceHandler });
 http.route({ pathPrefix: "/user-", method: "OPTIONS", handler: didResourceHandler });
 
 export default http;

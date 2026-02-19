@@ -6,7 +6,7 @@
  */
 
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
 /**
@@ -72,5 +72,81 @@ export const getPublicListItems = query({
         dueDate: item.dueDate,
         order: item.order,
       }));
+  },
+});
+
+/**
+ * Check an item on a shared list (no auth — anyone with the link can interact).
+ */
+export const checkSharedItem = mutation({
+  args: {
+    itemId: v.string(),
+    listId: v.id("lists"),
+    actorDid: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId as Id<"items">);
+    if (!item || item.listId !== args.listId) {
+      throw new Error("Item not found");
+    }
+    await ctx.db.patch(item._id, {
+      checked: true,
+      checkedAt: Date.now(),
+      checkedByDid: args.actorDid,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Uncheck an item on a shared list.
+ */
+export const uncheckSharedItem = mutation({
+  args: {
+    itemId: v.string(),
+    listId: v.id("lists"),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId as Id<"items">);
+    if (!item || item.listId !== args.listId) {
+      throw new Error("Item not found");
+    }
+    await ctx.db.patch(item._id, {
+      checked: false,
+      checkedAt: undefined,
+      checkedByDid: undefined,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Add an item to a shared list.
+ */
+export const addSharedItem = mutation({
+  args: {
+    listId: v.id("lists"),
+    name: v.string(),
+    actorDid: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const list = await ctx.db.get(args.listId);
+    if (!list) throw new Error("List not found");
+
+    // Get max order
+    const items = await ctx.db
+      .query("items")
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
+      .collect();
+    const maxOrder = items.reduce((max, item) => Math.max(max, item.order ?? 0), 0);
+
+    return await ctx.db.insert("items", {
+      listId: args.listId,
+      name: args.name,
+      checked: false,
+      createdByDid: args.actorDid,
+      createdAt: Date.now(),
+      order: maxOrder + 1,
+    });
   },
 });
