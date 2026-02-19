@@ -35,7 +35,7 @@ export default defineSchema({
 
   // Users table - for display name lookup by DID
   users: defineTable({
-    did: v.string(), // did:peer:... from Originals SDK or Turnkey
+    did: v.optional(v.string()), // did:webvh:... created client-side (null until first login completes)
     displayName: v.string(),
     createdAt: v.number(),
     // Turnkey auth fields (added in Phase 1.3)

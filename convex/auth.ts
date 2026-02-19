@@ -22,7 +22,7 @@ export const upsertUser = mutation({
   args: {
     turnkeySubOrgId: v.string(),
     email: v.string(),
-    did: v.string(),
+    did: v.optional(v.string()),
     displayName: v.optional(v.string()),
     // Migration: the user's old localStorage DID being migrated
     legacyDid: v.optional(v.string()),
@@ -35,10 +35,12 @@ export const upsertUser = mutation({
       .first();
 
     if (existingByTurnkey) {
-      // Update last login
-      await ctx.db.patch(existingByTurnkey._id, {
-        lastLoginAt: Date.now(),
-      });
+      // Update last login, and upgrade DID if provided and not yet set
+      const patch: Record<string, unknown> = { lastLoginAt: Date.now() };
+      if (args.did && (!existingByTurnkey.did || !existingByTurnkey.did.startsWith("did:webvh:"))) {
+        patch.did = args.did;
+      }
+      await ctx.db.patch(existingByTurnkey._id, patch);
       return existingByTurnkey._id;
     }
 
@@ -81,12 +83,12 @@ export const upsertUser = mutation({
       return existingByDid._id;
     }
 
-    // Create new user
+    // Create new user (DID will be set client-side via /api/user/updateDID)
     const displayName = args.displayName ?? args.email.split("@")[0];
     return await ctx.db.insert("users", {
       turnkeySubOrgId: args.turnkeySubOrgId,
       email: args.email,
-      did: args.did,
+      did: args.did, // undefined on first create — client upgrades to did:webvh
       displayName,
       createdAt: Date.now(),
       lastLoginAt: Date.now(),

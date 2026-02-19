@@ -236,24 +236,15 @@ const verify = httpAction(async (ctx, request) => {
       subOrgId: result.subOrgId,
     });
 
-    // Create did:webvh for the user directly on the server
-    let userDid = `did:temp:${result.subOrgId}`;
-    try {
-      const didResult = await ctx.runAction(internal.didCreation.createDIDWebVH, {
-        subOrgId: result.subOrgId,
-        email: result.email,
-      });
-      userDid = didResult.did;
-      console.log(`[authHttp] Created did:webvh: ${userDid}`);
-    } catch (err) {
-      console.error("[authHttp] did:webvh creation failed, using temp DID:", err);
-    }
+    // DID creation happens client-side after auth completes.
+    // Server stores user without a DID; client creates did:webvh
+    // using BrowserWebVHSigner and calls /api/user/updateDID.
 
-    // Create/update user
+    // Create/update user (no DID yet — client will create did:webvh and call /api/user/updateDID)
     await ctx.runMutation(api.auth.upsertUser, {
       turnkeySubOrgId: result.subOrgId,
       email: result.email,
-      did: userDid,
+      did: undefined,
       displayName: result.email.split("@")[0],
     });
 
@@ -274,7 +265,7 @@ const verify = httpAction(async (ctx, request) => {
         user: {
           turnkeySubOrgId: result.subOrgId,
           email: result.email,
-          did: userDid,
+          did: null,
           displayName: result.email.split("@")[0],
         },
       },
