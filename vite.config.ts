@@ -4,7 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import { resolve } from 'path'
 
-// Custom plugin to build service worker
 function buildServiceWorker() {
   return {
     name: 'build-service-worker',
