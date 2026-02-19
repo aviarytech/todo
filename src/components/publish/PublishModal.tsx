@@ -21,8 +21,6 @@ interface PublishModalProps {
   onClose: () => void;
 }
 
-const PUBLICATION_DOMAIN = "lisa.aviary.tech";
-
 export function PublishModal({ list, onClose }: PublishModalProps) {
   const { did, subOrgId } = useCurrentUser();
   const { haptic } = useSettings();
@@ -57,10 +55,10 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
       // Create the slug from list ID (alphanumeric only)
       const slug = `list-${list._id.replace(/[^a-zA-Z0-9-]/g, "")}`;
 
-      // Create did:webvh client-side
+      // Create did:webvh client-side, domain derived from user's DID
       const result = await createListWebVHDid({
         subOrgId,
-        domain: PUBLICATION_DOMAIN,
+        userDid: did,
         slug,
       });
 

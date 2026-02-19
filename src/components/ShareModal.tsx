@@ -19,8 +19,6 @@ interface ShareModalProps {
   onClose: () => void;
 }
 
-const PUBLICATION_DOMAIN = "lisa.aviary.tech";
-
 export function ShareModal({ list, onClose }: ShareModalProps) {
   const { did, subOrgId } = useCurrentUser();
   const { haptic } = useSettings();
@@ -55,7 +53,7 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
 
       const result = await createListWebVHDid({
         subOrgId,
-        domain: PUBLICATION_DOMAIN,
+        userDid: did,
         slug,
       });
 

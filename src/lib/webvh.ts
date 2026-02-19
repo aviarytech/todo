@@ -128,16 +128,30 @@ export async function createUserWebVHDid(params: {
   };
 }
 
+/**
+ * Extract the domain from a did:webvh string.
+ * e.g. "did:webvh:trypoo.app:user-abc123" → "trypoo.app"
+ */
+export function domainFromDid(did: string): string {
+  // did:webvh:<domain>:<path>
+  const parts = did.split(":");
+  if (parts.length < 3 || parts[1] !== "webvh") {
+    throw new Error(`Cannot extract domain from DID: ${did}`);
+  }
+  return parts[2];
+}
+
 export async function createListWebVHDid(params: {
   subOrgId: string;
-  domain: string;
+  userDid: string; // user's did:webvh — domain is derived from this
   slug: string;
 }) {
+  const domain = domainFromDid(params.userDid);
   const { privateKey, publicKeyMultibase } = await getOrCreateKeyPair(params.subOrgId);
   const signer = new BrowserWebVHSigner(privateKey, publicKeyMultibase);
 
   const result = await createDID({
-    domain: params.domain,
+    domain,
     signer,
     verifier: signer,
     updateKeys: [signer.getVerificationMethodId()],
