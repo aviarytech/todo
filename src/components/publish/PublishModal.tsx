@@ -13,6 +13,7 @@ import type { Doc } from "../../../convex/_generated/dataModel";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { useSettings } from "../../hooks/useSettings";
 import { buildListResourceDid, buildListResourceUrl } from "../../lib/webvh";
+import { createListPublishedVC } from "../../lib/credentials";
 import { Panel } from "../ui/Panel";
 
 interface PublishModalProps {
@@ -54,11 +55,19 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
       // The list is a resource under the user's DID — no separate DID needed.
       const listResourceDid = buildListResourceDid(did, list._id);
 
+      // Issue a ListPublished VC for provenance
+      const vc = createListPublishedVC({
+        issuerDid: did,
+        listResourceDid,
+        listName: list.name,
+      });
+
       // Record publication in Convex
       await publishListMutation({
         listId: list._id,
         webvhDid: listResourceDid,
         publisherDid: did,
+        credential: JSON.stringify(vc),
       });
       
       haptic('success');

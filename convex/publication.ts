@@ -19,6 +19,7 @@ export const publishList = mutation({
     didDocument: v.optional(v.string()),
     didLog: v.optional(v.string()),
     publisherDid: v.string(),
+    credential: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Verify user is owner
@@ -48,6 +49,7 @@ export const publishList = mutation({
         didLog: args.didLog,
         publishedAt: Date.now(),
         status: "active",
+        credential: args.credential,
       });
       return existing._id;
     }
@@ -61,6 +63,7 @@ export const publishList = mutation({
       publishedAt: Date.now(),
       publishedByDid: args.publisherDid,
       status: "active",
+      credential: args.credential,
     });
   },
 });

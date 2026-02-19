@@ -1,14 +1,17 @@
 /**
- * Read-only view of a shared list resource.
+ * Shared list resource view — view and interact with a shared list.
  * Accessed via /{userPath}/resources/list-{listId}
  *
- * Fetches the list data from the Convex HTTP endpoint and renders it.
+ * - Anonymous users can view the list
+ * - Authenticated users can check/uncheck items and add new items
+ * - Real-time updates via polling (Convex subscriptions require auth)
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 
 interface ListItem {
+  _id: string;
   name: string;
   checked: boolean;
   createdAt: number;
@@ -30,36 +33,125 @@ interface ListResource {
   checkedCount: number;
 }
 
+function getResourceUrl(userPath: string, listId: string): string {
+  // In production, the server proxies these paths to Convex
+  // In development, go directly to Convex site URL
+  const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
+  if (convexUrl?.includes("127.0.0.1") || convexUrl?.includes("localhost")) {
+    const siteUrl = convexUrl.replace(":3210", ":3211");
+    return `${siteUrl}/${userPath}/resources/list-${listId}`;
+  }
+  // Use relative URL — server.ts will proxy to Convex
+  return `/${userPath}/resources/list-${listId}`;
+}
+
 export function SharedListResource() {
   const { userPath, listId } = useParams<{ userPath: string; listId: string }>();
   const [resource, setResource] = useState<ListResource | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [newItemText, setNewItemText] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
+  const fetchResource = useCallback(async () => {
     if (!userPath || !listId) return;
-
-    const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
-    // Convex HTTP URL is the site URL derived from the deployment URL
-    // e.g. https://xxx.convex.cloud -> https://xxx.convex.site
-    const siteUrl = convexUrl?.replace(".cloud", ".site") ?? "";
-
-    fetch(`${siteUrl}/${userPath}/resources/list-${listId}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error(res.status === 404 ? "List not found" : "Failed to load list");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setResource(data);
-        setLoading(false);
-      })
-      .catch((err) => {
+    try {
+      const url = getResourceUrl(userPath, listId);
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(res.status === 404 ? "List not found" : "Failed to load list");
+      }
+      const data = await res.json();
+      setResource(data);
+      setError(null);
+    } catch (err: any) {
+      if (!resource) {
+        // Only show error if we haven't loaded yet
         setError(err.message);
-        setLoading(false);
-      });
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [userPath, listId]);
+
+  // Initial fetch + polling for real-time updates
+  useEffect(() => {
+    fetchResource();
+    pollRef.current = setInterval(fetchResource, 5000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [fetchResource]);
+
+  const handleToggleItem = async (item: ListItem) => {
+    if (!userPath || !listId || !resource) return;
+
+    // Optimistic update
+    setResource({
+      ...resource,
+      items: resource.items.map((i) =>
+        i._id === item._id ? { ...i, checked: !i.checked } : i
+      ),
+      checkedCount: item.checked ? resource.checkedCount - 1 : resource.checkedCount + 1,
+    });
+
+    try {
+      const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
+      const siteUrl = convexUrl?.includes("localhost") || convexUrl?.includes("127.0.0.1")
+        ? convexUrl.replace(":3210", ":3211")
+        : convexUrl?.replace(".convex.cloud", ".convex.site") || "";
+
+      const endpoint = item.checked ? "uncheck" : "check";
+      await fetch(`${siteUrl}/${userPath}/resources/list-${listId}/items/${item._id}/${endpoint}`, {
+        method: "POST",
+      });
+    } catch {
+      // Revert on failure
+      fetchResource();
+    }
+  };
+
+  const handleAddItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItemText.trim() || !userPath || !listId || !resource) return;
+
+    setIsAdding(true);
+    const itemName = newItemText.trim();
+    setNewItemText("");
+
+    // Optimistic add
+    const tempItem: ListItem = {
+      _id: `temp-${Date.now()}`,
+      name: itemName,
+      checked: false,
+      createdAt: Date.now(),
+    };
+    setResource({
+      ...resource,
+      items: [...resource.items, tempItem],
+      itemCount: resource.itemCount + 1,
+    });
+
+    try {
+      const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
+      const siteUrl = convexUrl?.includes("localhost") || convexUrl?.includes("127.0.0.1")
+        ? convexUrl.replace(":3210", ":3211")
+        : convexUrl?.replace(".convex.cloud", ".convex.site") || "";
+
+      await fetch(`${siteUrl}/${userPath}/resources/list-${listId}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: itemName }),
+      });
+      // Refetch to get real IDs
+      await fetchResource();
+    } catch {
+      fetchResource();
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -112,11 +204,10 @@ export function SharedListResource() {
               </>
             )}
           </div>
-          {/* Progress bar */}
           {resource.itemCount > 0 && (
             <div className="mt-3 h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-amber-500 rounded-full transition-all"
+                className="h-full bg-amber-500 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -125,16 +216,17 @@ export function SharedListResource() {
 
         {/* Items */}
         <div className="space-y-1">
-          {resource.items.map((item, i) => (
-            <div
-              key={i}
-              className={`flex items-start gap-3 px-4 py-3 rounded-xl ${
+          {resource.items.map((item) => (
+            <button
+              key={item._id}
+              onClick={() => handleToggleItem(item)}
+              className={`w-full flex items-start gap-3 px-4 py-3 rounded-xl text-left transition-colors ${
                 item.checked
                   ? "bg-gray-100 dark:bg-gray-900/50"
-                  : "bg-white dark:bg-gray-900"
+                  : "bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50"
               }`}
             >
-              <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+              <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                 item.checked
                   ? "border-green-500 bg-green-500"
                   : "border-gray-300 dark:border-gray-600"
@@ -170,9 +262,30 @@ export function SharedListResource() {
                   </span>
                 )}
               </div>
-            </div>
+            </button>
           ))}
         </div>
+
+        {/* Add item */}
+        <form onSubmit={handleAddItem} className="mt-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newItemText}
+              onChange={(e) => setNewItemText(e.target.value)}
+              placeholder="Add an item..."
+              className="flex-1 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              disabled={isAdding}
+            />
+            <button
+              type="submit"
+              disabled={!newItemText.trim() || isAdding}
+              className="px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+            >
+              +
+            </button>
+          </div>
+        </form>
 
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">

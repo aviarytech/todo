@@ -228,6 +228,8 @@ export default defineSchema({
     anchorTxId: v.optional(v.string()), // Bitcoin transaction ID
     anchorBlockHeight: v.optional(v.number()), // Block height where anchor was confirmed
     anchorTimestamp: v.optional(v.number()), // When anchor was confirmed
+    // Verifiable Credential for publication provenance
+    credential: v.optional(v.string()), // JSON-serialized VC
   })
     .index("by_list", ["listId"])
     .index("by_webvh_did", ["webvhDid"])
