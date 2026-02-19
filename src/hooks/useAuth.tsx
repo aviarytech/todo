@@ -190,6 +190,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
               body: JSON.stringify({ did: webvhResult.did }),
             });
 
+            // Store DID log in Convex for resolution
+            await fetch(`${httpUrl}/api/did/log`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${parsed.token}`,
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                userDid: webvhResult.did,
+                path: webvhResult.path,
+                log: webvhResult.didLogJsonl,
+              }),
+            });
+
             const upgradedUser = { ...parsed.user, did: webvhResult.did };
             setUser(upgradedUser);
             const updatedState: PersistedAuthState = { user: upgradedUser, token: parsed.token };

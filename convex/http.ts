@@ -22,6 +22,8 @@ import {
   reorderItems,
 } from "./itemsHttp";
 import { updateUserDID } from "./userHttp";
+import { storeDidLog, getDidLog } from "./didLogsHttp";
+import { didResourceHandler } from "./didResourcesHttp";
 import {
   getUserLists as agentGetUserLists,
   agentListHandler,
@@ -373,6 +375,11 @@ http.route({ path: "/api/items/reorder", method: "OPTIONS", handler: corsHandler
 http.route({ path: "/api/user/updateDID", method: "POST", handler: updateUserDID });
 http.route({ path: "/api/user/updateDID", method: "OPTIONS", handler: corsHandler });
 
+// --- DID log endpoints ---
+http.route({ path: "/api/did/log", method: "POST", handler: storeDidLog });
+http.route({ path: "/api/did/log", method: "GET", handler: getDidLog });
+http.route({ path: "/api/did/log", method: "OPTIONS", handler: corsHandler });
+
 // ============================================================================
 // Agent API endpoints (RESTful API for programmatic access)
 // All endpoints require JWT authentication via Authorization header.
@@ -398,5 +405,13 @@ http.route({ pathPrefix: "/api/agent/lists/", method: "OPTIONS", handler: agentC
 http.route({ pathPrefix: "/api/agent/items/", method: "PATCH", handler: agentItemHandler });
 http.route({ pathPrefix: "/api/agent/items/", method: "DELETE", handler: agentItemHandler });
 http.route({ pathPrefix: "/api/agent/items/", method: "OPTIONS", handler: agentCorsHandler });
+
+// ============================================================================
+// DID Resolution & Resource endpoints (public, no auth)
+// Serves /{userPath}/did.jsonl and /{userPath}/resources/list-{id}
+// These MUST come after all /api/ routes to avoid conflicts.
+// ============================================================================
+http.route({ pathPrefix: "/user-", method: "GET", handler: didResourceHandler });
+http.route({ pathPrefix: "/user-", method: "OPTIONS", handler: didResourceHandler });
 
 export default http;

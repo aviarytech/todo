@@ -12,8 +12,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { useSettings } from "../../hooks/useSettings";
-import { getPublicListUrl } from "../../lib/publication";
-import { createListWebVHDid } from "../../lib/webvh";
+import { buildListResourceDid, buildListResourceUrl } from "../../lib/webvh";
 import { Panel } from "../ui/Panel";
 
 interface PublishModalProps {
@@ -37,8 +36,8 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
   const [error, setError] = useState<string | null>(null);
 
   const isPublished = publicationStatus?.status === "active";
-  const publicUrl = isPublished
-    ? getPublicListUrl(publicationStatus.webvhDid)
+  const publicUrl = isPublished && did
+    ? buildListResourceUrl(did, list._id)
     : null;
 
   const handlePublish = async () => {
@@ -52,22 +51,13 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
     haptic('medium');
 
     try {
-      // Create the slug from list ID (alphanumeric only)
-      const slug = `list-${list._id.replace(/[^a-zA-Z0-9-]/g, "")}`;
-
-      // Create did:webvh client-side, domain derived from user's DID
-      const result = await createListWebVHDid({
-        subOrgId,
-        userDid: did,
-        slug,
-      });
+      // The list is a resource under the user's DID — no separate DID needed.
+      const listResourceDid = buildListResourceDid(did, list._id);
 
       // Record publication in Convex
       await publishListMutation({
         listId: list._id,
-        webvhDid: result.did,
-        didDocument: JSON.stringify(result.didDocument),
-        didLog: JSON.stringify(result.didLog),
+        webvhDid: listResourceDid,
         publisherDid: did,
       });
       

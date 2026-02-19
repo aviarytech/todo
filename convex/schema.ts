@@ -9,6 +9,16 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // DID logs table - stores did:webvh logs for resolution
+  didLogs: defineTable({
+    userDid: v.string(), // The user's did:webvh
+    path: v.string(), // URL path slug (e.g. "user-abc123")
+    log: v.string(), // JSONL content (one JSON object per line)
+    updatedAt: v.number(),
+  })
+    .index("by_path", ["path"])
+    .index("by_user_did", ["userDid"]),
+
   // Rate limits table - for tracking auth endpoint rate limits (Phase 9.2)
   rateLimits: defineTable({
     key: v.string(), // Unique identifier (IP address or session ID)
