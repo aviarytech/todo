@@ -127,3 +127,43 @@ export async function createUserWebVHDid(params: {
     didLog: result.log,
   };
 }
+
+export async function createListWebVHDid(params: {
+  subOrgId: string;
+  domain: string;
+  slug: string;
+}) {
+  const { privateKey, publicKeyMultibase } = await getOrCreateKeyPair(params.subOrgId);
+  const signer = new BrowserWebVHSigner(privateKey, publicKeyMultibase);
+
+  const result = await createDID({
+    domain: params.domain,
+    signer,
+    verifier: signer,
+    updateKeys: [signer.getVerificationMethodId()],
+    verificationMethods: [
+      {
+        id: "#key-0",
+        type: "Multikey",
+        controller: "",
+        publicKeyMultibase,
+      },
+      {
+        id: "#key-1",
+        type: "Multikey",
+        controller: "",
+        publicKeyMultibase,
+      },
+    ],
+    paths: [params.slug],
+    portable: false,
+    authentication: ["#key-0"],
+    assertionMethod: ["#key-1"],
+  });
+
+  return {
+    did: result.did,
+    didDocument: result.doc,
+    didLog: result.log,
+  };
+}

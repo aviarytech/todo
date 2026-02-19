@@ -4,12 +4,13 @@
  */
 
 import { useState } from "react";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
 import { getPublicListUrl } from "../lib/publication";
+import { createListWebVHDid } from "../lib/webvh";
 import { Panel } from "./ui/Panel";
 import { ListProvenanceInfo } from "./ProvenanceInfo";
 
@@ -23,7 +24,7 @@ const PUBLICATION_DOMAIN = "lisa.aviary.tech";
 export function ShareModal({ list, onClose }: ShareModalProps) {
   const { did, subOrgId } = useCurrentUser();
   const { haptic } = useSettings();
-  const createListDID = useAction(api.didCreation.createListDID);
+  // List DID creation happens client-side (no server-side Turnkey needed)
   const publishListMutation = useMutation(api.publication.publishList);
   const unpublishListMutation = useMutation(api.publication.unpublishList);
   const publicationStatus = useQuery(api.publication.getPublicationStatus, {
@@ -52,7 +53,7 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
     try {
       const slug = `list-${list._id.replace(/[^a-zA-Z0-9-]/g, "")}`;
 
-      const result = await createListDID({
+      const result = await createListWebVHDid({
         subOrgId,
         domain: PUBLICATION_DOMAIN,
         slug,

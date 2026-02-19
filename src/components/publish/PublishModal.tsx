@@ -7,12 +7,13 @@
  */
 
 import { useState } from "react";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { useSettings } from "../../hooks/useSettings";
 import { getPublicListUrl } from "../../lib/publication";
+import { createListWebVHDid } from "../../lib/webvh";
 import { Panel } from "../ui/Panel";
 
 interface PublishModalProps {
@@ -25,7 +26,7 @@ const PUBLICATION_DOMAIN = "lisa.aviary.tech";
 export function PublishModal({ list, onClose }: PublishModalProps) {
   const { did, subOrgId } = useCurrentUser();
   const { haptic } = useSettings();
-  const createListDID = useAction(api.didCreation.createListDID);
+  // List DID creation happens client-side
   const publishListMutation = useMutation(api.publication.publishList);
   const unpublishListMutation = useMutation(api.publication.unpublishList);
   const publicationStatus = useQuery(api.publication.getPublicationStatus, {
@@ -56,8 +57,8 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
       // Create the slug from list ID (alphanumeric only)
       const slug = `list-${list._id.replace(/[^a-zA-Z0-9-]/g, "")}`;
 
-      // Create did:webvh using server-side action
-      const result = await createListDID({
+      // Create did:webvh client-side
+      const result = await createListWebVHDid({
         subOrgId,
         domain: PUBLICATION_DOMAIN,
         slug,
