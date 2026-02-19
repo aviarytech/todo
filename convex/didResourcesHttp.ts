@@ -144,8 +144,11 @@ async function serveListResource(
     const items = await ctx.runQuery(api.didResources.getPublicListItems, { listId: list._id });
     const checkedCount = items.filter((i: { checked: boolean }) => i.checked).length;
 
-    const resource = {
-      "@context": ["https://www.w3.org/ns/did/v1"],
+    // Get the publication credential if it exists
+    const publication = await ctx.runQuery(api.didResources.getPublicationCredential, { listId: list._id });
+
+    const resource: Record<string, unknown> = {
+      "@context": ["https://www.w3.org/ns/did/v1", "https://www.w3.org/2018/credentials/v1"],
       id: `${userDid}/resources/list-${listId}`,
       type: "PooList",
       controller: userDid,
@@ -164,6 +167,15 @@ async function serveListResource(
       itemCount: items.length,
       checkedCount,
     };
+
+    // Include the signed VC if available
+    if (publication?.credential) {
+      try {
+        resource.credential = JSON.parse(publication.credential);
+      } catch {
+        // Ignore malformed credential
+      }
+    }
 
     return new Response(JSON.stringify(resource, null, 2), {
       status: 200,
