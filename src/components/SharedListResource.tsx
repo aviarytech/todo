@@ -41,10 +41,12 @@ export function SharedListResource() {
 
     const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
     // Convex HTTP URL is the site URL derived from the deployment URL
-    // e.g. https://xxx.convex.cloud -> https://xxx.convex.site
-    const siteUrl = convexUrl?.replace(".cloud", ".site") ?? "";
+    const siteUrl = convexUrl?.includes("localhost") || convexUrl?.includes("127.0.0.1")
+      ? convexUrl.replace(":3210", ":3211")
+      : convexUrl?.replace(".convex.cloud", ".convex.site") ?? "";
 
-    fetch(`${siteUrl}/${userPath}/resources/list-${listId}`)
+    // Use /d/ prefix for Convex routing (pathPrefix must end with /)
+    fetch(`${siteUrl}/d/${userPath}/resources/list-${listId}`)
       .then(async (res) => {
         if (!res.ok) {
           throw new Error(res.status === 404 ? "List not found" : "Failed to load list");

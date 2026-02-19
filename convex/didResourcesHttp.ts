@@ -31,7 +31,12 @@ export const didResourceHandler = httpAction(async (ctx, request) => {
   }
 
   const url = new URL(request.url);
-  const pathname = url.pathname;
+  let pathname = url.pathname;
+
+  // Strip /d/ prefix (Convex pathPrefix routing requires trailing /)
+  if (pathname.startsWith("/d/")) {
+    pathname = "/" + pathname.slice(3);
+  }
 
   // Strip leading slash and split
   const parts = pathname.replace(/^\//, "").split("/");

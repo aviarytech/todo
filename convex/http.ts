@@ -411,7 +411,10 @@ http.route({ pathPrefix: "/api/agent/items/", method: "OPTIONS", handler: agentC
 // Serves /{userPath}/did.jsonl and /{userPath}/resources/list-{id}
 // These MUST come after all /api/ routes to avoid conflicts.
 // ============================================================================
-http.route({ pathPrefix: "/user-", method: "GET", handler: didResourceHandler });
-http.route({ pathPrefix: "/user-", method: "OPTIONS", handler: didResourceHandler });
+// DID paths are proxied via /d/ prefix to satisfy Convex's pathPrefix-must-end-with-/ rule.
+// The production server (server.ts) rewrites /user-*/did.jsonl → /d/user-*/did.jsonl
+http.route({ pathPrefix: "/d/", method: "GET", handler: didResourceHandler });
+http.route({ pathPrefix: "/d/", method: "POST", handler: didResourceHandler });
+http.route({ pathPrefix: "/d/", method: "OPTIONS", handler: didResourceHandler });
 
 export default http;
