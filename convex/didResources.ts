@@ -6,7 +6,7 @@
  */
 
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
 /**
@@ -103,5 +103,53 @@ export const getActivePublicationByListId = query({
 
     if (!pub || pub.status !== "active") return null;
     return pub;
+  },
+});
+
+/**
+ * Mark a shared-list item as checked (public link access).
+ */
+export const checkSharedItem = mutation({
+  args: {
+    listId: v.id("lists"),
+    itemId: v.id("items"),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item || item.listId !== args.listId) {
+      throw new Error("Item not found");
+    }
+
+    await ctx.db.patch(args.itemId, {
+      checked: true,
+      checkedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return { ok: true };
+  },
+});
+
+/**
+ * Mark a shared-list item as unchecked (public link access).
+ */
+export const uncheckSharedItem = mutation({
+  args: {
+    listId: v.id("lists"),
+    itemId: v.id("items"),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item || item.listId !== args.listId) {
+      throw new Error("Item not found");
+    }
+
+    await ctx.db.patch(args.itemId, {
+      checked: false,
+      checkedAt: undefined,
+      updatedAt: Date.now(),
+    });
+
+    return { ok: true };
   },
 });

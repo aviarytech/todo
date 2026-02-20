@@ -122,6 +122,40 @@ export function SharedListResource() {
     }
   };
 
+  const handleToggleItem = async (itemId: string, currentChecked: boolean) => {
+    if (!userPath || !listId || !resource) return;
+
+    // Optimistic update
+    setResource((prev) => {
+      if (!prev) return prev;
+      const items = prev.items.map((item) =>
+        item._id === itemId ? { ...item, checked: !currentChecked } : item
+      );
+      const checkedCount = items.filter((i) => i.checked).length;
+      return { ...prev, items, checkedCount };
+    });
+
+    try {
+      const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
+      const siteUrl = convexUrl?.includes("127.0.0.1") || convexUrl?.includes("localhost")
+        ? convexUrl.replace(":3210", ":3211")
+        : convexUrl?.replace(".convex.cloud", ".convex.site") ?? "";
+
+      const action = currentChecked ? "uncheck" : "check";
+      const resp = await fetch(`${siteUrl}/d/${userPath}/resources/list-${listId}/items/${itemId}/${action}`, {
+        method: "POST",
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Failed to toggle item (${resp.status})`);
+      }
+    } catch (err) {
+      console.error("Failed to toggle shared item:", err);
+      // Rollback by refetching
+      await fetchResource();
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
@@ -214,12 +248,13 @@ export function SharedListResource() {
         {/* Items */}
         <div className="space-y-1">
           {resource.items.map((item) => (
-            <div
+            <button
               key={item._id}
-              className={`flex items-start gap-3 px-4 py-3 rounded-xl ${
+              onClick={() => handleToggleItem(item._id, item.checked)}
+              className={`w-full text-left flex items-start gap-3 px-4 py-3 rounded-xl transition-colors ${
                 item.checked
                   ? "bg-gray-100 dark:bg-gray-900/50"
-                  : "bg-white dark:bg-gray-900"
+                  : "bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50"
               }`}
             >
               <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
@@ -258,7 +293,7 @@ export function SharedListResource() {
                   </span>
                 )}
               </div>
-            </div>
+            </button>
           ))}
         </div>
 

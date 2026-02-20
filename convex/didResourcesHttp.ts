@@ -13,7 +13,7 @@ function corsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin") || "*";
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Allow-Credentials": "true",
   };
@@ -56,6 +56,34 @@ export const didResourceHandler = httpAction(async (ctx, request) => {
   if (parts.length === 3 && parts[1] === "resources" && parts[2].startsWith("list-")) {
     const listId = parts[2].slice("list-".length);
     return await serveListResource(ctx, userPath, listId, headers);
+  }
+
+  // POST /{userPath}/resources/list-{listId}/items/{itemId}/check
+  if (
+    request.method === "POST" &&
+    parts.length === 6 &&
+    parts[1] === "resources" &&
+    parts[2].startsWith("list-") &&
+    parts[3] === "items" &&
+    parts[5] === "check"
+  ) {
+    const listId = parts[2].slice("list-".length);
+    const itemId = parts[4];
+    return await toggleItem(ctx, userPath, listId, itemId, true, headers);
+  }
+
+  // POST /{userPath}/resources/list-{listId}/items/{itemId}/uncheck
+  if (
+    request.method === "POST" &&
+    parts.length === 6 &&
+    parts[1] === "resources" &&
+    parts[2].startsWith("list-") &&
+    parts[3] === "items" &&
+    parts[5] === "uncheck"
+  ) {
+    const listId = parts[2].slice("list-".length);
+    const itemId = parts[4];
+    return await toggleItem(ctx, userPath, listId, itemId, false, headers);
   }
 
   return new Response("Not found", { status: 404, headers });
@@ -160,6 +188,7 @@ async function serveListResource(
       controller: userDid,
       name: list.name,
       items: items.map((item: {
+        _id: string;
         name: string;
         checked: boolean;
         createdAt: number;
@@ -169,6 +198,7 @@ async function serveListResource(
         dueDate?: number;
         order?: number;
       }) => ({
+        _id: item._id,
         name: item.name,
         checked: item.checked,
         createdAt: item.createdAt,
@@ -192,6 +222,62 @@ async function serveListResource(
     });
   } catch (error) {
     console.error("[didResources] Error serving list resource:", error);
+    return new Response("Internal server error", { status: 500, headers });
+  }
+}
+
+async function toggleItem(
+  ctx: { runQuery: Function; runMutation: Function },
+  userPath: string,
+  listId: string,
+  itemId: string,
+  checked: boolean,
+  headers: Record<string, string>
+): Promise<Response> {
+  try {
+    // Resolve list the same way as serveListResource (didLogs primary, publication fallback)
+    const fullRecord = await ctx.runQuery(api.didLogs.getDidLogRecordByPath, { path: userPath });
+    let userDid: string | null = fullRecord?.userDid ?? null;
+    let list = null;
+
+    if (userDid) {
+      list = await ctx.runQuery(api.didResources.getPublicList, { listId, ownerDid: userDid });
+    }
+
+    if (!list) {
+      const candidate = await ctx.runQuery(api.didResources.getListById, { listId });
+      if (!candidate) return new Response("List not found", { status: 404, headers });
+
+      const publication = await ctx.runQuery(api.didResources.getActivePublicationByListId, {
+        listId: candidate._id,
+      });
+      if (!publication) return new Response("List not found", { status: 404, headers });
+
+      const expectedSuffix = `:${userPath}/resources/list-${listId}`;
+      if (!publication.webvhDid.endsWith(expectedSuffix)) {
+        return new Response("List not found", { status: 404, headers });
+      }
+      list = candidate;
+    }
+
+    if (checked) {
+      await ctx.runMutation(api.didResources.checkSharedItem, {
+        listId: list._id,
+        itemId,
+      });
+    } else {
+      await ctx.runMutation(api.didResources.uncheckSharedItem, {
+        listId: list._id,
+        itemId,
+      });
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json", ...headers },
+    });
+  } catch (error) {
+    console.error("[didResources] Error toggling item:", error);
     return new Response("Internal server error", { status: 500, headers });
   }
 }
