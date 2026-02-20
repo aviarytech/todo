@@ -245,6 +245,19 @@ export function SharedListResource() {
           </div>
         )}
 
+        {/* Logged-in shortcut to full app list view */}
+        {did && convexListId && (
+          <div className="mb-4 flex gap-2">
+            <Link
+              to={`/list/${convexListId}`}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+            >
+              <span>↗</span>
+              <span>Open full list view</span>
+            </Link>
+          </div>
+        )}
+
         {/* Items */}
         <div className="space-y-1">
           {resource.items.map((item) => (
