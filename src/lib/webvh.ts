@@ -112,7 +112,7 @@ function storeDidLogLocally(subOrgId: string, log: DIDLog) {
 /**
  * Retrieve the locally stored DID log.
  */
-function getStoredDidLog(subOrgId: string): DIDLog | null {
+export function getStoredDidLog(subOrgId: string): DIDLog | null {
   const stored = localStorage.getItem(`${DID_LOG_STORAGE_KEY}:${subOrgId}`);
   if (!stored) return null;
   try {
