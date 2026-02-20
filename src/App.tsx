@@ -165,7 +165,7 @@ function App() {
           <Route path="/login" element={isAuthenticated ? <Navigate to="/app" replace /> : <Login />} />
           <Route path="/join/:listId/:token" element={<JoinList />} />
           <Route path="/public/:did" element={<PublicList />} />
-          <Route path="/:userPath/resources/list-:listId" element={<SharedListResource />} />
+          <Route path="/:userPath/resources/:resourceId" element={<SharedListResource />} />
 
           {/* Landing page for unauthenticated, redirect to app if logged in */}
           <Route path="/" element={isAuthenticated ? <Navigate to="/app" replace /> : <Landing />} />

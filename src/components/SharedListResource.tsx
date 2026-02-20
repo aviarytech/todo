@@ -60,7 +60,9 @@ function getResourceUrl(userPath: string, listId: string): string {
 }
 
 export function SharedListResource() {
-  const { userPath, listId } = useParams<{ userPath: string; listId: string }>();
+  const { userPath, resourceId } = useParams<{ userPath: string; resourceId: string }>();
+  // Resource ID is "list-{convexListId}" — strip the prefix
+  const listId = resourceId?.startsWith("list-") ? resourceId.slice(5) : resourceId;
   const [resource, setResource] = useState<ListResource | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
