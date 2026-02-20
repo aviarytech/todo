@@ -295,3 +295,19 @@ export const getPublicationStatus = query({
     };
   },
 });
+
+/**
+ * Get all bookmarked list IDs for a user.
+ */
+export const getUserBookmarkIds = query({
+  args: {
+    userDid: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const bookmarks = await ctx.db
+      .query("bookmarks")
+      .withIndex("by_user", (q) => q.eq("userDid", args.userDid))
+      .collect();
+    return bookmarks.map((b) => b.listId);
+  },
+});

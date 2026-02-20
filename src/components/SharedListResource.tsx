@@ -1,14 +1,20 @@
 /**
- * Read-only view of a shared list resource.
+ * Shared list resource view — view and interact with a shared list.
  * Accessed via /{userPath}/resources/list-{listId}
  *
- * Fetches the list data from the Convex HTTP endpoint and renders it.
+ * - Anyone can view the list
+ * - Logged-in Poo App users can save to favourites
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import type { Id } from "../../convex/_generated/dataModel";
 
 interface ListItem {
+  _id: string;
   name: string;
   checked: boolean;
   createdAt: number;
@@ -28,6 +34,29 @@ interface ListResource {
   createdAt: number;
   itemCount: number;
   checkedCount: number;
+  credential?: {
+    type: string[];
+    issuer: string;
+    issuanceDate: string;
+    proof?: {
+      type: string;
+      cryptosuite: string;
+      created: string;
+      verificationMethod: string;
+      proofValue: string;
+    };
+  };
+}
+
+function getResourceUrl(userPath: string, listId: string): string {
+  const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
+  if (convexUrl?.includes("127.0.0.1") || convexUrl?.includes("localhost")) {
+    const siteUrl = convexUrl.replace(":3210", ":3211");
+    return `${siteUrl}/d/${userPath}/resources/list-${listId}`;
+  }
+  // Use relative URL — server.ts will proxy, or direct to Convex site
+  const siteUrl = convexUrl?.replace(".convex.cloud", ".convex.site") ?? "";
+  return `${siteUrl}/d/${userPath}/resources/list-${listId}`;
 }
 
 export function SharedListResource() {
@@ -35,33 +64,61 @@ export function SharedListResource() {
   const [resource, setResource] = useState<ListResource | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Auth for favouriting
+  const { did } = useCurrentUser();
+  const bookmarkMutation = useMutation(api.publication.bookmarkList);
+  const unbookmarkMutation = useMutation(api.publication.unbookmarkList);
+
+  // We need the Convex list ID for bookmarking — extract from resource URL
+  // The listId param is the Convex ID
+  const convexListId = listId as Id<"lists"> | undefined;
+
+  const isBookmarked = useQuery(
+    api.publication.isBookmarked,
+    did && convexListId ? { listId: convexListId, userDid: did } : "skip"
+  );
+
+  const [favouritePending, setFavouritePending] = useState(false);
+
+  const fetchResource = useCallback(async () => {
+    if (!userPath || !listId) return;
+    try {
+      const url = getResourceUrl(userPath, listId);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(res.status === 404 ? "List not found" : "Failed to load list");
+      const data = await res.json();
+      setResource(data);
+      setError(null);
+    } catch (err: any) {
+      if (!resource) setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [userPath, listId]);
 
   useEffect(() => {
-    if (!userPath || !listId) return;
+    fetchResource();
+    pollRef.current = setInterval(fetchResource, 5000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [fetchResource]);
 
-    const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
-    // Convex HTTP URL is the site URL derived from the deployment URL
-    const siteUrl = convexUrl?.includes("localhost") || convexUrl?.includes("127.0.0.1")
-      ? convexUrl.replace(":3210", ":3211")
-      : convexUrl?.replace(".convex.cloud", ".convex.site") ?? "";
-
-    // Use /d/ prefix for Convex routing (pathPrefix must end with /)
-    fetch(`${siteUrl}/d/${userPath}/resources/list-${listId}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error(res.status === 404 ? "List not found" : "Failed to load list");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setResource(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [userPath, listId]);
+  const handleToggleFavourite = async () => {
+    if (!did || !convexListId || favouritePending) return;
+    setFavouritePending(true);
+    try {
+      if (isBookmarked) {
+        await unbookmarkMutation({ listId: convexListId, userDid: did });
+      } else {
+        await bookmarkMutation({ listId: convexListId, userDid: did });
+      }
+    } catch (err) {
+      console.error("Failed to toggle favourite:", err);
+    } finally {
+      setFavouritePending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -96,9 +153,26 @@ export function SharedListResource() {
       <div className="max-w-lg mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500 mb-1">
-            <span>💩</span>
-            <span>Shared List</span>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
+              <span>💩</span>
+              <span>Shared List</span>
+            </div>
+            {/* Favourite button — only for logged-in users */}
+            {did && convexListId && (
+              <button
+                onClick={handleToggleFavourite}
+                disabled={favouritePending}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all active:scale-95 ${
+                  isBookmarked
+                    ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-200 dark:hover:border-amber-800"
+                } ${favouritePending ? "opacity-50" : ""}`}
+              >
+                <span>{isBookmarked ? "⭐" : "☆"}</span>
+                <span>{isBookmarked ? "Saved" : "Save"}</span>
+              </button>
+            )}
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {resource.name}
@@ -114,22 +188,32 @@ export function SharedListResource() {
               </>
             )}
           </div>
-          {/* Progress bar */}
           {resource.itemCount > 0 && (
             <div className="mt-3 h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-amber-500 rounded-full transition-all"
+                className="h-full bg-amber-500 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
           )}
         </div>
 
+        {/* Not logged in — nudge to sign up */}
+        {!did && (
+          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
+            <span>⭐</span>
+            <span>
+              <Link to="/login" className="font-medium underline">Sign in</Link>
+              {" "}to save this list to your favourites
+            </span>
+          </div>
+        )}
+
         {/* Items */}
         <div className="space-y-1">
-          {resource.items.map((item, i) => (
+          {resource.items.map((item) => (
             <div
-              key={i}
+              key={item._id}
               className={`flex items-start gap-3 px-4 py-3 rounded-xl ${
                 item.checked
                   ? "bg-gray-100 dark:bg-gray-900/50"
@@ -176,8 +260,25 @@ export function SharedListResource() {
           ))}
         </div>
 
+        {/* Provenance */}
+        {resource.credential?.proof && (
+          <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
+            <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span className="text-sm font-medium">Cryptographically signed</span>
+            </div>
+            <div className="space-y-1 text-xs text-green-600 dark:text-green-500">
+              <p><span className="font-medium">Signed by:</span> <span className="font-mono break-all">{resource.credential.issuer}</span></p>
+              <p><span className="font-medium">Date:</span> {new Date(resource.credential.proof.created).toLocaleString()}</p>
+              <p><span className="font-medium">Cryptosuite:</span> {resource.credential.proof.cryptosuite}</p>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
+        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
             Shared via{" "}
             <a href="https://trypoo.app" className="text-amber-500 hover:text-amber-600">

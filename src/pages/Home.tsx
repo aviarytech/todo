@@ -117,7 +117,14 @@ export function Home() {
     uncategorized: Doc<"lists">[];
   };
 
-  const { ownedLists, sharedLists } = useMemo<{ ownedLists: GroupedLists; sharedLists: GroupedLists }>(() => {
+  // Get bookmarked list IDs for favourites section
+  const bookmarkedIds = useQuery(
+    api.publication.getUserBookmarkIds,
+    did ? { userDid: did } : "skip"
+  );
+  const bookmarkedIdSet = useMemo(() => new Set(bookmarkedIds ?? []), [bookmarkedIds]);
+
+  const { ownedLists, sharedLists, favouriteLists } = useMemo<{ ownedLists: GroupedLists; sharedLists: GroupedLists; favouriteLists: Doc<"lists">[] }>(() => {
     const isOwnedByUser = (list: Doc<"lists">) => {
       const ownerDid = list.ownerDid;
       return ownerDid === did || ownerDid === legacyDid;
@@ -125,13 +132,18 @@ export function Home() {
 
     const emptyGroup: GroupedLists = { categorized: new Map(), uncategorized: [] };
     if (!processedLists) {
-      return { ownedLists: emptyGroup, sharedLists: { categorized: new Map(), uncategorized: [] } };
+      return { ownedLists: emptyGroup, sharedLists: { categorized: new Map(), uncategorized: [] }, favouriteLists: [] };
     }
 
     const owned: Doc<"lists">[] = [];
     const shared: Doc<"lists">[] = [];
+    const favourites: Doc<"lists">[] = [];
 
     for (const list of processedLists) {
+      // Favourites: bookmarked lists (owned or shared)
+      if (bookmarkedIdSet.has(list._id)) {
+        favourites.push(list);
+      }
       if (isOwnedByUser(list)) {
         owned.push(list);
       } else {
@@ -159,8 +171,9 @@ export function Home() {
     return {
       ownedLists: groupByCategory(owned),
       sharedLists: groupByCategory(shared),
+      favouriteLists: favourites,
     };
-  }, [processedLists, did, legacyDid]);
+  }, [processedLists, did, legacyDid, bookmarkedIdSet]);
 
   // Flatten all shared lists (don't group by sharer's categories)
   const allSharedLists = useMemo(() => {
@@ -278,6 +291,26 @@ export function Home() {
       {/* Lists */}
       {!isLoading && hasFilteredResults && did && (
         <div className="space-y-8 animate-slide-up">
+          {/* Favourites */}
+          {favouriteLists.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">⭐</span>
+                <h2 className="text-lg font-bold text-stone-800 dark:text-stone-200">
+                  Favourites
+                </h2>
+                <span className="text-sm font-normal text-stone-500 dark:text-stone-400">({favouriteLists.length})</span>
+              </div>
+              <div className="space-y-3">
+                {favouriteLists.map((list, index) => (
+                  <div key={`fav-${list._id}`} className="animate-slide-up" style={{ animationDelay: `${index * 40}ms` }}>
+                    <ListCard list={list} currentUserDid={did} showOwner={list.ownerDid !== did && list.ownerDid !== legacyDid} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Owned lists */}
           {(ownedLists.uncategorized.length > 0 || Array.from(ownedLists.categorized.values()).some(l => l.length > 0)) && (
             <section>
