@@ -97,31 +97,52 @@ async function serveListResource(
   headers: Record<string, string>
 ): Promise<Response> {
   try {
-    // Look up the user's DID from the didLogs table
-    const didLogRecord = await ctx.runQuery(api.didLogs.getDidLogByPath, { path: userPath });
-    if (!didLogRecord) {
-      return new Response("User not found", { status: 404, headers });
-    }
-
-    // We need the userDid — query didLogs by path to get the full record
+    // Primary path: resolve owner DID via didLogs
     const fullRecord = await ctx.runQuery(api.didLogs.getDidLogRecordByPath, { path: userPath });
-    if (!fullRecord) {
-      return new Response("User not found", { status: 404, headers });
+
+    let userDid: string | null = fullRecord?.userDid ?? null;
+    let list = null;
+
+    if (userDid) {
+      list = await ctx.runQuery(api.didResources.getPublicList, {
+        listId,
+        ownerDid: userDid,
+      });
     }
 
-    const userDid = fullRecord.userDid;
-
-    // Look up the list
-    const list = await ctx.runQuery(api.didResources.getPublicList, {
-      listId,
-      ownerDid: userDid,
-    });
-
+    // Fallback path for legacy users without didLogs rows yet:
+    // verify the list is actively published and the publication DID matches this URL path.
     if (!list) {
-      return new Response("List not found", {
-        status: 404,
-        headers: { "Content-Type": "text/plain", ...headers },
+      const candidate = await ctx.runQuery(api.didResources.getListById, { listId });
+      if (!candidate) {
+        return new Response("List not found", {
+          status: 404,
+          headers: { "Content-Type": "text/plain", ...headers },
+        });
+      }
+
+      const publication = await ctx.runQuery(api.didResources.getActivePublicationByListId, {
+        listId: candidate._id,
       });
+      if (!publication) {
+        return new Response("List not found", {
+          status: 404,
+          headers: { "Content-Type": "text/plain", ...headers },
+        });
+      }
+
+      // Expected: did:webvh:{scid}:{domain}:{userPath}/resources/list-{listId}
+      const expectedSuffix = `:${userPath}/resources/list-${listId}`;
+      if (!publication.webvhDid.endsWith(expectedSuffix)) {
+        return new Response("List not found", {
+          status: 404,
+          headers: { "Content-Type": "text/plain", ...headers },
+        });
+      }
+
+      // Derive controller DID from resource DID by stripping /resources/... suffix
+      userDid = publication.webvhDid.replace(/\/resources\/list-.+$/, "");
+      list = candidate;
     }
 
     // Get list items

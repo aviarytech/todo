@@ -74,3 +74,34 @@ export const getPublicListItems = query({
       }));
   },
 });
+
+/**
+ * Get a list by ID without owner check (used as fallback for legacy users
+ * who don't have didLogs rows yet).
+ */
+export const getListById = query({
+  args: { listId: v.string() },
+  handler: async (ctx, args) => {
+    try {
+      return await ctx.db.get(args.listId as Id<"lists">);
+    } catch {
+      return null;
+    }
+  },
+});
+
+/**
+ * Get active publication for a list.
+ */
+export const getActivePublicationByListId = query({
+  args: { listId: v.id("lists") },
+  handler: async (ctx, args) => {
+    const pub = await ctx.db
+      .query("publications")
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
+      .first();
+
+    if (!pub || pub.status !== "active") return null;
+    return pub;
+  },
+});
