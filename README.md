@@ -5,7 +5,7 @@ A collaborative list-sharing app with decentralized identifiers (DID) and verifi
 ## Features Backlog
 
 **The source of truth for features is the app itself:**  
-👉 **https://trypoo.app/list/js77strp35s0br8deqf30bvrxh80pm4t**
+👉 **[https://trypoo.app/list/js77strp35s0br8deqf30bvrxh80pm4t](https://trypoo.app/user-20ed9d43-2d31-44/resources/list-k172r0frhyxtm5dj6cqx1mh48h81k6wp)**
 
 Check that list for what needs to be built. Mark items done when you ship them.
 
