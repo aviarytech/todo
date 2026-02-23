@@ -107,6 +107,17 @@ Principles:
 - Every critical agent action should emit artifacts (screenshot/logs) for auditability in the activity feed.
 - Keep portability: if we swap Orgo later, Poo App data model and API remain stable.
 
+### 4.6 "Really Good Employee" Abstraction (product north star)
+Mission Control should model an agent as a dependable digital employee with five core capabilities:
+
+1. **Schedule Tasks** — can receive planned work and execute on schedule.
+2. **Code/Execution Capability** — can perform technical work (e.g., coding/automation) when assigned.
+3. **Runs 24/7** — can operate continuously with health/status visibility.
+4. **Textable Interface** — human can assign/reprioritize work via messaging.
+5. **Own Computer** — each agent session can bind to an isolated runtime computer.
+
+This abstraction should drive product decisions: if a new feature does not improve one of these five capabilities or observability around them, it is lower priority.
+
 ---
 
 ## 5. Features — Phased Rollout
@@ -459,6 +470,17 @@ Each active agent session can optionally bind to an Orgo computer.
 | **Phase 6** — Dashboard | 2 weeks | Mission Control home view |
 
 **Phase 1 is the priority** — it makes the app better for *everyone* and lays the foundation for everything else.
+
+### Capability Checklist ("Really Good Employee" test)
+Before shipping each phase, verify which core capability it improves:
+
+- **Schedule Tasks:** due dates, recurring tasks, cron sync, queue visibility
+- **Code/Execution Capability:** task claim/execute/complete flow + artifact proof
+- **Runs 24/7:** agent heartbeats, run-state transitions, failure alerts, restart policy
+- **Textable Interface:** Telegram/Signal → task create/assign/reprioritize round-trip
+- **Own Computer:** Orgo workspace/computer mapping, runtime isolation, session metadata in `missionRuns`
+
+Any phase item without a clear mapping should be deprioritized or reframed.
 
 ---
 
