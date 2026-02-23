@@ -171,6 +171,43 @@ presence: defineTable({
   .index("by_user", ["userDid"]),
 ```
 
+**Phase 1 Acceptance Tests (required before Phase 2 starts)**
+1. **Assignee round-trip**
+   - Given an item in a shared list, when assignee is changed, then all active clients show updated assignee in <1s.
+2. **Activity log completeness**
+   - For actions `created|completed|assigned|commented|edited`, each action writes exactly one activity row with correct `actorDid`, `itemId`, and timestamp ordering.
+3. **Presence freshness**
+   - When a user closes a list, presence indicator disappears within 90 seconds max.
+4. **No-regression core UX**
+   - Existing non-collab users can create/complete/edit tasks with no new required fields and no agent UI shown by default.
+5. **Phase 1 perf floor**
+   - P95 list open < 500ms; P95 activity panel load < 700ms on production-sized test data.
+
+**Phase 1 Observability Dashboard Spec (must ship with Phase 1)**
+Create a Mission Control internal dashboard with these panels:
+
+- **Realtime Health**
+  - subscription latency (P50/P95)
+  - mutation error rate (5m/1h)
+  - active presence sessions
+- **Collaboration Throughput**
+  - activity events/minute by action type
+  - assignments/day
+  - completion events/day
+- **Data Integrity**
+  - % items with invalid/missing assignee references
+  - duplicate activity event detector
+  - out-of-order timestamp detector
+- **User Experience**
+  - activity panel open latency (P95)
+  - list render latency (P95)
+  - client-side error rate by route
+
+Alert thresholds (initial):
+- mutation error rate > 2% for 10 min
+- realtime subscription latency P95 > 1200ms for 10 min
+- data integrity anomaly count > 0 for 15 min
+
 ---
 
 ### Phase 2: Agent Identity, API & Runtime Sessions
