@@ -1,9 +1,9 @@
 # PRD: Poo App — Agent Mission Control
 
-**Version:** 1.0  
-**Date:** 2026-02-19  
+**Version:** 1.1 (Orgo-first runtime revision)  
+**Date:** 2026-02-22  
 **Author:** Krusty 🦞🤡 + Brian  
-**Status:** Draft
+**Status:** Draft (Revised)
 
 ---
 
@@ -11,7 +11,7 @@
 
 Poo App is a beautifully simple todo list that *happens to be* the best way to manage AI agents.
 
-For a regular person, it's a fast, clean task manager with lists, due dates, streaks, and offline sync. For someone running AI agents (via OpenClaw, ClawBootBot, or any future platform), it's a Mission Control — a real-time dashboard where humans and agents collaborate on work, share context, and stay in sync.
+For a regular person, it's a fast, clean task manager with lists, due dates, streaks, and offline sync. For someone running AI agents (via OpenClaw, ClawBootBot, or any future platform), it's a Mission Control — a real-time dashboard where humans and agents collaborate on work, share context, and stay in sync. In V1, agents execute tasks on Orgo computers by default, with activity and artifacts surfaced directly in Poo App.
 
 **The key principle: every "agent" feature must also make sense as a "human collaboration" feature.** Assigning a task to an agent is the same UX as assigning it to a teammate. An agent's activity feed is the same pattern as a shared list's activity log. The agent layer is invisible until you turn it on.
 
@@ -25,6 +25,7 @@ Today's AI agent setups have a visibility problem:
 - Sub-agents spin up and die with no trace in the UI
 - The human has no real-time view of what their agent is doing
 - There's no bidirectional task assignment — you can't just drop a task for your agent to pick up
+- Compute context is fragmented — no standard runtime session record (computer/workspace/artifacts) shared back to the task layer
 
 Meanwhile, Poo App already has:
 - Task management with lists, subtasks, due dates, priorities
@@ -97,6 +98,15 @@ Agents interact via API, not UI. Every agent feature needs:
 ### 4.4 The Convex Advantage
 Convex gives us real-time subscriptions for free. When an agent updates a task, the human sees it *instantly* in the UI. No polling, no websocket plumbing. This is the core magic of Mission Control — you watch your agent work in real-time.
 
+### 4.5 Compute Substrate Abstraction (Orgo-first)
+Mission Control should not assume where agents run. For V1, we standardize on **Orgo computers** as the default execution substrate, with OpenClaw/ClawBoot as orchestration.
+
+Principles:
+- `AgentControl API` in Poo App is substrate-agnostic (`claimTask`, `heartbeat`, `logActivity`, `attachArtifact`, `completeTask`).
+- Runtime metadata is first-class: computer ID, workspace ID, provider (`orgo`), session status, and last screenshot artifact.
+- Every critical agent action should emit artifacts (screenshot/logs) for auditability in the activity feed.
+- Keep portability: if we swap Orgo later, Poo App data model and API remain stable.
+
 ---
 
 ## 5. Features — Phased Rollout
@@ -152,8 +162,8 @@ presence: defineTable({
 
 ---
 
-### Phase 2: Agent Identity & API
-*Connect agents to the app. This is where it becomes Mission Control.*
+### Phase 2: Agent Identity, API & Runtime Sessions
+*Connect agents to the app and track execution sessions. This is where it becomes Mission Control.*
 
 **2.1 Agent Registration**
 - Settings → "Connect an Agent"
@@ -183,6 +193,11 @@ Auth: `Authorization: Bearer <api-key>`
 - Shows agent platform, connection status, last active time
 - Agent DID is a real Originals DID — cryptographic identity
 
+**2.4 Mission Runs (Orgo runtime session tracking)**
+- Every claimed task can have one or more `missionRuns`.
+- A run tracks provider + runtime context + evidence artifacts.
+- UI: task detail shows run timeline (started, heartbeats, artifacts, completed/failed).
+
 **Schema additions:**
 ```typescript
 // In users table
@@ -201,6 +216,23 @@ apiKeys: defineTable({
   revokedAt: v.optional(v.number()),
 }).index("by_key_hash", ["keyHash"])
   .index("by_user", ["userId"]),
+
+// New table
+missionRuns: defineTable({
+  ownerDid: v.string(),
+  taskId: v.id("items"),
+  agentDid: v.string(),
+  provider: v.string(), // "orgo"
+  workspaceId: v.optional(v.string()),
+  computerId: v.optional(v.string()),
+  state: v.string(), // starting | running | blocked | failed | finished
+  startedAt: v.number(),
+  endedAt: v.optional(v.number()),
+  error: v.optional(v.string()),
+  artifactRefs: v.optional(v.array(v.string())),
+}).index("by_task", ["taskId"])
+  .index("by_agent_time", ["agentDid", "startedAt"])
+  .index("by_owner_time", ["ownerDid", "startedAt"]),
 ```
 
 ---
@@ -327,13 +359,13 @@ scheduleEntries: defineTable({
 
 - **Chat with agent in-app** — Use Telegram/Signal for now; in-app chat is a future phase
 - **Agent marketplace** — No third-party agent installation; connect your own
-- **Code execution** — Agents run on their own infra (OpenClaw), not in the app
+- **In-app compute scheduler** — Poo App will not run VMs itself; Orgo handles computer lifecycle
 - **Office/avatar view** — Fun but low priority; focus on utility first
 - **Billing/paid tiers** — Free for now; monetization strategy TBD
 
 ---
 
-## 7. OpenClaw Integration (Technical)
+## 7. OpenClaw + Orgo Integration (Technical)
 
 ### 7.1 OpenClaw Skill: `poo-app`
 A new OpenClaw skill that teaches agents how to use the Poo App API:
@@ -352,15 +384,33 @@ Skills:
       - schedule sync  # Push local crons to Poo App
 ```
 
-### 7.2 Webhook Support (Future)
-- Poo App fires webhooks when tasks are created/assigned/completed
-- OpenClaw listens and reacts (e.g., auto-claim unassigned tasks)
-- Enables fully autonomous task pickup
+### 7.2 Orgo Computer Adapter (V1 default runtime)
+Each active agent session can optionally bind to an Orgo computer.
 
-### 7.3 ClawBootBot Integration
-- ClawBootBot-managed agents register in Poo App as team members
-- Each bot gets its own agent profile and API key
-- Centralized dashboard for all bots across ClawBootBot + OpenClaw
+**Lifecycle**
+1. Agent claims task in Poo App.
+2. OpenClaw provisions/attaches Orgo computer (`workspaceId`, `computerId`).
+3. Agent executes work (browser/desktop actions) on Orgo.
+4. Agent posts periodic heartbeats + artifacts to Poo App.
+5. On completion/failure, agent closes task and releases/stops computer.
+
+**Runtime metadata captured in activity/missions**
+- `provider: "orgo"`
+- `workspaceId`
+- `computerId`
+- `sessionState: starting | running | blocked | failed | finished`
+- `artifactRefs` (screenshots, logs, exported files)
+
+### 7.3 Webhook Support (Future)
+- Poo App fires webhooks when tasks are created/assigned/completed.
+- OpenClaw listens and reacts (e.g., auto-claim unassigned tasks).
+- Enables fully autonomous task pickup.
+
+### 7.4 ClawBootBot Integration
+- ClawBootBot-managed agents register in Poo App as team members.
+- Each bot gets its own agent profile and API key.
+- Default execution target for bot work is Orgo unless explicitly overridden.
+- Centralized dashboard for all bots across ClawBootBot + OpenClaw.
 
 ---
 
@@ -379,6 +429,7 @@ Skills:
 - **`apiKeys`** — agent API authentication
 - **`memories`** — searchable agent/human memory store
 - **`scheduleEntries`** — cron jobs and scheduled tasks
+- **`missionRuns`** — per-task runtime session records (provider, computerId, status, artifacts)
 
 ---
 
@@ -390,6 +441,8 @@ Skills:
 | Agent task completion visible in <1s | P95 < 1s latency | Convex real-time subscriptions |
 | API response time | P95 < 200ms | Convex HTTP actions |
 | Agent operators use dashboard daily | >60% DAU among agent users | Analytics |
+| Mission run observability | >90% runs have at least 1 artifact + terminal state | `missionRuns` completeness checks |
+| Orgo-backed task completion | >80% success without manual intervention | Run state + activity analytics |
 | Memory search returns relevant results | >80% satisfaction | Full-text + semantic search |
 
 ---
@@ -399,7 +452,7 @@ Skills:
 | Phase | Timeline | Milestone |
 |-------|----------|-----------|
 | **Phase 1** — Collaborative Tasks | 2 weeks | Assignees + activity log + presence |
-| **Phase 2** — Agent Identity & API | 2 weeks | API keys, REST endpoints, agent profiles |
+| **Phase 2** — Agent Identity, API & Runtime Sessions | 2 weeks | API keys, REST endpoints, agent profiles, `missionRuns`, Orgo runtime adapter |
 | **Phase 3** — Memory & Knowledge | 2 weeks | Memory store, browser UI, search |
 | **Phase 4** — Schedule & Calendar | 1 week | Calendar view with cron sync |
 | **Phase 5** — Team & Multi-Agent | 2 weeks | Team dashboard, status, sub-agents |
@@ -420,6 +473,10 @@ Skills:
 4. **ClawBootBot free tier** — Should free-tier ClawBootBot users get Mission Control features? (Recommendation: yes, with limits on number of agents.)
 
 5. **Privacy** — Agent memories may contain sensitive info. Per-memory visibility controls? (Recommendation: yes, private by default, share explicitly.)
+
+6. **Orgo tenancy model** — Shared workspace per user, or per-agent workspace isolation? (Recommendation: per-agent default with optional shared workspace for cost optimization.)
+
+7. **Artifact retention** — How long should screenshots/log artifacts from mission runs be retained? (Recommendation: 30 days default, configurable by workspace.)
 
 ---
 
