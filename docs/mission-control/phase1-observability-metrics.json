@@ -2,17 +2,19 @@
   "version": 1,
   "phase": "phase1",
   "metrics": [
-    { "name": "subscription_latency_ms", "type": "histogram", "dimensions": ["route", "listId", "env"] },
-    { "name": "mutation_total", "type": "counter", "dimensions": ["mutationName", "env"] },
-    { "name": "mutation_error_total", "type": "counter", "dimensions": ["mutationName", "errorCode", "env"] },
-    { "name": "active_presence_sessions", "type": "gauge", "dimensions": ["env"] },
-    { "name": "activity_event_total", "type": "counter", "dimensions": ["action", "env"] },
-    { "name": "invalid_assignee_reference_total", "type": "gauge", "dimensions": ["env"] },
-    { "name": "duplicate_activity_event_total", "type": "gauge", "dimensions": ["env"] },
-    { "name": "out_of_order_activity_timestamps_total", "type": "gauge", "dimensions": ["env"] },
-    { "name": "activity_panel_open_latency_ms", "type": "histogram", "dimensions": ["route", "env"] },
-    { "name": "list_render_latency_ms", "type": "histogram", "dimensions": ["route", "env"] },
-    { "name": "client_error_total", "type": "counter", "dimensions": ["route", "errorType", "env"] }
+    { "name": "subscription_latency_ms", "type": "histogram", "dimensions": ["route", "listId", "env"], "status": "planned" },
+    { "name": "mutation_total", "type": "counter", "dimensions": ["mutationName", "env"], "status": "implemented" },
+    { "name": "mutation_error_total", "type": "counter", "dimensions": ["mutationName", "errorCode", "env"], "status": "implemented" },
+    { "name": "mutation_latency_ms", "type": "histogram", "dimensions": ["mutationName", "env"], "status": "implemented" },
+    { "name": "active_presence_sessions", "type": "gauge", "dimensions": ["env"], "status": "implemented" },
+    { "name": "activity_event_total", "type": "counter", "dimensions": ["action", "env"], "status": "planned" },
+    { "name": "invalid_assignee_reference_total", "type": "gauge", "dimensions": ["env"], "status": "planned" },
+    { "name": "duplicate_activity_event_total", "type": "gauge", "dimensions": ["env"], "status": "planned" },
+    { "name": "out_of_order_activity_timestamps_total", "type": "gauge", "dimensions": ["env"], "status": "planned" },
+    { "name": "activity_panel_open_latency_ms", "type": "histogram", "dimensions": ["route", "env"], "status": "implemented" },
+    { "name": "list_render_latency_ms", "type": "histogram", "dimensions": ["route", "env"], "status": "implemented" },
+    { "name": "client_error_total", "type": "counter", "dimensions": ["route", "errorType", "env"], "status": "implemented" },
+    { "name": "route_view_total", "type": "counter", "dimensions": ["route", "env"], "status": "implemented" }
   ],
   "alerts": [
     {

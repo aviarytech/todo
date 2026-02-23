@@ -25,6 +25,8 @@ All baseline metrics emit as JSON logs with `[obs]` prefix. This is intentionall
 - Metrics contract: `docs/mission-control/phase1-observability-metrics.json`
 - Dashboard spec/config: `docs/mission-control/phase1-observability-dashboard-config.json`
 - Planning context: `docs/mission-control/phase1-observability-dashboard-plan.md`
+- Consistency validator (catalog ↔ dashboard ↔ alerts):
+  - `npm run mission-control:validate-observability`
 
 ## Runnable path (today)
 1. Start app and Convex dev stack.
