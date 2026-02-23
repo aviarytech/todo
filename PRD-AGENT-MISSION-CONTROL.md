@@ -208,6 +208,10 @@ Alert thresholds (initial):
 - realtime subscription latency P95 > 1200ms for 10 min
 - data integrity anomaly count > 0 for 15 min
 
+Alert routing:
+- staging: send to internal dev channel only
+- production: send to on-call channel + pager integration; require acknowledgement and incident note
+
 ---
 
 ### Phase 2: Agent Identity, API & Runtime Sessions
@@ -271,6 +275,7 @@ missionRuns: defineTable({
   taskId: v.id("items"),
   agentDid: v.string(),
   provider: v.string(), // "orgo"
+  schemaVersion: v.number(), // event/schema compatibility control
   workspaceId: v.optional(v.string()),
   computerId: v.optional(v.string()),
   state: v.string(), // starting | running | blocked | failed | finished
@@ -541,6 +546,12 @@ Any phase item without a clear mapping should be deprioritized or reframed.
 
 These are mandatory before shipping Phase 2 production.
 
+**Default owners (assumed):**
+- PM: scope, acceptance criteria, rollout gating
+- FE: Mission Control UI controls, dashboards, operator flows
+- BE: API endpoints, schema/state machine, auth/retention logic
+- SRE/Platform: observability, alerts, reliability policies, incident playbooks
+
 ### 12.1 Operator Controls (required)
 Minimum controls in Mission Control UI and API:
 - **Pause run** (soft stop: no new actions, preserve runtime context)
@@ -560,6 +571,9 @@ Required endpoints/events:
 - **Run state machine:** `starting -> running -> (blocked | failed | finished)`
 - **Retry policy:** max 2 automatic retries for transient failures; then escalate
 - **Alert policy:** notify operator on terminal `failed` and `blocked > 5 min`
+- **Environment policy:**
+  - staging: enforce state machine + heartbeat timeout + alert simulation (no paging)
+  - production: enforce full SLOs with live alert routing and on-call acknowledgement
 
 ### 12.3 missionRuns Hardening (required)
 `missionRuns` must include:
@@ -577,6 +591,7 @@ Required endpoints/events:
 - Key rotation supported (create new, revoke old, no downtime)
 - Keys stored hashed only (no plaintext persistence)
 - Artifact retention policy enforced (default 30 days)
+- Retention enforcement via daily cleanup job + auditable deletion logs (+ optional legal-hold override)
 - Tenant isolation checks on all run/task/memory reads and writes
 
 ## 13. Phase 2 Execution Checklist (engineering)
