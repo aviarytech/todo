@@ -1,7 +1,7 @@
 {
   "sprintDate": "2026-02-23",
-  "block": "2/5",
-  "updatedAt": "2026-02-23T11:27:00Z",
+  "block": "5/5",
+  "updatedAt": "2026-02-23T14:00:00Z",
   "pooAppAgentApiTracking": {
     "attempted": true,
     "status": "blocked",
@@ -38,6 +38,14 @@
       "title": "Track tasks in Poo App via agent API",
       "status": "blocked",
       "blocker": "Need API credentials or authenticated agent session"
+    },
+    {
+      "id": "MC-P1-PR-OPEN",
+      "title": "Open/update PR with overnight mission control scope summary",
+      "status": "done",
+      "artifacts": [
+        "https://github.com/aviarytech/todo/pull/139"
+      ]
     }
   ],
   "validation": {

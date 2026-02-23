@@ -7,13 +7,13 @@ Target: complete Phase 1 acceptance-tests + observability implementation by morn
 - [x] 03:15 AM — Block 2: acceptance tests implementation pass
 - [x] 03:50 AM — Block 3: observability dashboard wiring pass
 - [x] 04:00 AM — Block 4: hardening + PR prep
-- [ ] 06:00 AM — Block 5: completion push + final status
+- [x] 06:00 AM — Block 5: completion push + final status
 
 ## Must-complete scope
 - [x] Phase 1 acceptance tests scaffold + runnable baseline
 - [x] Observability metrics + dashboard config/docs
 - [x] Alert thresholds implemented/mapped
-- [ ] PR(s) opened/updated with summary
+- [x] PR(s) opened/updated with summary (PR #139)
 
 ## Notes
 - Cron jobs are scheduled for overnight execution and status announcements after each block.
