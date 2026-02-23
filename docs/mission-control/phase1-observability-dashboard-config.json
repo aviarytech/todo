@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "phase": "phase1",
+  "dashboard": {
+    "title": "Mission Control — Phase 1 Baseline",
+    "tags": ["mission-control", "phase1", "observability"],
+    "panels": [
+      {
+        "id": "realtime_health",
+        "title": "Realtime Health",
+        "charts": [
+          { "metric": "subscription_latency_ms", "view": ["p50", "p95"], "unit": "ms" },
+          { "metric": "mutation_error_total/mutation_total", "view": ["rate_5m", "rate_1h"], "unit": "%" },
+          { "metric": "active_presence_sessions", "view": ["current"], "unit": "count" }
+        ]
+      },
+      {
+        "id": "collaboration_throughput",
+        "title": "Collaboration Throughput",
+        "charts": [
+          { "metric": "activity_event_total", "view": ["per_minute"], "groupBy": ["action"] },
+          { "metric": "activity_event_total", "filter": "action=assigned", "view": ["per_day"] },
+          { "metric": "activity_event_total", "filter": "action=completed", "view": ["per_day"] }
+        ]
+      },
+      {
+        "id": "data_integrity",
+        "title": "Data Integrity",
+        "charts": [
+          { "metric": "invalid_assignee_reference_total", "view": ["current"], "unit": "count" },
+          { "metric": "duplicate_activity_event_total", "view": ["current"], "unit": "count" },
+          { "metric": "out_of_order_activity_timestamps_total", "view": ["current"], "unit": "count" }
+        ]
+      },
+      {
+        "id": "user_experience",
+        "title": "User Experience",
+        "charts": [
+          { "metric": "activity_panel_open_latency_ms", "view": ["p95"], "unit": "ms" },
+          { "metric": "list_render_latency_ms", "view": ["p95"], "unit": "ms" },
+          { "metric": "client_error_total", "view": ["rate_5m"], "groupBy": ["route"] }
+        ]
+      }
+    ]
+  },
+  "alerts": [
+    {
+      "name": "phase1_mutation_error_rate_high",
+      "condition": "(sum(rate(mutation_error_total[10m])) / clamp_min(sum(rate(mutation_total[10m])), 1)) > 0.02",
+      "severity": "high",
+      "route": {
+        "staging": ["internal-dev-channel"],
+        "production": ["on-call-channel", "pager"]
+      }
+    },
+    {
+      "name": "phase1_subscription_latency_p95_high",
+      "condition": "histogram_quantile(0.95, rate(subscription_latency_ms_bucket[10m])) > 1200",
+      "severity": "high",
+      "route": {
+        "staging": ["internal-dev-channel"],
+        "production": ["on-call-channel", "pager"]
+      }
+    },
+    {
+      "name": "phase1_data_integrity_anomaly",
+      "condition": "(max_over_time(invalid_assignee_reference_total[15m]) + max_over_time(duplicate_activity_event_total[15m]) + max_over_time(out_of_order_activity_timestamps_total[15m])) > 0",
+      "severity": "critical",
+      "route": {
+        "staging": ["internal-dev-channel"],
+        "production": ["on-call-channel", "pager"]
+      }
+    }
+  ]
+}

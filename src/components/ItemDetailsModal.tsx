@@ -21,6 +21,7 @@ import { Comments } from "./Comments";
 import { Panel } from "./ui/Panel";
 import { ItemProvenanceInfo } from "./ProvenanceInfo";
 import { NaturalDateInput } from "./ui/NaturalDateInput";
+import { recordLatencyMs } from "../lib/observability";
 
 interface ItemDetailsModalProps {
   item: Doc<"items">;
@@ -69,6 +70,16 @@ export function ItemDetailsModal({
   const [priority, setPriority] = useState<Priority>(item.priority ?? "");
   const [selectedCategory, setSelectedCategory] = useState(item.groceryAisle ?? "");
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const startedAt = performance.now();
+    requestAnimationFrame(() => {
+      recordLatencyMs("activity_panel_open_latency_ms", performance.now() - startedAt, {
+        route: window.location.pathname,
+        env: import.meta.env.MODE,
+      });
+    });
+  }, [item._id]);
 
   // Load list to get custom aisles
   const list = useQuery(api.lists.getList, { listId: item.listId });

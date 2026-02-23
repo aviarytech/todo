@@ -5,7 +5,7 @@ Target: complete Phase 1 acceptance-tests + observability implementation by morn
 ## Timed blocks (PST)
 - [x] 02:30 AM — Block 1 kickoff: implementation plan + task tracking setup
 - [x] 03:15 AM — Block 2: acceptance tests implementation pass
-- [ ] 03:50 AM — Block 3: observability dashboard wiring pass
+- [x] 03:50 AM — Block 3: observability dashboard wiring pass
 - [ ] 04:00 AM — Block 4: hardening + PR prep
 - [ ] 06:00 AM — Block 5: completion push + final status
 

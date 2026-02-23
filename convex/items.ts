@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { withMutationObservability } from "./lib/observability";
 
 /**
  * Creates a Verifiable Credential for item authorship (creation).
@@ -165,7 +166,7 @@ export const addItem = mutation({
     priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
     parentId: v.optional(v.id("items")), // For sub-items
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args) => withMutationObservability("items.addItem", async () => {
     // Verify the list exists
     const list = await ctx.db.get(args.listId);
     if (!list) {
@@ -235,7 +236,7 @@ export const addItem = mutation({
     await ctx.db.patch(itemId, { vcProofs: [authorshipVC] });
 
     return itemId;
-  },
+  }),
 });
 
 /**
@@ -266,7 +267,7 @@ export const updateItem = mutation({
     clearUrl: v.optional(v.boolean()),
     clearPriority: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args) => withMutationObservability("items.updateItem", async () => {
     const item = await ctx.db.get(args.itemId);
     if (!item) {
       throw new Error("Item not found");
@@ -298,7 +299,7 @@ export const updateItem = mutation({
 
     await ctx.db.patch(args.itemId, updates);
     return args.itemId;
-  },
+  }),
 });
 
 /**
@@ -339,7 +340,7 @@ export const checkItem = mutation({
     legacyDid: v.optional(v.string()),
     checkedAt: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args) => withMutationObservability("items.checkItem", async () => {
     const item = await ctx.db.get(args.itemId);
     if (!item) {
       throw new Error("Item not found");
@@ -423,7 +424,7 @@ export const checkItem = mutation({
         });
       }
     }
-  },
+  }),
 });
 
 /**

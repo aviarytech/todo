@@ -21,6 +21,7 @@ import { useKeyboardShortcuts, KeyboardShortcutsHelp, type Shortcut } from "../h
 import { groupByAisle, classifyItem } from "../lib/groceryAisles";
 import { useCategories } from "../hooks/useCategories";
 import { shareList } from "../lib/share";
+import { recordLatencyMs, setGaugeMetric } from "../lib/observability";
 import { AddItemInput } from "../components/AddItemInput";
 import { NestedListItem } from "../components/NestedListItem";
 import { useStreaks } from "../hooks/useStreaks";
@@ -78,6 +79,8 @@ export function ListView() {
 
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
+  const listLoadStartedAtRef = useRef(performance.now());
+  const hasRecordedRenderLatencyRef = useRef(false);
 
   // Use optimistic items hook (with offline cache fallback)
   const {
@@ -93,6 +96,31 @@ export function ListView() {
   // Streak tracking
   const { streak, recordTaskCompletion } = useStreaks(did ?? undefined);
   const [celebrationMilestone, setCelebrationMilestone] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (hasRecordedRenderLatencyRef.current) return;
+    if (!list || itemsLoading) return;
+
+    hasRecordedRenderLatencyRef.current = true;
+    recordLatencyMs("list_render_latency_ms", performance.now() - listLoadStartedAtRef.current, {
+      route: `/list/${listId}`,
+      env: import.meta.env.MODE,
+    });
+  }, [list, itemsLoading, listId]);
+
+  useEffect(() => {
+    setGaugeMetric("active_presence_sessions", 1, {
+      route: `/list/${listId}`,
+      env: import.meta.env.MODE,
+    });
+
+    return () => {
+      setGaugeMetric("active_presence_sessions", 0, {
+        route: `/list/${listId}`,
+        env: import.meta.env.MODE,
+      });
+    };
+  }, [listId]);
 
   // Wrap checkItem to also record streak
   const checkItemWithStreak = useCallback(

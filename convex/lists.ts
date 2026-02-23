@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { withMutationObservability } from "./lib/observability";
 
 /**
  * Creates a placeholder Verifiable Credential for list ownership.
@@ -59,7 +60,7 @@ export const createList = mutation({
     categoryId: v.optional(v.id("categories")),
     createdAt: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args) => withMutationObservability("lists.createList", async () => {
     const listId = await ctx.db.insert("lists", {
       assetDid: args.assetDid,
       name: args.name,
@@ -79,7 +80,7 @@ export const createList = mutation({
     await ctx.db.patch(listId, { vcProof });
 
     return listId;
-  },
+  }),
 });
 
 /**
