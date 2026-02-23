@@ -500,6 +500,58 @@ Any phase item without a clear mapping should be deprioritized or reframed.
 
 7. **Artifact retention** — How long should screenshots/log artifacts from mission runs be retained? (Recommendation: 30 days default, configurable by workspace.)
 
+## 12. Required V1.1 Launch Gates (must-have)
+
+These are mandatory before shipping Phase 2 production.
+
+### 12.1 Operator Controls (required)
+Minimum controls in Mission Control UI and API:
+- **Pause run** (soft stop: no new actions, preserve runtime context)
+- **Kill run** (hard stop: end runtime + mark terminal state)
+- **Reassign task** (agent A -> agent B)
+- **Escalate to human** (agent marks blocked with reason)
+
+Required endpoints/events:
+- `POST /api/v1/runs/:id/pause`
+- `POST /api/v1/runs/:id/kill`
+- `POST /api/v1/tasks/:id/reassign`
+- `POST /api/v1/runs/:id/escalate`
+
+### 12.2 Reliability SLOs (required)
+- **Heartbeat interval target:** every 30–60s while running
+- **Heartbeat timeout:** mark `degraded` after 2 missed heartbeats; `failed` after 5 missed heartbeats
+- **Run state machine:** `starting -> running -> (blocked | failed | finished)`
+- **Retry policy:** max 2 automatic retries for transient failures; then escalate
+- **Alert policy:** notify operator on terminal `failed` and `blocked > 5 min`
+
+### 12.3 missionRuns Hardening (required)
+`missionRuns` must include:
+- `attempt` (int)
+- `parentRunId` (optional, for retries/branches)
+- `durationMs`
+- `terminalReason` (`completed | killed | timeout | error | escalated`)
+- `costEstimate` (optional)
+- `tokenUsage` (optional)
+- `lastHeartbeatAt`
+- `artifactRefs[]` with typed refs (`screenshot | log | diff | file | url`)
+
+### 12.4 Security Baseline (required)
+- API keys are **scoped** (`tasks:read`, `tasks:write`, `runs:control`, `memory:write`, etc.)
+- Key rotation supported (create new, revoke old, no downtime)
+- Keys stored hashed only (no plaintext persistence)
+- Artifact retention policy enforced (default 30 days)
+- Tenant isolation checks on all run/task/memory reads and writes
+
+## 13. Phase 2 Execution Checklist (engineering)
+- [ ] Implement operator control endpoints + UI actions
+- [ ] Implement run-state machine + heartbeat monitor worker
+- [ ] Extend `missionRuns` schema with required fields
+- [ ] Add failure taxonomy + retry/escalation handlers
+- [ ] Add scoped API key middleware + rotation flow
+- [ ] Add artifact retention job + admin policy setting
+- [ ] Ship dashboards for run health (success rate, intervention rate, timeout rate)
+- [ ] Run production readiness drill (pause/kill/escalation/test alerts)
+
 ---
 
 *This PRD is a living document. Update as we build and learn.*
