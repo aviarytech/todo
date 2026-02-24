@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "phase": "phase1",
+  "metrics": [
+    { "name": "subscription_latency_ms", "type": "histogram", "dimensions": ["route", "listId", "env"], "status": "planned" },
+    { "name": "mutation_total", "type": "counter", "dimensions": ["mutationName", "env"], "status": "implemented" },
+    { "name": "mutation_error_total", "type": "counter", "dimensions": ["mutationName", "errorCode", "env"], "status": "implemented" },
+    { "name": "mutation_latency_ms", "type": "histogram", "dimensions": ["mutationName", "env"], "status": "implemented" },
+    { "name": "active_presence_sessions", "type": "gauge", "dimensions": ["env"], "status": "implemented" },
+    { "name": "activity_event_total", "type": "counter", "dimensions": ["action", "env"], "status": "planned" },
+    { "name": "invalid_assignee_reference_total", "type": "gauge", "dimensions": ["env"], "status": "planned" },
+    { "name": "duplicate_activity_event_total", "type": "gauge", "dimensions": ["env"], "status": "planned" },
+    { "name": "out_of_order_activity_timestamps_total", "type": "gauge", "dimensions": ["env"], "status": "planned" },
+    { "name": "activity_panel_open_latency_ms", "type": "histogram", "dimensions": ["route", "env"], "status": "implemented" },
+    { "name": "list_render_latency_ms", "type": "histogram", "dimensions": ["route", "env"], "status": "implemented" },
+    { "name": "client_error_total", "type": "counter", "dimensions": ["route", "errorType", "env"], "status": "implemented" },
+    { "name": "route_view_total", "type": "counter", "dimensions": ["route", "env"], "status": "implemented" }
+  ],
+  "alerts": [
+    {
+      "name": "phase1_mutation_error_rate_high",
+      "expr": "mutation_error_total / mutation_total > 0.02",
+      "window": "10m"
+    },
+    {
+      "name": "phase1_subscription_latency_p95_high",
+      "expr": "p95(subscription_latency_ms) > 1200",
+      "window": "10m"
+    },
+    {
+      "name": "phase1_data_integrity_anomaly",
+      "expr": "invalid_assignee_reference_total + duplicate_activity_event_total + out_of_order_activity_timestamps_total > 0",
+      "window": "15m"
+    }
+  ]
+}

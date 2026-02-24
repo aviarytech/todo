@@ -1,0 +1,70 @@
+{
+  "sprintDate": "2026-02-23",
+  "block": "5/5",
+  "updatedAt": "2026-02-23T14:00:00Z",
+  "pooAppAgentApiTracking": {
+    "attempted": true,
+    "status": "blocked",
+    "reason": "No local agent API credentials/session discovered (.env.local missing; no bearer token configured for task write)."
+  },
+  "tasks": [
+    {
+      "id": "MC-P1-AT-SCAFFOLD",
+      "title": "Phase 1 acceptance tests scaffold",
+      "status": "done",
+      "artifacts": [
+        "e2e/mission-control-phase1.spec.ts"
+      ]
+    },
+    {
+      "id": "MC-P1-AT-BLOCK2",
+      "title": "Block 2 acceptance test implementation pass (AC1-AC5 harness + gating)",
+      "status": "done",
+      "artifacts": [
+        "e2e/mission-control-phase1.spec.ts"
+      ]
+    },
+    {
+      "id": "MC-P1-OBS-PLAN",
+      "title": "Phase 1 observability dashboard instrumentation plan",
+      "status": "done",
+      "artifacts": [
+        "docs/mission-control/phase1-observability-dashboard-plan.md",
+        "docs/mission-control/phase1-observability-metrics.json"
+      ]
+    },
+    {
+      "id": "MC-P1-TRACKING-AUTH",
+      "title": "Track tasks in Poo App via agent API",
+      "status": "blocked",
+      "blocker": "Need API credentials or authenticated agent session"
+    },
+    {
+      "id": "MC-P1-PR-OPEN",
+      "title": "Open/update PR with overnight mission control scope summary",
+      "status": "done",
+      "artifacts": [
+        "https://github.com/aviarytech/todo/pull/139"
+      ]
+    }
+  ],
+  "validation": {
+    "playwrightSpecRun": "partial",
+    "command": "npm run test:e2e -- e2e/mission-control-phase1.spec.ts",
+    "result": {
+      "passed": 1,
+      "skipped": 6,
+      "failed": 0
+    },
+    "notes": [
+      "Installed Playwright Chromium for local runs (npx playwright install chromium).",
+      "AC1-AC5 harness implemented; ACs requiring authenticated collab/session features are intentionally gated/skipped until seeded OTP auth + Phase 1 UI surfaces are available."
+    ]
+  },
+  "next": [
+    "Provision seeded e2e auth/session fixture to unblock AC1/AC2/AC3/AC5b execution",
+    "Wire assignee/activity/presence UI+backend then remove dynamic skips",
+    "Add production-sized fixture seeding path and re-enable strict perf assertions",
+    "Provision dashboard + alerts once telemetry backend is selected"
+  ]
+}

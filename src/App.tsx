@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
-import { Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { useSettings } from './hooks/useSettings'
 import { AuthGuard } from './components/auth/AuthGuard'
@@ -12,6 +12,7 @@ import { AppLockGuard } from './components/AppLockGuard'
 import { useSwipeBack } from './hooks/useSwipeBack'
 import { initDeepLinks } from './lib/deeplinks'
 import { initPushNotifications } from './lib/pushNotifications'
+import { incrementMetric } from './lib/observability'
 
 // Lazy-loaded routes for better code splitting
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })))
@@ -140,6 +141,7 @@ function PageLoadingFallback() {
 function App() {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   // Enable swipe-right from left edge to go back (mobile PWA)
   useSwipeBack()
@@ -155,6 +157,40 @@ function App() {
       initPushNotifications();
     }
   }, [isAuthenticated]);
+
+  // Route-aware client error rate baseline
+  useEffect(() => {
+    const onError = () => {
+      incrementMetric('client_error_total', {
+        route: location.pathname,
+        errorType: 'window_error',
+        env: import.meta.env.MODE,
+      })
+    }
+
+    const onUnhandledRejection = () => {
+      incrementMetric('client_error_total', {
+        route: location.pathname,
+        errorType: 'unhandled_rejection',
+        env: import.meta.env.MODE,
+      })
+    }
+
+    window.addEventListener('error', onError)
+    window.addEventListener('unhandledrejection', onUnhandledRejection)
+
+    return () => {
+      window.removeEventListener('error', onError)
+      window.removeEventListener('unhandledrejection', onUnhandledRejection)
+    }
+  }, [location.pathname])
+
+  useEffect(() => {
+    incrementMetric('route_view_total', {
+      route: location.pathname,
+      env: import.meta.env.MODE,
+    })
+  }, [location.pathname])
 
   return (
     <AppLockGuard>
