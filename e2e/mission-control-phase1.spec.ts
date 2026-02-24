@@ -1,15 +1,75 @@
 import { test, expect, type Page } from "@playwright/test";
 
+interface SeededAuthState {
+  user: {
+    turnkeySubOrgId: string;
+    email: string;
+    did: string;
+    displayName: string;
+  };
+  token: string;
+}
+
+const SEEDED_AUTH_ENV = {
+  token: process.env.E2E_AUTH_TOKEN,
+  email: process.env.E2E_AUTH_EMAIL,
+  subOrgId: process.env.E2E_AUTH_SUBORG_ID,
+  did: process.env.E2E_AUTH_DID,
+  displayName: process.env.E2E_AUTH_DISPLAY_NAME,
+} as const;
+
+function getSeededAuthState(nameFallback: string): SeededAuthState | null {
+  const { token, email, subOrgId, did, displayName } = SEEDED_AUTH_ENV;
+  if (!token || !email || !subOrgId || !did) {
+    return null;
+  }
+
+  return {
+    token,
+    user: {
+      turnkeySubOrgId: subOrgId,
+      email,
+      did,
+      displayName: displayName ?? nameFallback,
+    },
+  };
+}
+
+async function seedAuthSession(page: Page, seeded: SeededAuthState) {
+  const serialized = JSON.stringify(seeded);
+  await page.addInitScript((payload) => {
+    localStorage.setItem("lisa-auth-state", payload);
+    const parsed = JSON.parse(payload);
+    localStorage.setItem("lisa-jwt-token", parsed.token);
+  }, serialized);
+}
+
 async function resetAndCreateIdentity(page: Page, name: string) {
+  const seededAuthState = getSeededAuthState(name);
+
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
+
+  if (seededAuthState) {
+    await seedAuthSession(page, seededAuthState);
+    await page.reload();
+
+    const isInApp = (await page.getByRole("heading", { name: "Your Lists" }).count()) > 0
+      || /\/app/.test(page.url());
+
+    if (isInApp) {
+      await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 15000 });
+      return { ready: true as const };
+    }
+  }
+
   await page.reload();
 
   const hasNameField = (await page.getByLabel("Your name").count()) > 0;
   if (!hasNameField) {
     return {
       ready: false as const,
-      reason: "Identity bootstrap UI is unavailable (likely OTP auth gate); no seeded e2e auth session configured.",
+      reason: "Identity bootstrap UI is unavailable (OTP auth gate). Set E2E_AUTH_TOKEN/E2E_AUTH_EMAIL/E2E_AUTH_SUBORG_ID/E2E_AUTH_DID to run seeded Phase 1 acceptance tests.",
     };
   }
 
