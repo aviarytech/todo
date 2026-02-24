@@ -141,6 +141,8 @@ export default defineSchema({
     groceryAisle: v.optional(v.string()),
     // Parent item ID for sub-items
     parentId: v.optional(v.id("items")),
+    // Optional assignee DID for Mission Control workflows
+    assigneeDid: v.optional(v.string()),
     // Attachments - stored file IDs
     attachments: v.optional(v.array(v.id("_storage"))),
     // VC proofs for item actions (Phase 6 - Provenance Chain)
@@ -213,6 +215,38 @@ export default defineSchema({
   })
     .index("by_user", ["userDid"])
     .index("by_token", ["token"]),
+
+  // Mission Control activity feed events (Phase 1 runtime wiring)
+  activityEvents: defineTable({
+    listId: v.id("lists"),
+    itemId: v.optional(v.id("items")),
+    eventType: v.union(
+      v.literal("created"),
+      v.literal("completed"),
+      v.literal("uncompleted"),
+      v.literal("assigned"),
+      v.literal("commented"),
+      v.literal("edited")
+    ),
+    actorDid: v.string(),
+    assigneeDid: v.optional(v.string()),
+    metadata: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_list_created", ["listId", "createdAt"])
+    .index("by_item_created", ["itemId", "createdAt"]),
+
+  // Mission Control presence sessions with TTL-like expiry tracking
+  presenceSessions: defineTable({
+    listId: v.id("lists"),
+    userDid: v.string(),
+    sessionId: v.string(),
+    lastSeenAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_list", ["listId"])
+    .index("by_list_expires", ["listId", "expiresAt"])
+    .index("by_session", ["sessionId"]),
 
   // Publications table - did:webvh publication tracking (Phase 4)
   publications: defineTable({
