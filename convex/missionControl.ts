@@ -68,6 +68,9 @@ export const recordPresenceHeartbeat = mutation({
       .first();
 
     if (existing) {
+      if (existing.listId !== args.listId || existing.userDid !== args.userDid) {
+        throw new Error("Session conflict");
+      }
       await ctx.db.patch(existing._id, { lastSeenAt: now, expiresAt });
     } else {
       await ctx.db.insert("presenceSessions", {
@@ -85,17 +88,27 @@ export const recordPresenceHeartbeat = mutation({
 
 export const clearPresenceSession = mutation({
   args: {
+    listId: v.id("lists"),
+    userDid: v.string(),
     sessionId: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireListAccess(ctx, args.listId, args.userDid);
+
     const existing = await ctx.db
       .query("presenceSessions")
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
       .first();
 
-    if (existing) {
-      await ctx.db.delete(existing._id);
+    if (!existing) {
+      return { ok: true };
     }
+
+    if (existing.listId !== args.listId || existing.userDid !== args.userDid) {
+      throw new Error("Not authorized to clear this session");
+    }
+
+    await ctx.db.delete(existing._id);
 
     return { ok: true };
   },
@@ -104,9 +117,12 @@ export const clearPresenceSession = mutation({
 export const getActivePresence = query({
   args: {
     listId: v.id("lists"),
+    userDid: v.string(),
     now: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireListAccess(ctx, args.listId, args.userDid);
+
     const now = args.now ?? Date.now();
 
     const sessions = await ctx.db
@@ -121,9 +137,12 @@ export const getActivePresence = query({
 export const getActivityFeed = query({
   args: {
     listId: v.id("lists"),
+    userDid: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireListAccess(ctx, args.listId, args.userDid);
+
     const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
 
     const rows = await ctx.db

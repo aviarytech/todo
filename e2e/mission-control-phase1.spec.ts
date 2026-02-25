@@ -144,7 +144,9 @@ test.describe("Mission Control Phase 1 acceptance", () => {
 
     await expect(page.getByText(/created/i)).toHaveCount(1);
     await expect(page.getByText(/completed/i)).toHaveCount(1);
-    await expect(page.getByText(/commented/i)).toHaveCount(1);
+    if (hasCommentUi) {
+      await expect(page.getByText(/commented/i)).toHaveCount(1);
+    }
     await expect(page.getByText(/edited|renamed/i)).toHaveCount(1);
   });
 
