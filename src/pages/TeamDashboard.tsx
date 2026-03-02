@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useToast } from "../hooks/useToast";
+import { useAuth } from "../hooks/useAuth";
 
 type TeamNode = {
   _id: string;
@@ -16,6 +17,14 @@ type TeamNode = {
 
 const statusDot = (status?: "idle" | "working" | "error") =>
   status === "working" ? "🟢" : status === "error" ? "🔴" : "⚪️";
+
+function getConvexHttpUrl(): string {
+  const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
+  if (convexUrl.includes("127.0.0.1") || convexUrl.includes("localhost")) {
+    return convexUrl.replace(":3210", ":3211");
+  }
+  return convexUrl.replace(".convex.cloud", ".convex.site");
+}
 
 function TreeNode({ node, depth = 0 }: { node: TeamNode; depth?: number }) {
   return (
@@ -34,12 +43,14 @@ function TreeNode({ node, depth = 0 }: { node: TeamNode; depth?: number }) {
 
 export function TeamDashboard() {
   const { did } = useCurrentUser();
+  const { token } = useAuth();
   const { addToast } = useToast();
   const [includeArchived, setIncludeArchived] = useState(false);
   const [runStatus, setRunStatus] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const teamApi = (api as any).agentTeam;
   const missionApi = (api as any).missionControlCore;
@@ -62,9 +73,6 @@ export function TeamDashboard() {
       : "skip"
   ) as any;
 
-  const updateMissionRun = useMutation(missionApi.updateMissionRun);
-  const deleteMissionRun = useMutation(missionApi.deleteMissionRun);
-
   const runs = useMemo(() => missionRunsResult?.runs ?? [], [missionRunsResult]);
   const pagination = missionRunsResult?.pagination;
 
@@ -73,6 +81,42 @@ export function TeamDashboard() {
     setEndDate("");
     setPage(1);
     addToast("Cleared run date filters");
+  };
+
+  const runtimeControl = async (runId: string, action: "pause" | "kill" | "escalate" | "reassign") => {
+    if (!token) {
+      addToast("Missing auth token", "error");
+      return;
+    }
+
+    const body: Record<string, string> = {};
+    if (action === "reassign" || action === "escalate") {
+      const targetAgentSlug = window.prompt(`${action}: target agent slug`);
+      if (!targetAgentSlug) return;
+      body.targetAgentSlug = targetAgentSlug;
+    }
+
+    const key = `${runId}:${action}`;
+    setBusyKey(key);
+    try {
+      const response = await fetch(`${getConvexHttpUrl()}/api/v1/runs/${runId}/${action}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error((payload as any)?.error ?? `${action} failed`);
+      addToast(`Run ${action} succeeded`);
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : `${action} failed`, "error");
+    } finally {
+      setBusyKey(null);
+    }
   };
 
   return (
@@ -138,35 +182,16 @@ export function TeamDashboard() {
                   <span className="text-stone-500">{new Date(run.createdAt).toLocaleString()}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    className="text-xs px-2 py-1 rounded border"
-                    onClick={async () => {
-                      if (!did) return;
-                      try {
-                        await updateMissionRun({ runId: run._id, ownerDid: did, costEstimate: (run.costEstimate ?? 0) + 1 });
-                        addToast("Run updated");
-                      } catch (err) {
-                        addToast(err instanceof Error ? err.message : "Failed to update run", "error");
-                      }
-                    }}
-                  >
-                    Edit cost +1
-                  </button>
-                  <button
-                    className="text-xs px-2 py-1 rounded border border-red-300 text-red-700"
-                    onClick={async () => {
-                      if (!confirm("Delete this mission run?")) return;
-                      if (!did) return;
-                      try {
-                        await deleteMissionRun({ runId: run._id, ownerDid: did });
-                        addToast("Run deleted");
-                      } catch (err) {
-                        addToast(err instanceof Error ? err.message : "Failed to delete run", "error");
-                      }
-                    }}
-                  >
-                    Delete
-                  </button>
+                  {(["pause", "kill", "escalate", "reassign"] as const).map((action) => (
+                    <button
+                      key={action}
+                      className="text-xs px-2 py-1 rounded border disabled:opacity-40"
+                      disabled={busyKey !== null}
+                      onClick={() => runtimeControl(run._id, action)}
+                    >
+                      {busyKey === `${run._id}:${action}` ? "..." : action}
+                    </button>
+                  ))}
                 </div>
               </div>
             ))}
