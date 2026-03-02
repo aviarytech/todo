@@ -31,6 +31,7 @@ import {
   getUserLists as agentGetUserLists,
   agentListHandler,
   agentItemHandler,
+  teamHandler,
   corsHandler as agentCorsHandler,
 } from "./agentApi";
 
@@ -426,6 +427,13 @@ http.route({ pathPrefix: "/api/agent/lists/", method: "OPTIONS", handler: agentC
 http.route({ pathPrefix: "/api/agent/items/", method: "PATCH", handler: agentItemHandler });
 http.route({ pathPrefix: "/api/agent/items/", method: "DELETE", handler: agentItemHandler });
 http.route({ pathPrefix: "/api/agent/items/", method: "OPTIONS", handler: agentCorsHandler });
+
+// GET  /api/agent/team         - Team dashboard cards + tree + summary
+// POST /api/agent/team/status  - Agent status heartbeat/update
+http.route({ path: "/api/agent/team", method: "GET", handler: teamHandler });
+http.route({ path: "/api/agent/team", method: "OPTIONS", handler: agentCorsHandler });
+http.route({ path: "/api/agent/team/status", method: "POST", handler: teamHandler });
+http.route({ path: "/api/agent/team/status", method: "OPTIONS", handler: agentCorsHandler });
 
 // ============================================================================
 // DID Resolution & Resource endpoints (public, no auth)

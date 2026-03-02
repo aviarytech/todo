@@ -231,6 +231,14 @@ export function Home() {
             <span>🎯</span>
             <span>Focus</span>
           </Link>
+          <Link
+            to="/memory"
+            onClick={() => haptic('light')}
+            className="inline-flex items-center gap-1.5 text-[13px] text-violet-700 dark:text-violet-300 pl-3 pr-3.5 py-2 rounded-full font-semibold bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200/60 dark:border-violet-800/50 transition-all active:scale-95"
+          >
+            <span>🧠</span>
+            <span>Memory</span>
+          </Link>
           <button
             onClick={() => {
               haptic('light');
