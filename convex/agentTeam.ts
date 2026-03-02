@@ -186,3 +186,44 @@ export const getRunHealth = query({
     };
   },
 });
+
+export const quickAction = mutation({
+  args: {
+    ownerDid: v.string(),
+    actorDid: v.string(),
+    agentId: v.id("agentProfiles"),
+    action: v.union(v.literal("assign"), v.literal("ask"), v.literal("pause")),
+    message: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.agentId);
+    if (!profile || profile.ownerDid !== args.ownerDid) throw new Error("Agent profile not found");
+
+    const now = Date.now();
+    const nextMessage = args.message?.trim();
+
+    if (args.action === "pause") {
+      await ctx.db.patch(args.agentId, {
+        status: "idle",
+        launchState: "paused",
+        pausedAt: now,
+        lastStatusAt: now,
+        updatedAt: now,
+      });
+      return { ok: true, action: args.action };
+    }
+
+    if (!nextMessage) throw new Error("message is required for assign/ask");
+
+    await ctx.db.patch(args.agentId, {
+      status: "working",
+      launchState: "running",
+      pausedAt: undefined,
+      currentTask: nextMessage,
+      lastStatusAt: now,
+      updatedAt: now,
+    });
+
+    return { ok: true, action: args.action };
+  },
+});
