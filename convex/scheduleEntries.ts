@@ -41,6 +41,29 @@ export const listForList = query({
   },
 });
 
+export const listForOwner = query({
+  args: {
+    ownerDid: v.string(),
+    actorDid: v.string(),
+    listId: v.optional(v.id("lists")),
+  },
+  handler: async (ctx, args) => {
+    if (args.ownerDid !== args.actorDid) throw new Error("Not authorized");
+    const rows = await ctx.db
+      .query("scheduleEntries")
+      .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
+      .collect();
+
+    return rows
+      .filter((entry) => (args.listId ? entry.listId === args.listId : true))
+      .sort((a, b) => {
+        const at = a.nextRunAt ?? a.scheduledAt ?? a.updatedAt;
+        const bt = b.nextRunAt ?? b.scheduledAt ?? b.updatedAt;
+        return at - bt;
+      });
+  },
+});
+
 export const createScheduleEntry = mutation({
   args: {
     ownerDid: v.string(),

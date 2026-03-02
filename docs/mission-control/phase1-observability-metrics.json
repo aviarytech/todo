@@ -2,19 +2,149 @@
   "version": 1,
   "phase": "phase1",
   "metrics": [
-    { "name": "subscription_latency_ms", "type": "histogram", "dimensions": ["route", "listId", "env"], "status": "planned" },
-    { "name": "mutation_total", "type": "counter", "dimensions": ["mutationName", "env"], "status": "implemented" },
-    { "name": "mutation_error_total", "type": "counter", "dimensions": ["mutationName", "errorCode", "env"], "status": "implemented" },
-    { "name": "mutation_latency_ms", "type": "histogram", "dimensions": ["mutationName", "env"], "status": "implemented" },
-    { "name": "active_presence_sessions", "type": "gauge", "dimensions": ["env"], "status": "implemented" },
-    { "name": "activity_event_total", "type": "counter", "dimensions": ["action", "env"], "status": "planned" },
-    { "name": "invalid_assignee_reference_total", "type": "gauge", "dimensions": ["env"], "status": "planned" },
-    { "name": "duplicate_activity_event_total", "type": "gauge", "dimensions": ["env"], "status": "planned" },
-    { "name": "out_of_order_activity_timestamps_total", "type": "gauge", "dimensions": ["env"], "status": "planned" },
-    { "name": "activity_panel_open_latency_ms", "type": "histogram", "dimensions": ["route", "env"], "status": "implemented" },
-    { "name": "list_render_latency_ms", "type": "histogram", "dimensions": ["route", "env"], "status": "implemented" },
-    { "name": "client_error_total", "type": "counter", "dimensions": ["route", "errorType", "env"], "status": "implemented" },
-    { "name": "route_view_total", "type": "counter", "dimensions": ["route", "env"], "status": "implemented" }
+    {
+      "name": "subscription_latency_ms",
+      "type": "histogram",
+      "dimensions": [
+        "route",
+        "listId",
+        "env"
+      ],
+      "status": "planned"
+    },
+    {
+      "name": "mutation_total",
+      "type": "counter",
+      "dimensions": [
+        "mutationName",
+        "env"
+      ],
+      "status": "implemented"
+    },
+    {
+      "name": "mutation_error_total",
+      "type": "counter",
+      "dimensions": [
+        "mutationName",
+        "errorCode",
+        "env"
+      ],
+      "status": "implemented"
+    },
+    {
+      "name": "mutation_latency_ms",
+      "type": "histogram",
+      "dimensions": [
+        "mutationName",
+        "env"
+      ],
+      "status": "implemented"
+    },
+    {
+      "name": "active_presence_sessions",
+      "type": "gauge",
+      "dimensions": [
+        "env"
+      ],
+      "status": "implemented"
+    },
+    {
+      "name": "activity_event_total",
+      "type": "counter",
+      "dimensions": [
+        "action",
+        "env"
+      ],
+      "status": "planned"
+    },
+    {
+      "name": "invalid_assignee_reference_total",
+      "type": "gauge",
+      "dimensions": [
+        "env"
+      ],
+      "status": "planned"
+    },
+    {
+      "name": "duplicate_activity_event_total",
+      "type": "gauge",
+      "dimensions": [
+        "env"
+      ],
+      "status": "planned"
+    },
+    {
+      "name": "out_of_order_activity_timestamps_total",
+      "type": "gauge",
+      "dimensions": [
+        "env"
+      ],
+      "status": "planned"
+    },
+    {
+      "name": "activity_panel_open_latency_ms",
+      "type": "histogram",
+      "dimensions": [
+        "route",
+        "env"
+      ],
+      "status": "implemented"
+    },
+    {
+      "name": "list_render_latency_ms",
+      "type": "histogram",
+      "dimensions": [
+        "route",
+        "env"
+      ],
+      "status": "implemented"
+    },
+    {
+      "name": "client_error_total",
+      "type": "counter",
+      "dimensions": [
+        "route",
+        "errorType",
+        "env"
+      ],
+      "status": "implemented"
+    },
+    {
+      "name": "route_view_total",
+      "type": "counter",
+      "dimensions": [
+        "route",
+        "env"
+      ],
+      "status": "implemented"
+    },
+    {
+      "name": "agent_heartbeat_age_ms",
+      "type": "gauge",
+      "dimensions": [
+        "agentSlug",
+        "env"
+      ],
+      "status": "planned"
+    },
+    {
+      "name": "agent_stale_total",
+      "type": "gauge",
+      "dimensions": [
+        "env"
+      ],
+      "status": "planned"
+    },
+    {
+      "name": "run_control_action_total",
+      "type": "counter",
+      "dimensions": [
+        "action",
+        "result",
+        "env"
+      ],
+      "status": "planned"
+    }
   ],
   "alerts": [
     {
@@ -31,6 +161,16 @@
       "name": "phase1_data_integrity_anomaly",
       "expr": "invalid_assignee_reference_total + duplicate_activity_event_total + out_of_order_activity_timestamps_total > 0",
       "window": "15m"
+    },
+    {
+      "name": "phase1_agent_heartbeat_stale",
+      "expr": "agent_stale_total > 0",
+      "window": "10m"
+    },
+    {
+      "name": "phase1_run_control_failure",
+      "expr": "sum(rate(run_control_action_total{result=\"failed\"}[10m])) > 0",
+      "window": "10m"
     }
   ]
 }

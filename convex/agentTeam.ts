@@ -140,3 +140,90 @@ export const getTeamSummary = query({
     return { total: active.length, statusCounts: counts, updatedAt: Date.now() };
   },
 });
+
+export const getRunHealth = query({
+  args: { ownerDid: v.string(), includeArchived: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const includeArchived = args.includeArchived ?? false;
+    const rows = await ctx.db
+      .query("agentProfiles")
+      .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
+      .collect();
+
+    const active = includeArchived ? rows : rows.filter((r) => !r.archivedAt);
+    const now = Date.now();
+    const staleThresholdMs = 5 * 60 * 1000;
+    const criticalThresholdMs = 15 * 60 * 1000;
+
+    const staleAgents = active
+      .map((agent) => {
+        const ageMs = agent.lastHeartbeatAt ? now - agent.lastHeartbeatAt : Number.POSITIVE_INFINITY;
+        return {
+          ...agent,
+          heartbeatAgeMs: ageMs,
+          isStale: ageMs >= staleThresholdMs,
+          isCritical: ageMs >= criticalThresholdMs,
+        };
+      })
+      .filter((agent) => agent.isStale || agent.status === "error")
+      .sort((a, b) => (b.heartbeatAgeMs ?? 0) - (a.heartbeatAgeMs ?? 0));
+
+    const stuckWorking = active.filter((agent) => {
+      if (agent.status !== "working" || !agent.lastStatusAt) return false;
+      return now - agent.lastStatusAt >= criticalThresholdMs;
+    });
+
+    return {
+      updatedAt: now,
+      totals: {
+        agents: active.length,
+        stale: staleAgents.filter((a) => a.isStale && !a.isCritical).length,
+        critical: staleAgents.filter((a) => a.isCritical).length,
+        errored: active.filter((a) => a.status === "error").length,
+        stuckWorking: stuckWorking.length,
+      },
+      staleAgents: staleAgents.slice(0, 25),
+    };
+  },
+});
+
+export const quickAction = mutation({
+  args: {
+    ownerDid: v.string(),
+    actorDid: v.string(),
+    agentId: v.id("agentProfiles"),
+    action: v.union(v.literal("assign"), v.literal("ask"), v.literal("pause")),
+    message: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.agentId);
+    if (!profile || profile.ownerDid !== args.ownerDid) throw new Error("Agent profile not found");
+
+    const now = Date.now();
+    const nextMessage = args.message?.trim();
+
+    if (args.action === "pause") {
+      await ctx.db.patch(args.agentId, {
+        status: "idle",
+        launchState: "paused",
+        pausedAt: now,
+        lastStatusAt: now,
+        updatedAt: now,
+      });
+      return { ok: true, action: args.action };
+    }
+
+    if (!nextMessage) throw new Error("message is required for assign/ask");
+
+    await ctx.db.patch(args.agentId, {
+      status: "working",
+      launchState: "running",
+      pausedAt: undefined,
+      currentTask: nextMessage,
+      lastStatusAt: now,
+      updatedAt: now,
+    });
+
+    return { ok: true, action: args.action };
+  },
+});

@@ -286,6 +286,67 @@ export default defineSchema({
     .index("by_list_created", ["listId", "createdAt"])
     .index("by_item_created", ["itemId", "createdAt"]),
 
+  // Mission Control run sessions + lifecycle telemetry (P0-6 hardening)
+  missionRuns: defineTable({
+    ownerDid: v.string(),
+    listId: v.id("lists"),
+    itemId: v.optional(v.id("items")),
+    agentSlug: v.string(),
+    provider: v.optional(v.string()),
+    computerId: v.optional(v.string()),
+    status: v.union(
+      v.literal("starting"),
+      v.literal("running"),
+      v.literal("degraded"),
+      v.literal("blocked"),
+      v.literal("failed"),
+      v.literal("finished")
+    ),
+    startedAt: v.number(),
+    endedAt: v.optional(v.number()),
+    attempt: v.number(),
+    parentRunId: v.optional(v.id("missionRuns")),
+    durationMs: v.optional(v.number()),
+    terminalReason: v.optional(v.union(
+      v.literal("completed"),
+      v.literal("killed"),
+      v.literal("timeout"),
+      v.literal("error"),
+      v.literal("escalated")
+    )),
+    costEstimate: v.optional(v.number()),
+    tokenUsage: v.optional(v.number()),
+    heartbeatIntervalMs: v.optional(v.number()),
+    heartbeatMisses: v.optional(v.number()),
+    heartbeatDegradedThreshold: v.optional(v.number()),
+    heartbeatFailedThreshold: v.optional(v.number()),
+    lastHeartbeatAt: v.optional(v.number()),
+    transientFailureCount: v.optional(v.number()),
+    escalationAt: v.optional(v.number()),
+    artifactRefs: v.optional(v.array(v.object({
+      type: v.union(
+        v.literal("screenshot"),
+        v.literal("log"),
+        v.literal("diff"),
+        v.literal("file"),
+        v.literal("url")
+      ),
+      ref: v.string(),
+      label: v.optional(v.string()),
+      createdAt: v.number(),
+    }))),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerDid"])
+    .index("by_owner_status", ["ownerDid", "status"])
+    .index("by_owner_list", ["ownerDid", "listId"])
+    .index("by_owner_item", ["ownerDid", "itemId"])
+    .index("by_owner_agent", ["ownerDid", "agentSlug"])
+    .index("by_parent", ["parentRunId"])
+    .index("by_owner_created", ["ownerDid", "createdAt"])
+    .index("by_owner_heartbeat", ["ownerDid", "lastHeartbeatAt"]),
+
   // Mission Control presence sessions with TTL-like expiry tracking
   presenceSessions: defineTable({
     listId: v.id("lists"),
@@ -312,6 +373,12 @@ export default defineSchema({
     lastHeartbeatAt: v.optional(v.number()),
     lastStatusAt: v.optional(v.number()),
     archivedAt: v.optional(v.number()),
+    launchState: v.optional(v.union(v.literal("running"), v.literal("paused"), v.literal("killed"), v.literal("escalated"))),
+    escalationLevel: v.optional(v.number()),
+    escalatedToAgentSlug: v.optional(v.string()),
+    pausedAt: v.optional(v.number()),
+    killedAt: v.optional(v.number()),
+    escalatedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -319,6 +386,27 @@ export default defineSchema({
     .index("by_owner_slug", ["ownerDid", "agentSlug"])
     .index("by_owner_parent", ["ownerDid", "parentAgentSlug"])
     .index("by_owner_status", ["ownerDid", "status"]),
+
+  // Launch control events for pause/kill/reassign/escalate workflows
+  agentControlEvents: defineTable({
+    ownerDid: v.string(),
+    actorDid: v.string(),
+    agentProfileId: v.id("agentProfiles"),
+    agentSlug: v.string(),
+    action: v.union(
+      v.literal("pause"),
+      v.literal("resume"),
+      v.literal("kill"),
+      v.literal("reassign"),
+      v.literal("escalate")
+    ),
+    targetAgentSlug: v.optional(v.string()),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_owner_created", ["ownerDid", "createdAt"])
+    .index("by_owner_agent_created", ["ownerDid", "agentSlug", "createdAt"])
+    .index("by_agent", ["agentProfileId"]),
 
   // API keys for scoped Mission Control REST access (stored hashed only)
   apiKeys: defineTable({

@@ -17,24 +17,65 @@
       "name": "phase1_mutation_error_rate_high",
       "severity": "high",
       "route": {
-        "staging": ["slack://aviary-mission-control-dev"],
-        "production": ["slack://aviary-oncall-mission-control", "pagerduty://mission-control-primary"]
+        "staging": [
+          "slack://aviary-mission-control-dev"
+        ],
+        "production": [
+          "slack://aviary-oncall-mission-control",
+          "pagerduty://mission-control-primary"
+        ]
       }
     },
     {
       "name": "phase1_subscription_latency_p95_high",
       "severity": "high",
       "route": {
-        "staging": ["slack://aviary-mission-control-dev"],
-        "production": ["slack://aviary-oncall-mission-control", "pagerduty://mission-control-primary"]
+        "staging": [
+          "slack://aviary-mission-control-dev"
+        ],
+        "production": [
+          "slack://aviary-oncall-mission-control",
+          "pagerduty://mission-control-primary"
+        ]
       }
     },
     {
       "name": "phase1_data_integrity_anomaly",
       "severity": "critical",
       "route": {
-        "staging": ["slack://aviary-mission-control-dev"],
-        "production": ["slack://aviary-oncall-mission-control", "pagerduty://mission-control-primary"]
+        "staging": [
+          "slack://aviary-mission-control-dev"
+        ],
+        "production": [
+          "slack://aviary-oncall-mission-control",
+          "pagerduty://mission-control-primary"
+        ]
+      }
+    },
+    {
+      "name": "phase1_agent_heartbeat_stale",
+      "severity": "high",
+      "route": {
+        "staging": [
+          "slack://aviary-mission-control-dev"
+        ],
+        "production": [
+          "slack://aviary-oncall-mission-control",
+          "pagerduty://mission-control-primary"
+        ]
+      }
+    },
+    {
+      "name": "phase1_run_control_failure",
+      "severity": "critical",
+      "route": {
+        "staging": [
+          "slack://aviary-mission-control-dev"
+        ],
+        "production": [
+          "slack://aviary-oncall-mission-control",
+          "pagerduty://mission-control-primary"
+        ]
       }
     }
   ]
