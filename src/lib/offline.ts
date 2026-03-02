@@ -45,6 +45,7 @@ export interface OfflineItem {
     nextDue?: number;
     endDate?: number;
   };
+  assigneeDid?: string;
   // Timestamp when cached locally
   _cachedAt: number;
 }

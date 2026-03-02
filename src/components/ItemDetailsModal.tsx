@@ -69,6 +69,8 @@ export function ItemDetailsModal({
   );
   const [priority, setPriority] = useState<Priority>(item.priority ?? "");
   const [selectedCategory, setSelectedCategory] = useState(item.groceryAisle ?? "");
+  const itemAssigneeDid = (item as Doc<"items"> & { assigneeDid?: string }).assigneeDid;
+  const [assigneeDid, setAssigneeDid] = useState(itemAssigneeDid ?? "");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -84,6 +86,25 @@ export function ItemDetailsModal({
   // Load list to get custom aisles
   const list = useQuery(api.lists.getList, { listId: item.listId });
   const { categories } = useCategories();
+
+  const comments = useQuery(api.comments.getItemComments, {
+    itemId: item._id,
+    userDid,
+    legacyDid,
+  });
+
+  const participantDids = useMemo(() => {
+    const dids = new Set<string>([userDid, item.createdByDid]);
+    if (item.checkedByDid) dids.add(item.checkedByDid);
+    if (itemAssigneeDid) dids.add(itemAssigneeDid);
+    (comments ?? []).forEach((comment) => dids.add(comment.userDid));
+    return Array.from(dids);
+  }, [comments, itemAssigneeDid, item.checkedByDid, item.createdByDid, userDid]);
+
+  const participantProfiles = useQuery(
+    api.users.getUsersByDids,
+    participantDids.length > 0 ? { dids: participantDids } : "skip"
+  );
 
   // Determine if this is a grocery list (for auto-classification hint)
   const isGroceryList = useMemo(() => {
@@ -122,6 +143,7 @@ export function ItemDetailsModal({
     setRecurrenceEndDate(item.recurrence?.endDate ? new Date(item.recurrence.endDate).toISOString().split("T")[0] : "");
     setPriority(item.priority ?? "");
     setSelectedCategory(item.groceryAisle ?? "");
+    setAssigneeDid(itemAssigneeDid ?? "");
   }, [item]);
 
   const handleSave = async () => {
@@ -148,15 +170,17 @@ export function ItemDetailsModal({
           : undefined,
         priority: priority || undefined,
         groceryAisle: selectedCategory || undefined,
+        assigneeDid: assigneeDid || undefined,
         clearDueDate: !dueDate && !!item.dueDate,
         clearUrl: !url && !!item.url,
         clearRecurrence: !hasRecurrence && !!item.recurrence,
         clearPriority: !priority && !!item.priority,
+        clearAssigneeDid: !assigneeDid && !!itemAssigneeDid,
         clearGroceryAisle: !selectedCategory && !!item.groceryAisle,
       };
       
       if (isOnline) {
-        await updateItem(payload);
+        await updateItem(payload as any);
       } else {
         await queueMutation({
           type: "updateItem",
@@ -264,6 +288,65 @@ export function ItemDetailsModal({
             className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
           />
         </div>
+
+        {/* Assignee */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            👤 Assignee
+          </label>
+          <select
+            value={assigneeDid}
+            onChange={(e) => setAssigneeDid(e.target.value)}
+            disabled={!canEdit}
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+          >
+            <option value="">Unassigned</option>
+            {participantDids.map((did) => {
+              const label = participantProfiles?.[did]?.displayName ?? `${did.slice(0, 8)}…`;
+              return (
+                <option key={did} value={did}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+
+        {/* Presence */}
+        {participantDids.length > 1 && (
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+              🟢 Presence
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {participantDids.map((did) => {
+                const recentComment = (comments ?? [])
+                  .filter((comment) => comment.userDid === did)
+                  .sort((a, b) => b.createdAt - a.createdAt)[0]?.createdAt ?? 0;
+                const recentActivity = Math.max(
+                  did === item.createdByDid ? item.createdAt : 0,
+                  did === item.checkedByDid ? item.checkedAt ?? 0 : 0,
+                  recentComment
+                );
+                const minutesAgo = recentActivity ? Math.floor((Date.now() - recentActivity) / 60000) : null;
+                const isActive = minutesAgo !== null && minutesAgo <= 10;
+                return (
+                  <span
+                    key={`presence-${did}`}
+                    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs border ${
+                      isActive
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-800"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${isActive ? "bg-green-500" : "bg-gray-400"}`} />
+                    {participantProfiles?.[did]?.displayName ?? `${did.slice(0, 8)}…`}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Priority */}
         <div>
@@ -436,6 +519,37 @@ export function ItemDetailsModal({
             legacyDid={legacyDid}
             canEdit={canEdit}
           />
+        </div>
+
+        {/* Activity */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+            🕘 Activity
+          </label>
+          <div className="space-y-1.5 max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-2">
+            {[
+              { type: "created", at: item.createdAt, did: item.createdByDid, text: "Created item" },
+              ...(item.checkedAt
+                ? [{ type: "checked", at: item.checkedAt, did: item.checkedByDid ?? item.createdByDid, text: item.checked ? "Checked off" : "Updated check status" }]
+                : []),
+              ...((comments ?? []).map((comment) => ({
+                type: "comment",
+                at: comment.createdAt,
+                did: comment.userDid,
+                text: `Commented: ${comment.text.slice(0, 60)}`,
+              }))),
+            ]
+              .sort((a, b) => b.at - a.at)
+              .map((entry, index) => (
+                <div key={`${entry.type}-${entry.at}-${index}`} className="text-xs text-gray-600 dark:text-gray-300">
+                  <span className="font-medium text-gray-800 dark:text-gray-200">
+                    {participantProfiles?.[entry.did]?.displayName ?? `${entry.did.slice(0, 8)}…`}
+                  </span>{" "}
+                  {entry.text}
+                  <span className="text-gray-400 dark:text-gray-500"> · {new Date(entry.at).toLocaleString()}</span>
+                </div>
+              ))}
+          </div>
         </div>
 
         {/* Comments */}

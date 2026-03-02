@@ -83,6 +83,7 @@ export function useOptimisticItems(listId: Id<"lists">) {
         dueDate: item.dueDate,
         url: item.url,
         recurrence: item.recurrence,
+        assigneeDid: (item as Doc<"items"> & { assigneeDid?: string }).assigneeDid,
       }));
       cacheItems(itemsToCache);
     }
