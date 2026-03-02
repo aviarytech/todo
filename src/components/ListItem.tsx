@@ -76,6 +76,7 @@ export const ListItem = memo(function ListItem({
   
   // Get sub-item progress (only for top-level items)
   const subItemProgress = useSubItemProgress(item._id);
+  const assigneeDid = (item as OptimisticItem & { assigneeDid?: string }).assigneeDid;
 
   // Long-press handling for entering select mode
   const handlePointerDown = () => {
@@ -392,6 +393,16 @@ export const ListItem = memo(function ListItem({
           {/* Notes indicator */}
           {item.description && (
             <span className="text-[10px] text-gray-400 flex-shrink-0 inline-flex items-center leading-none" title="Has notes">📝</span>
+          )}
+          {/* Assignee indicator */}
+          {assigneeDid && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+              title={`Assigned to ${assigneeDid}`}
+            >
+              <span className="leading-none">👤</span>
+              {assigneeDid === userDid ? "You" : `${assigneeDid.slice(0, 6)}…`}
+            </span>
           )}
           {/* Attachments indicator */}
           {item.attachments && item.attachments.length > 0 && (
