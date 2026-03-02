@@ -102,12 +102,35 @@ if (hasPlaceholder) {
   pass("Dashboard alert routes are concrete (non-placeholder)");
 }
 
+const severityAllowed = new Set(["low", "medium", "high", "critical"]);
+for (const alert of dashboard.alerts ?? []) {
+  if (!severityAllowed.has(String(alert.severity))) {
+    fail(`Dashboard alert ${alert.name} has invalid severity: ${alert.severity}`);
+  }
+  if (!alert.condition || typeof alert.condition !== "string") {
+    fail(`Dashboard alert ${alert.name} missing condition expression`);
+  }
+}
+pass("Dashboard alert sanity checks passed");
+
+for (const alert of metrics.alerts ?? []) {
+  if (!/^[0-9]+m$/.test(String(alert.window ?? ""))) {
+    fail(`Metrics alert ${alert.name} has invalid window format: ${alert.window}`);
+  }
+}
+pass("Metrics alert windows are normalized");
+
 for (const alert of routing.alerts ?? []) {
   if (!Array.isArray(alert.route?.staging) || alert.route.staging.length === 0) {
     fail(`Routing alert ${alert.name} missing staging route`);
   }
   if (!Array.isArray(alert.route?.production) || alert.route.production.length === 0) {
     fail(`Routing alert ${alert.name} missing production route`);
+  }
+
+  const inDashboard = (dashboard.alerts ?? []).find((a) => a.name === alert.name);
+  if (inDashboard && String(inDashboard.severity) !== String(alert.severity)) {
+    fail(`Severity mismatch for ${alert.name}: dashboard=${inDashboard.severity} routing=${alert.severity}`);
   }
 }
 pass("Routing config includes staging and production targets for each alert");

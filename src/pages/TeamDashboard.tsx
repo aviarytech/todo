@@ -39,6 +39,7 @@ export function TeamDashboard() {
   const summary = useQuery(teamApi.getTeamSummary, did ? { ownerDid: did, includeArchived } : "skip");
   const agents = useQuery(teamApi.listTeamAgents, did ? { ownerDid: did, includeArchived } : "skip");
   const tree = useQuery(teamApi.getTeamTree, did ? { ownerDid: did, includeArchived } : "skip") as TeamNode[] | undefined;
+  const runHealth = useQuery(teamApi.getRunHealth, did ? { ownerDid: did, includeArchived } : "skip") as any;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -59,6 +60,17 @@ export function TeamDashboard() {
           Show archived
         </label>
       </div>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">Run health</h2>
+        <div className="grid md:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-sm">Stale: <strong>{runHealth?.totals?.stale ?? 0}</strong></div>
+          <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-sm">Critical: <strong>{runHealth?.totals?.critical ?? 0}</strong></div>
+          <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-sm">Errored: <strong>{runHealth?.totals?.errored ?? 0}</strong></div>
+          <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-sm">Stuck (&gt;15m): <strong>{runHealth?.totals?.stuckWorking ?? 0}</strong></div>
+        </div>
+        <div className="text-xs text-stone-500">Drill: docs/mission-control/phase1-production-readiness-drill.md</div>
+      </section>
 
       <div className="grid md:grid-cols-2 gap-4">
         {(agents ?? []).map((agent: any) => (
