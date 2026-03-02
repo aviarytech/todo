@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
-import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../hooks/useToast";
 
 type TeamNode = {
   _id: string;
@@ -14,24 +14,8 @@ type TeamNode = {
   children: TeamNode[];
 };
 
-type MissionRun = {
-  _id: string;
-  agentSlug: string;
-  status: "starting" | "running" | "degraded" | "blocked" | "failed" | "finished";
-  terminalReason?: "completed" | "killed" | "timeout" | "error" | "escalated";
-  updatedAt: number;
-};
-
 const statusDot = (status?: "idle" | "working" | "error") =>
   status === "working" ? "🟢" : status === "error" ? "🔴" : "⚪️";
-
-function getConvexHttpUrl(): string {
-  const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
-  if (convexUrl.includes("127.0.0.1") || convexUrl.includes("localhost")) {
-    return convexUrl.replace(":3210", ":3211");
-  }
-  return convexUrl.replace(".convex.cloud", ".convex.site");
-}
 
 function TreeNode({ node, depth = 0 }: { node: TeamNode; depth?: number }) {
   return (
@@ -50,66 +34,46 @@ function TreeNode({ node, depth = 0 }: { node: TeamNode; depth?: number }) {
 
 export function TeamDashboard() {
   const { did } = useCurrentUser();
-  const { token } = useAuth();
+  const { addToast } = useToast();
   const [includeArchived, setIncludeArchived] = useState(false);
-  const [runs, setRuns] = useState<MissionRun[]>([]);
-  const [controlBusy, setControlBusy] = useState<string | null>(null);
-  const [runtimeMessage, setRuntimeMessage] = useState<string | null>(null);
+  const [runStatus, setRunStatus] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [page, setPage] = useState(1);
 
   const teamApi = (api as any).agentTeam;
+  const missionApi = (api as any).missionControlCore;
   const summary = useQuery(teamApi.getTeamSummary, did ? { ownerDid: did, includeArchived } : "skip");
   const agents = useQuery(teamApi.listTeamAgents, did ? { ownerDid: did, includeArchived } : "skip");
   const tree = useQuery(teamApi.getTeamTree, did ? { ownerDid: did, includeArchived } : "skip") as TeamNode[] | undefined;
   const runHealth = useQuery(teamApi.getRunHealth, did ? { ownerDid: did, includeArchived } : "skip") as any;
 
-  const fetchRuns = useCallback(async () => {
-    if (!token) return;
-    const response = await fetch(`${getConvexHttpUrl()}/api/v1/runs?limit=25`, {
-      headers: { Authorization: `Bearer ${token}` },
-      credentials: "include",
-    });
-    if (!response.ok) throw new Error("Failed to load runtime runs");
-    const payload = await response.json() as { runs?: MissionRun[] };
-    setRuns(payload.runs ?? []);
-  }, [token]);
+  const missionRunsResult = useQuery(
+    missionApi.listMissionRuns,
+    did
+      ? {
+          ownerDid: did,
+          status: runStatus || undefined,
+          startDate: startDate ? new Date(`${startDate}T00:00:00`).getTime() : undefined,
+          endDate: endDate ? new Date(`${endDate}T23:59:59.999`).getTime() : undefined,
+          page,
+          limit: 10,
+        }
+      : "skip"
+  ) as any;
 
-  useEffect(() => {
-    fetchRuns().catch((err) => setRuntimeMessage(err instanceof Error ? err.message : "Failed to load runs"));
-  }, [fetchRuns]);
+  const updateMissionRun = useMutation(missionApi.updateMissionRun);
+  const deleteMissionRun = useMutation(missionApi.deleteMissionRun);
 
-  const activeRuns = useMemo(() => runs.filter((run) => run.status !== "finished" && run.status !== "failed"), [runs]);
+  const runs = useMemo(() => missionRunsResult?.runs ?? [], [missionRunsResult]);
+  const pagination = missionRunsResult?.pagination;
 
-  const runtimeControl = useCallback(async (runId: string, action: "pause" | "kill" | "escalate" | "reassign") => {
-    if (!token) return;
-    const body: Record<string, string> = {};
-    if (action === "reassign" || action === "escalate") {
-      const targetAgentSlug = window.prompt(`${action}: target agent slug`);
-      if (!targetAgentSlug) return;
-      body.targetAgentSlug = targetAgentSlug;
-    }
-
-    setControlBusy(`${runId}:${action}`);
-    setRuntimeMessage(null);
-    try {
-      const response = await fetch(`${getConvexHttpUrl()}/api/v1/runs/${runId}/${action}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error((payload as any)?.error ?? `${action} failed`);
-      setRuntimeMessage(`${action} succeeded for ${runId.slice(0, 8)}…`);
-      await fetchRuns();
-    } catch (err) {
-      setRuntimeMessage(err instanceof Error ? err.message : `${action} failed`);
-    } finally {
-      setControlBusy(null);
-    }
-  }, [fetchRuns, token]);
+  const onClearDates = () => {
+    setStartDate("");
+    setEndDate("");
+    setPage(1);
+    addToast("Cleared run date filters");
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -140,33 +104,79 @@ export function TeamDashboard() {
           <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-sm">Stuck (&gt;15m): <strong>{runHealth?.totals?.stuckWorking ?? 0}</strong></div>
         </div>
         <div className="text-xs text-stone-500">Drill: docs/mission-control/phase1-production-readiness-drill.md</div>
-        {runtimeMessage ? <div className="text-xs text-amber-700 dark:text-amber-400">{runtimeMessage}</div> : null}
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">Live runtime controls</h2>
-        {activeRuns.length === 0 ? <div className="text-sm text-stone-500">No active mission runs.</div> : (
+        <div className="flex flex-col md:flex-row md:items-end gap-2 md:gap-3">
+          <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100 md:mr-auto">Mission runs</h2>
+          <select className="border rounded-lg px-2 py-1 text-sm" value={runStatus} onChange={(e) => { setRunStatus(e.target.value); setPage(1); }}>
+            <option value="">All statuses</option>
+            <option value="starting">starting</option>
+            <option value="running">running</option>
+            <option value="degraded">degraded</option>
+            <option value="blocked">blocked</option>
+            <option value="failed">failed</option>
+            <option value="finished">finished</option>
+          </select>
+          <input className="border rounded-lg px-2 py-1 text-sm" type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} />
+          <input className="border rounded-lg px-2 py-1 text-sm" type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} />
+          <button className="text-xs px-2 py-1 rounded-lg border" onClick={onClearDates}>Clear</button>
+        </div>
+
+        {runs.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-stone-300 dark:border-stone-700 bg-white/70 dark:bg-stone-900/30 p-6 text-sm text-stone-500">
+            No mission runs found for this filter. Try widening the date range.
+          </div>
+        ) : (
           <div className="space-y-2">
-            {activeRuns.map((run) => (
-              <div key={run._id} className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 flex items-center justify-between gap-3">
-                <div className="text-sm text-stone-700 dark:text-stone-300">
-                  <div className="font-medium">{run.agentSlug} · {run.status}</div>
-                  <div className="text-xs text-stone-500">run {run._id.slice(0, 10)}…</div>
+            {runs.map((run: any) => (
+              <div key={run._id} className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-3">
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <span className="font-semibold">{run.agentSlug}</span>
+                  <span className="px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-700">{run.status}</span>
+                  <span className="text-stone-500">Attempt {run.attempt ?? 1}</span>
+                  <span className="text-stone-500">{new Date(run.createdAt).toLocaleString()}</span>
                 </div>
-                <div className="flex gap-2">
-                  {(["pause", "kill", "escalate", "reassign"] as const).map((action) => (
-                    <button
-                      key={action}
-                      onClick={() => runtimeControl(run._id, action)}
-                      disabled={controlBusy !== null}
-                      className="text-xs px-2 py-1 rounded border border-stone-300 dark:border-stone-600 hover:bg-stone-50 dark:hover:bg-stone-700 disabled:opacity-50"
-                    >
-                      {controlBusy === `${run._id}:${action}` ? "…" : action}
-                    </button>
-                  ))}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    className="text-xs px-2 py-1 rounded border"
+                    onClick={async () => {
+                      if (!did) return;
+                      try {
+                        await updateMissionRun({ runId: run._id, ownerDid: did, costEstimate: (run.costEstimate ?? 0) + 1 });
+                        addToast("Run updated");
+                      } catch (err) {
+                        addToast(err instanceof Error ? err.message : "Failed to update run", "error");
+                      }
+                    }}
+                  >
+                    Edit cost +1
+                  </button>
+                  <button
+                    className="text-xs px-2 py-1 rounded border border-red-300 text-red-700"
+                    onClick={async () => {
+                      if (!confirm("Delete this mission run?")) return;
+                      if (!did) return;
+                      try {
+                        await deleteMissionRun({ runId: run._id, ownerDid: did });
+                        addToast("Run deleted");
+                      } catch (err) {
+                        addToast(err instanceof Error ? err.message : "Failed to delete run", "error");
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
+            <div className="flex items-center justify-between text-sm pt-1">
+              <div className="text-stone-500">Page {pagination?.page ?? 1} of {pagination?.totalPages ?? 1}</div>
+              <div className="flex gap-2">
+                <button className="px-2 py-1 rounded border disabled:opacity-40" disabled={!pagination?.hasPrev} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
+                <button className="px-2 py-1 rounded border disabled:opacity-40" disabled={!pagination?.hasNext} onClick={() => setPage((p) => p + 1)}>Next</button>
+              </div>
+            </div>
           </div>
         )}
       </section>
