@@ -27,10 +27,12 @@ import { didResourceHandler } from "./didResourcesHttp";
 import { assignItem as assignItemHttp, unassignItem as unassignItemHttp, getItemAssignees as getItemAssigneesHttp } from "./assigneesHttp";
 import { heartbeat as presenceHeartbeatHttp, listPresence as listPresenceHttp } from "./presenceHttp";
 import { getListActivity as getListActivityHttp } from "./activityHttp";
+import { createMemory as createMemoryHttp, listMemories as listMemoriesHttp } from "./memoriesHttp";
 import {
   getUserLists as agentGetUserLists,
   agentListHandler,
   agentItemHandler,
+  teamHandler,
   corsHandler as agentCorsHandler,
 } from "./agentApi";
 import {
@@ -410,6 +412,11 @@ http.route({ path: "/api/presence/list", method: "OPTIONS", handler: corsHandler
 http.route({ path: "/api/activity/list", method: "POST", handler: getListActivityHttp });
 http.route({ path: "/api/activity/list", method: "OPTIONS", handler: corsHandler });
 
+// --- Memory endpoints (Phase 3) ---
+http.route({ path: "/api/v1/memory", method: "POST", handler: createMemoryHttp });
+http.route({ path: "/api/v1/memory", method: "GET", handler: listMemoriesHttp });
+http.route({ path: "/api/v1/memory", method: "OPTIONS", handler: corsHandler });
+
 // ============================================================================
 // Agent API endpoints (RESTful API for programmatic access)
 // All endpoints require JWT authentication via Authorization header.
@@ -435,6 +442,13 @@ http.route({ pathPrefix: "/api/agent/lists/", method: "OPTIONS", handler: agentC
 http.route({ pathPrefix: "/api/agent/items/", method: "PATCH", handler: agentItemHandler });
 http.route({ pathPrefix: "/api/agent/items/", method: "DELETE", handler: agentItemHandler });
 http.route({ pathPrefix: "/api/agent/items/", method: "OPTIONS", handler: agentCorsHandler });
+
+// GET  /api/agent/team         - Team dashboard cards + tree + summary
+// POST /api/agent/team/status  - Agent status heartbeat/update
+http.route({ path: "/api/agent/team", method: "GET", handler: teamHandler });
+http.route({ path: "/api/agent/team", method: "OPTIONS", handler: agentCorsHandler });
+http.route({ path: "/api/agent/team/status", method: "POST", handler: teamHandler });
+http.route({ path: "/api/agent/team/status", method: "OPTIONS", handler: agentCorsHandler });
 
 // ============================================================================
 // Mission Control REST v1 endpoints

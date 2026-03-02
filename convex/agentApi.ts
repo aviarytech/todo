@@ -11,6 +11,8 @@
  * - POST /api/agent/lists/:id/items  - Add an item to a list
  * - PATCH /api/agent/items/:id       - Update an item (check/uncheck/edit)
  * - DELETE /api/agent/items/:id      - Delete an item
+ * - GET  /api/agent/team             - Team dashboard data
+ * - POST /api/agent/team/status      - Agent status update
  */
 
 import { httpAction } from "./_generated/server";
@@ -312,6 +314,58 @@ async function handleGetUserLists(
   return jsonResponse(request, { lists: listsWithRoles });
 }
 
+async function handleGetTeamDashboard(
+  ctx: ActionCtx,
+  request: Request
+): Promise<Response> {
+  const { user } = await getAuthenticatedUser(ctx, request);
+  const url = new URL(request.url);
+  const includeArchived = url.searchParams.get("includeArchived") === "true";
+
+  const teamApi = (api as any).agentTeam;
+  const [agents, tree, summary] = await Promise.all([
+    ctx.runQuery(teamApi.listTeamAgents, { ownerDid: user.did, includeArchived }),
+    ctx.runQuery(teamApi.getTeamTree, { ownerDid: user.did, includeArchived }),
+    ctx.runQuery(teamApi.getTeamSummary, { ownerDid: user.did, includeArchived }),
+  ]);
+
+  return jsonResponse(request, { ownerDid: user.did, agents, tree, summary });
+}
+
+async function handleUpsertTeamStatus(
+  ctx: ActionCtx,
+  request: Request
+): Promise<Response> {
+  const { user } = await getAuthenticatedUser(ctx, request);
+  const body = await request.json();
+  const { agentSlug, displayName, status, currentTask, parentAgentSlug, autoArchiveOnIdle, metadata } = body as {
+    agentSlug: string;
+    displayName?: string;
+    status: "idle" | "working" | "error";
+    currentTask?: string;
+    parentAgentSlug?: string;
+    autoArchiveOnIdle?: boolean;
+    metadata?: string;
+  };
+
+  if (!agentSlug || !status) {
+    return errorResponse(request, "agentSlug and status are required", 400);
+  }
+
+  const statusId = await ctx.runMutation((api as any).agentTeam.upsertAgentStatus, {
+    ownerDid: user.did,
+    agentSlug,
+    displayName: displayName ?? agentSlug,
+    status,
+    currentTask,
+    parentAgentSlug,
+    autoArchiveOnIdle,
+    metadata,
+  });
+
+  return jsonResponse(request, { success: true, statusId });
+}
+
 // ============================================================================
 // Exported HTTP Actions
 // ============================================================================
@@ -414,6 +468,33 @@ export const agentItemHandler = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[agentApi] agentItemHandler error:", error);
+    return errorResponse(
+      request,
+      error instanceof Error ? error.message : "Request failed",
+      500
+    );
+  }
+});
+
+export const teamHandler = httpAction(async (ctx, request) => {
+  try {
+    if (request.method === "GET") {
+      return await handleGetTeamDashboard(ctx, request);
+    }
+
+    if (request.method === "POST") {
+      const url = new URL(request.url);
+      if (url.pathname.endsWith("/status")) {
+        return await handleUpsertTeamStatus(ctx, request);
+      }
+    }
+
+    return errorResponse(request, "Method not allowed", 405);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return unauthorizedResponseWithCors(request, error.message);
+    }
+    console.error("[agentApi] teamHandler error:", error);
     return errorResponse(
       request,
       error instanceof Error ? error.message : "Request failed",
