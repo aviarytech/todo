@@ -298,6 +298,59 @@ export default defineSchema({
     .index("by_list_expires", ["listId", "expiresAt"])
     .index("by_session", ["sessionId"]),
 
+  // Agent identity + registration profiles for Mission Control API clients
+  agentProfiles: defineTable({
+    ownerDid: v.string(),
+    agentSlug: v.string(),
+    displayName: v.string(),
+    description: v.optional(v.string()),
+    capabilities: v.optional(v.array(v.string())),
+    metadata: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("idle"), v.literal("working"), v.literal("error"))),
+    currentTask: v.optional(v.string()),
+    parentAgentSlug: v.optional(v.string()),
+    lastHeartbeatAt: v.optional(v.number()),
+    lastStatusAt: v.optional(v.number()),
+    archivedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerDid"])
+    .index("by_owner_slug", ["ownerDid", "agentSlug"])
+    .index("by_owner_parent", ["ownerDid", "parentAgentSlug"])
+    .index("by_owner_status", ["ownerDid", "status"]),
+
+  // API keys for scoped Mission Control REST access (stored hashed only)
+  apiKeys: defineTable({
+    ownerDid: v.string(),
+    label: v.string(),
+    keyPrefix: v.string(),
+    keyHash: v.string(),
+    scopes: v.array(v.string()),
+    agentProfileId: v.optional(v.id("agentProfiles")),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+  })
+    .index("by_owner", ["ownerDid"])
+    .index("by_hash", ["keyHash"])
+    .index("by_prefix", ["keyPrefix"]),
+
+  // Agent memory KV entries for long-lived runtime context
+  agentMemory: defineTable({
+    ownerDid: v.string(),
+    listId: v.optional(v.id("lists")),
+    agentSlug: v.string(),
+    key: v.string(),
+    value: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner_agent", ["ownerDid", "agentSlug"])
+    .index("by_owner_agent_key", ["ownerDid", "agentSlug", "key"])
+    .index("by_list", ["listId"]),
+
   // Mission Control memory browser entries (Phase 3)
   memories: defineTable({
     ownerDid: v.string(),
@@ -306,7 +359,13 @@ export default defineSchema({
     content: v.string(),
     searchText: v.string(),
     tags: v.optional(v.array(v.string())),
-    source: v.optional(v.union(v.literal("manual"), v.literal("openclaw"), v.literal("clawboot"), v.literal("import"), v.literal("api"))),
+    source: v.optional(v.union(
+      v.literal("manual"),
+      v.literal("openclaw"),
+      v.literal("clawboot"),
+      v.literal("import"),
+      v.literal("api")
+    )),
     sourceRef: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -319,6 +378,30 @@ export default defineSchema({
       searchField: "searchText",
       filterFields: ["ownerDid", "source", "authorDid"],
     }),
+
+  // Mission Control schedule entries (Phase 4 schedule/calendar)
+  scheduleEntries: defineTable({
+    ownerDid: v.string(),
+    listId: v.optional(v.id("lists")),
+    agentDid: v.optional(v.string()),
+    title: v.string(),
+    description: v.optional(v.string()),
+    scheduleType: v.union(v.literal("cron"), v.literal("once"), v.literal("recurring")),
+    cronExpr: v.optional(v.string()),
+    scheduledAt: v.optional(v.number()),
+    lastRunAt: v.optional(v.number()),
+    nextRunAt: v.optional(v.number()),
+    lastStatus: v.optional(v.union(v.literal("ok"), v.literal("error"), v.literal("skipped"))),
+    enabled: v.boolean(),
+    externalId: v.optional(v.string()),
+    source: v.optional(v.union(v.literal("manual"), v.literal("openclaw"), v.literal("import"))),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerDid"])
+    .index("by_owner_list", ["ownerDid", "listId"])
+    .index("by_owner_external", ["ownerDid", "externalId"])
+    .index("by_next_run", ["ownerDid", "nextRunAt"]),
 
   // Publications table - did:webvh publication tracking (Phase 4)
   publications: defineTable({

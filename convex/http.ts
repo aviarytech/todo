@@ -35,6 +35,15 @@ import {
   teamHandler,
   corsHandler as agentCorsHandler,
 } from "./agentApi";
+import {
+  v1AuthCors,
+  apiKeysHandler,
+  apiKeyByIdHandler,
+  agentsHandler,
+  tasksHandler,
+  activityHandler,
+  memoryHandler,
+} from "./missionControlApi";
 
 // Rate limit configuration
 const RATE_LIMITS = {
@@ -440,6 +449,32 @@ http.route({ path: "/api/agent/team", method: "GET", handler: teamHandler });
 http.route({ path: "/api/agent/team", method: "OPTIONS", handler: agentCorsHandler });
 http.route({ path: "/api/agent/team/status", method: "POST", handler: teamHandler });
 http.route({ path: "/api/agent/team/status", method: "OPTIONS", handler: agentCorsHandler });
+
+// ============================================================================
+// Mission Control REST v1 endpoints
+// Supports JWT auth + scoped API key auth (X-API-Key)
+// ============================================================================
+http.route({ path: "/api/v1/auth/keys", method: "GET", handler: apiKeysHandler });
+http.route({ path: "/api/v1/auth/keys", method: "POST", handler: apiKeysHandler });
+http.route({ path: "/api/v1/auth/keys", method: "OPTIONS", handler: v1AuthCors });
+http.route({ pathPrefix: "/api/v1/auth/keys/", method: "DELETE", handler: apiKeyByIdHandler });
+http.route({ pathPrefix: "/api/v1/auth/keys/", method: "OPTIONS", handler: v1AuthCors });
+
+http.route({ path: "/api/v1/agents", method: "GET", handler: agentsHandler });
+http.route({ path: "/api/v1/agents", method: "POST", handler: agentsHandler });
+http.route({ path: "/api/v1/agents", method: "OPTIONS", handler: v1AuthCors });
+
+http.route({ path: "/api/v1/tasks", method: "GET", handler: tasksHandler });
+http.route({ pathPrefix: "/api/v1/tasks/", method: "GET", handler: tasksHandler });
+http.route({ path: "/api/v1/tasks", method: "OPTIONS", handler: v1AuthCors });
+http.route({ pathPrefix: "/api/v1/tasks/", method: "OPTIONS", handler: v1AuthCors });
+
+http.route({ path: "/api/v1/activity", method: "GET", handler: activityHandler });
+http.route({ path: "/api/v1/activity", method: "OPTIONS", handler: v1AuthCors });
+
+http.route({ path: "/api/v1/memory", method: "GET", handler: memoryHandler });
+http.route({ path: "/api/v1/memory", method: "POST", handler: memoryHandler });
+http.route({ path: "/api/v1/memory", method: "OPTIONS", handler: v1AuthCors });
 
 // ============================================================================
 // DID Resolution & Resource endpoints (public, no auth)
