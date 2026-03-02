@@ -188,6 +188,42 @@ DELETE /api/agent/items/:itemId
 | `editor` | Read and write access |
 | `viewer` | Read-only access |
 
+## Mission Control REST v1 (P1)
+
+New endpoints for Agent Mission Control with scoped API keys.
+
+### Auth Modes
+- JWT bearer token (`Authorization: Bearer ...`)
+- API key (`X-API-Key: pa_xxx...`) for `/api/v1/*` endpoints
+
+### API Keys
+- `GET /api/v1/auth/keys` — list keys (JWT only)
+- `POST /api/v1/auth/keys` — create key (JWT only)
+  - body: `{ "label": "CI Agent", "scopes": ["tasks:read","memory:write"] }`
+- `DELETE /api/v1/auth/keys/:keyId` — revoke key (JWT only)
+
+### Agent Registration / Profiles
+- `GET /api/v1/agents` — list agent profiles (`agents:read`)
+- `POST /api/v1/agents` — create/update profile (`agents:write`)
+
+### Tasks
+- `GET /api/v1/tasks?listId=<listId>&limit=100` (`tasks:read`)
+- `GET /api/v1/tasks/:taskId` (`tasks:read`)
+
+### Activity
+- `GET /api/v1/activity?listId=<listId>&limit=100` (`activity:read`)
+
+### Memory
+- `GET /api/v1/memory?agentSlug=<slug>[&key=<key>]` (`memory:read`)
+- `POST /api/v1/memory` (`memory:write`)
+  - body: `{ "agentSlug": "platform", "key": "runbook", "value": "...", "listId": "...optional..." }`
+
+### Scopes
+- `tasks:read`, `tasks:write`
+- `activity:read`
+- `memory:read`, `memory:write`
+- `agents:read`, `agents:write`
+
 ## Error Responses
 
 All errors return JSON with an `error` field:

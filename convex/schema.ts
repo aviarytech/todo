@@ -298,7 +298,7 @@ export default defineSchema({
     .index("by_list_expires", ["listId", "expiresAt"])
     .index("by_session", ["sessionId"]),
 
-  // Agent identity + status profiles for Mission Control team view
+  // Agent identity + registration profiles for Mission Control API clients
   agentProfiles: defineTable({
     ownerDid: v.string(),
     agentSlug: v.string(),
@@ -319,6 +319,65 @@ export default defineSchema({
     .index("by_owner_slug", ["ownerDid", "agentSlug"])
     .index("by_owner_parent", ["ownerDid", "parentAgentSlug"])
     .index("by_owner_status", ["ownerDid", "status"]),
+
+  // API keys for scoped Mission Control REST access (stored hashed only)
+  apiKeys: defineTable({
+    ownerDid: v.string(),
+    label: v.string(),
+    keyPrefix: v.string(),
+    keyHash: v.string(),
+    scopes: v.array(v.string()),
+    agentProfileId: v.optional(v.id("agentProfiles")),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+  })
+    .index("by_owner", ["ownerDid"])
+    .index("by_hash", ["keyHash"])
+    .index("by_prefix", ["keyPrefix"]),
+
+  // Agent memory KV entries for long-lived runtime context
+  agentMemory: defineTable({
+    ownerDid: v.string(),
+    listId: v.optional(v.id("lists")),
+    agentSlug: v.string(),
+    key: v.string(),
+    value: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner_agent", ["ownerDid", "agentSlug"])
+    .index("by_owner_agent_key", ["ownerDid", "agentSlug", "key"])
+    .index("by_list", ["listId"]),
+
+  // Mission Control memory browser entries (Phase 3)
+  memories: defineTable({
+    ownerDid: v.string(),
+    authorDid: v.string(),
+    title: v.string(),
+    content: v.string(),
+    searchText: v.string(),
+    tags: v.optional(v.array(v.string())),
+    source: v.optional(v.union(
+      v.literal("manual"),
+      v.literal("openclaw"),
+      v.literal("clawboot"),
+      v.literal("import"),
+      v.literal("api")
+    )),
+    sourceRef: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerDid"])
+    .index("by_owner_time", ["ownerDid", "updatedAt"])
+    .index("by_owner_source", ["ownerDid", "source"])
+    .index("by_owner_author", ["ownerDid", "authorDid"])
+    .searchIndex("search_content", {
+      searchField: "searchText",
+      filterFields: ["ownerDid", "source", "authorDid"],
+    }),
 
   // Mission Control schedule entries (Phase 4 schedule/calendar)
   scheduleEntries: defineTable({
