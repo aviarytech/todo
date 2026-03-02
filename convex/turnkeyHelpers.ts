@@ -42,15 +42,12 @@ export async function getEd25519Account(subOrgId: string) {
     throw new Error("No Ed25519 account found in wallet");
   }
 
-  // Always use the parent organization ID for signing.
-  // The parent org's API key has authority over sub-org wallets,
-  // but Turnkey requires the organizationId in the signing request
-  // to match the API key's organization (the parent), not the sub-org.
-  const parentOrgId = process.env.TURNKEY_ORGANIZATION_ID;
-  if (!parentOrgId) {
-    throw new Error("TURNKEY_ORGANIZATION_ID is required");
+  const signingOrganizationId = ed25519Account.organizationId || subOrgId;
+  if (signingOrganizationId !== subOrgId) {
+    console.warn(
+      `[turnkeyHelpers] Requested org ${subOrgId} but selected account belongs to ${signingOrganizationId}. Using account organization for signing.`
+    );
   }
-  const signingOrganizationId = parentOrgId;
   const address = ed25519Account.address;
   const verificationMethodId = `did:key:${address}`;
 
