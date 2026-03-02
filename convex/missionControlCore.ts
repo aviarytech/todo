@@ -288,6 +288,44 @@ export const createMissionRun = mutation({
   },
 });
 
+export const updateMissionRun = mutation({
+  args: {
+    runId: v.id("missionRuns"),
+    ownerDid: v.string(),
+    provider: v.optional(v.string()),
+    computerId: v.optional(v.string()),
+    costEstimate: v.optional(v.number()),
+    tokenUsage: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId);
+    if (!run || run.ownerDid !== args.ownerDid) throw new Error("Run not found");
+
+    await ctx.db.patch(args.runId, {
+      provider: args.provider ?? run.provider,
+      computerId: args.computerId ?? run.computerId,
+      costEstimate: args.costEstimate ?? run.costEstimate,
+      tokenUsage: args.tokenUsage ?? run.tokenUsage,
+      updatedAt: Date.now(),
+    });
+
+    return { ok: true };
+  },
+});
+
+export const deleteMissionRun = mutation({
+  args: {
+    runId: v.id("missionRuns"),
+    ownerDid: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId);
+    if (!run || run.ownerDid !== args.ownerDid) throw new Error("Run not found");
+    await ctx.db.delete(args.runId);
+    return { ok: true };
+  },
+});
+
 export const transitionMissionRun = mutation({
   args: {
     runId: v.id("missionRuns"),
@@ -510,6 +548,18 @@ export const appendMissionRunArtifact = mutation({
   },
 });
 
+export const getMissionRunById = query({
+  args: {
+    ownerDid: v.string(),
+    runId: v.id("missionRuns"),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId);
+    if (!run || run.ownerDid !== args.ownerDid) return null;
+    return run;
+  },
+});
+
 export const listMissionRuns = query({
   args: {
     ownerDid: v.string(),
@@ -523,10 +573,14 @@ export const listMissionRuns = query({
       v.literal("failed"),
       v.literal("finished")
     )),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
     limit: v.optional(v.number()),
+    page: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const limit = Math.min(Math.max(args.limit ?? 100, 1), 300);
+    const pageSize = Math.min(Math.max(args.limit ?? 25, 1), 100);
+    const page = Math.max(args.page ?? 1, 1);
 
     let rows;
     if (args.status) {
@@ -551,7 +605,33 @@ export const listMissionRuns = query({
         .collect();
     }
 
-    return rows.sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
+    const start = args.startDate;
+    const end = args.endDate;
+    const filtered = rows
+      .filter((run) => {
+        if (start !== undefined && run.createdAt < start) return false;
+        if (end !== undefined && run.createdAt > end) return false;
+        return true;
+      })
+      .sort((a, b) => b.createdAt - a.createdAt);
+
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const offset = (safePage - 1) * pageSize;
+    const runs = filtered.slice(offset, offset + pageSize);
+
+    return {
+      runs,
+      pagination: {
+        page: safePage,
+        pageSize,
+        total,
+        totalPages,
+        hasNext: safePage < totalPages,
+        hasPrev: safePage > 1,
+      },
+    };
   },
 });
 

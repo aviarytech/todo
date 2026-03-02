@@ -100,6 +100,12 @@ function parseRunId(pathname: string): string | null {
   return match ? match[1] : null;
 }
 
+function parseOptionalNumber(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function parseScheduleEntryId(pathname: string): string | null {
   const match = pathname.match(/\/api\/v1\/schedules\/([a-z0-9]+)/);
   return match ? match[1] : null;
@@ -351,14 +357,53 @@ export const runsHandler = httpAction(async (ctx, request) => {
       const missing = requireScopes(authCtx, ["runs:read"]);
       if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
 
-      const runs = await ctx.runQuery((api as any).missionControlCore.listMissionRuns, {
+      const result = await ctx.runQuery((api as any).missionControlCore.listMissionRuns, {
         ownerDid: authCtx.userDid,
         listId: url.searchParams.get("listId") ?? undefined,
         itemId: url.searchParams.get("itemId") ?? undefined,
         status: url.searchParams.get("status") ?? undefined,
-        limit: Number(url.searchParams.get("limit") ?? "100"),
+        startDate: parseOptionalNumber(url.searchParams.get("startDate")),
+        endDate: parseOptionalNumber(url.searchParams.get("endDate")),
+        limit: Number(url.searchParams.get("limit") ?? "25"),
+        page: Number(url.searchParams.get("page") ?? "1"),
       });
-      return jsonResponse(request, { runs });
+      return jsonResponse(request, result);
+    }
+
+    if (request.method === "PATCH") {
+      const missing = requireScopes(authCtx, ["runs:write"]);
+      if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+      const runId = parseRunId(url.pathname);
+      if (!runId) return errorResponse(request, "runId is required", 400);
+
+      const body = await request.json() as {
+        provider?: string;
+        computerId?: string;
+        costEstimate?: number;
+        tokenUsage?: number;
+      };
+
+      const result = await ctx.runMutation((api as any).missionControlCore.updateMissionRun, {
+        ownerDid: authCtx.userDid,
+        runId,
+        provider: body.provider,
+        computerId: body.computerId,
+        costEstimate: body.costEstimate,
+        tokenUsage: body.tokenUsage,
+      });
+      return jsonResponse(request, result);
+    }
+
+    if (request.method === "DELETE") {
+      const missing = requireScopes(authCtx, ["runs:control"]);
+      if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+      const runId = parseRunId(url.pathname);
+      if (!runId) return errorResponse(request, "runId is required", 400);
+      const result = await ctx.runMutation((api as any).missionControlCore.deleteMissionRun, {
+        ownerDid: authCtx.userDid,
+        runId,
+      });
+      return jsonResponse(request, result);
     }
 
     if (request.method === "POST") {
