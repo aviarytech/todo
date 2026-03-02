@@ -218,11 +218,29 @@ New endpoints for Agent Mission Control with scoped API keys.
 - `POST /api/v1/memory` (`memory:write`)
   - body: `{ "agentSlug": "platform", "key": "runbook", "value": "...", "listId": "...optional..." }`
 
+### Mission Runs (P0-6 hardening)
+- `GET /api/v1/runs?[listId=<id>&itemId=<id>&status=<status>&limit=100]` (`runs:read`)
+- `POST /api/v1/runs` (`runs:write`)
+  - body: `{ "listId": "...", "itemId": "...optional...", "agentSlug": "planner", "provider": "openclaw", "computerId": "orgo-1", "parentRunId": "...optional..." }`
+- `POST /api/v1/runs/:runId/heartbeat` (`runs:write`)
+- `POST /api/v1/runs/:runId/transition` (`runs:control`)
+  - body: `{ "nextStatus": "running|degraded|blocked|failed|finished", "terminalReason": "completed|killed|timeout|error|escalated" }`
+- `POST /api/v1/runs/:runId/retry` (`runs:control`)
+- `POST /api/v1/runs/:runId/artifacts` (`runs:write`)
+  - body: `{ "type": "screenshot|log|diff|file|url", "ref": "...", "label": "...optional..." }`
+- `POST /api/v1/runs/monitor` (`runs:control`) — applies heartbeat timeout state updates for all owner runs
+
+### Run Dashboard
+- `GET /api/v1/dashboard/runs?[windowMs=86400000]` (`dashboard:read`)
+  - returns success/intervention/timeout rates plus active/degraded run visibility
+
 ### Scopes
 - `tasks:read`, `tasks:write`
 - `activity:read`
 - `memory:read`, `memory:write`
 - `agents:read`, `agents:write`
+- `runs:read`, `runs:write`, `runs:control`
+- `dashboard:read`
 
 ## Error Responses
 

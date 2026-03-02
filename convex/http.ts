@@ -43,6 +43,8 @@ import {
   tasksHandler,
   activityHandler,
   memoryHandler,
+  runsHandler,
+  runsDashboardHandler,
 } from "./missionControlApi";
 
 // Rate limit configuration
@@ -475,6 +477,15 @@ http.route({ path: "/api/v1/activity", method: "OPTIONS", handler: v1AuthCors })
 http.route({ path: "/api/v1/memory", method: "GET", handler: memoryHandler });
 http.route({ path: "/api/v1/memory", method: "POST", handler: memoryHandler });
 http.route({ path: "/api/v1/memory", method: "OPTIONS", handler: v1AuthCors });
+
+http.route({ path: "/api/v1/runs", method: "GET", handler: runsHandler });
+http.route({ path: "/api/v1/runs", method: "POST", handler: runsHandler });
+http.route({ pathPrefix: "/api/v1/runs/", method: "POST", handler: runsHandler });
+http.route({ path: "/api/v1/runs", method: "OPTIONS", handler: v1AuthCors });
+http.route({ pathPrefix: "/api/v1/runs/", method: "OPTIONS", handler: v1AuthCors });
+
+http.route({ path: "/api/v1/dashboard/runs", method: "GET", handler: runsDashboardHandler });
+http.route({ path: "/api/v1/dashboard/runs", method: "OPTIONS", handler: v1AuthCors });
 
 // ============================================================================
 // DID Resolution & Resource endpoints (public, no auth)

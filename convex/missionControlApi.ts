@@ -13,6 +13,10 @@ const ALL_SCOPES = [
   "memory:write",
   "agents:read",
   "agents:write",
+  "runs:read",
+  "runs:write",
+  "runs:control",
+  "dashboard:read",
 ] as const;
 
 type Scope = (typeof ALL_SCOPES)[number];
@@ -86,6 +90,11 @@ async function authenticate(ctx: ActionCtx, request: Request): Promise<AuthConte
 
 function parseItemId(pathname: string): string | null {
   const match = pathname.match(/\/api\/v1\/tasks\/([a-z0-9]+)/);
+  return match ? match[1] : null;
+}
+
+function parseRunId(pathname: string): string | null {
+  const match = pathname.match(/\/api\/v1\/runs\/([a-z0-9]+)/);
   return match ? match[1] : null;
 }
 
@@ -320,6 +329,162 @@ export const memoryHandler = httpAction(async (ctx, request) => {
     }
 
     return errorResponse(request, "Method not allowed", 405);
+  } catch (error) {
+    if (error instanceof AuthError) return unauthorizedResponseWithCors(request, error.message);
+    return errorResponse(request, error instanceof Error ? error.message : "Failed", 500);
+  }
+});
+
+export const runsHandler = httpAction(async (ctx, request) => {
+  try {
+    const authCtx = await authenticate(ctx, request);
+    const url = new URL(request.url);
+
+    if (request.method === "GET") {
+      const missing = requireScopes(authCtx, ["runs:read"]);
+      if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+
+      const runs = await ctx.runQuery((api as any).missionControlCore.listMissionRuns, {
+        ownerDid: authCtx.userDid,
+        listId: url.searchParams.get("listId") ?? undefined,
+        itemId: url.searchParams.get("itemId") ?? undefined,
+        status: url.searchParams.get("status") ?? undefined,
+        limit: Number(url.searchParams.get("limit") ?? "100"),
+      });
+      return jsonResponse(request, { runs });
+    }
+
+    if (request.method === "POST") {
+      const path = url.pathname;
+      const runId = parseRunId(path);
+      const isActionPath = path.includes("/heartbeat") || path.includes("/transition") || path.includes("/retry") || path.includes("/artifacts") || path.includes("/monitor");
+
+      if (!isActionPath) {
+        const missing = requireScopes(authCtx, ["runs:write"]);
+        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+
+        const body = await request.json() as {
+          listId: Id<"lists">;
+          itemId?: Id<"items">;
+          agentSlug: string;
+          provider?: string;
+          computerId?: string;
+          parentRunId?: Id<"missionRuns">;
+          heartbeatIntervalMs?: number;
+        };
+
+        if (!body.listId || !body.agentSlug) {
+          return errorResponse(request, "listId and agentSlug are required", 400);
+        }
+
+        const created = await ctx.runMutation((api as any).missionControlCore.createMissionRun, {
+          ownerDid: authCtx.userDid,
+          listId: body.listId,
+          itemId: body.itemId,
+          agentSlug: body.agentSlug,
+          provider: body.provider,
+          computerId: body.computerId,
+          parentRunId: body.parentRunId,
+          heartbeatIntervalMs: body.heartbeatIntervalMs,
+        });
+
+        return jsonResponse(request, created, 201);
+      }
+
+      if (path.endsWith("/monitor")) {
+        const missing = requireScopes(authCtx, ["runs:control"]);
+        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        const body = await request.json().catch(() => ({})) as { now?: number };
+        const result = await ctx.runMutation((api as any).missionControlCore.monitorMissionRunHeartbeats, {
+          ownerDid: authCtx.userDid,
+          now: body.now,
+        });
+        return jsonResponse(request, result);
+      }
+
+      if (!runId) return errorResponse(request, "runId is required", 400);
+
+      if (path.endsWith("/heartbeat")) {
+        const missing = requireScopes(authCtx, ["runs:write"]);
+        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        const body = await request.json().catch(() => ({})) as { at?: number };
+        const result = await ctx.runMutation((api as any).missionControlCore.recordMissionRunHeartbeat, {
+          ownerDid: authCtx.userDid,
+          runId,
+          at: body.at,
+        });
+        return jsonResponse(request, result);
+      }
+
+      if (path.endsWith("/transition")) {
+        const missing = requireScopes(authCtx, ["runs:control"]);
+        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        const body = await request.json() as {
+          nextStatus: "starting" | "running" | "degraded" | "blocked" | "failed" | "finished";
+          terminalReason?: "completed" | "killed" | "timeout" | "error" | "escalated";
+          costEstimate?: number;
+          tokenUsage?: number;
+          escalationAt?: number;
+        };
+        const result = await ctx.runMutation((api as any).missionControlCore.transitionMissionRun, {
+          ownerDid: authCtx.userDid,
+          runId,
+          ...body,
+        });
+        return jsonResponse(request, result);
+      }
+
+      if (path.endsWith("/retry")) {
+        const missing = requireScopes(authCtx, ["runs:control"]);
+        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        const result = await ctx.runMutation((api as any).missionControlCore.createRetryForMissionRun, {
+          ownerDid: authCtx.userDid,
+          runId,
+        });
+        return jsonResponse(request, result);
+      }
+
+      if (path.endsWith("/artifacts")) {
+        const missing = requireScopes(authCtx, ["runs:write"]);
+        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        const body = await request.json() as {
+          type: "screenshot" | "log" | "diff" | "file" | "url";
+          ref: string;
+          label?: string;
+        };
+        if (!body.ref || !body.type) return errorResponse(request, "type and ref are required", 400);
+        const result = await ctx.runMutation((api as any).missionControlCore.appendMissionRunArtifact, {
+          ownerDid: authCtx.userDid,
+          runId,
+          type: body.type,
+          ref: body.ref,
+          label: body.label,
+        });
+        return jsonResponse(request, result);
+      }
+    }
+
+    return errorResponse(request, "Method not allowed", 405);
+  } catch (error) {
+    if (error instanceof AuthError) return unauthorizedResponseWithCors(request, error.message);
+    return errorResponse(request, error instanceof Error ? error.message : "Failed", 500);
+  }
+});
+
+export const runsDashboardHandler = httpAction(async (ctx, request) => {
+  try {
+    if (request.method !== "GET") return errorResponse(request, "Method not allowed", 405);
+    const authCtx = await authenticate(ctx, request);
+    const missing = requireScopes(authCtx, ["dashboard:read"]);
+    if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+
+    const url = new URL(request.url);
+    const windowMs = Number(url.searchParams.get("windowMs") ?? String(24 * 60 * 60 * 1000));
+    const dashboard = await ctx.runQuery((api as any).missionControlCore.getMissionRunsDashboard, {
+      ownerDid: authCtx.userDid,
+      windowMs,
+    });
+    return jsonResponse(request, { dashboard });
   } catch (error) {
     if (error instanceof AuthError) return unauthorizedResponseWithCors(request, error.message);
     return errorResponse(request, error instanceof Error ? error.message : "Failed", 500);
