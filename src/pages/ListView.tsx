@@ -1157,6 +1157,7 @@ export function ListView() {
       {viewMode === "calendar" && (
         <CalendarView
           listId={listId}
+          userDid={did}
           onItemClick={(item) => {
             haptic('light');
             setSelectedCalendarItemId(item._id);
