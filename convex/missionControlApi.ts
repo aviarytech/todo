@@ -114,6 +114,11 @@ function parseScheduleEntryId(pathname: string): string | null {
   return match ? match[1] : null;
 }
 
+function parseMemoryId(pathname: string): string | null {
+  const match = pathname.match(/\/api\/v1\/memory\/([a-z0-9]+)/);
+  return match ? match[1] : null;
+}
+
 function parseApiKeyPath(pathname: string): { keyId: string | null; action: "delete" | "rotate" | "finalize" | null } {
   const rotateMatch = pathname.match(/\/api\/v1\/auth\/keys\/([a-z0-9]+)\/rotate$/);
   if (rotateMatch) return { keyId: rotateMatch[1], action: "rotate" };
@@ -459,8 +464,21 @@ export const memoryHandler = httpAction(async (ctx, request) => {
       }
 
       const agentSlug = url.searchParams.get("agentSlug");
-      if (!agentSlug) return errorResponse(request, "agentSlug query param required", 400);
       const key = url.searchParams.get("key") ?? undefined;
+      if (!agentSlug) {
+        const memories = await ctx.runQuery((api as any).memories.listMemories, {
+          ownerDid: authCtx.userDid,
+          query: url.searchParams.get("q") ?? undefined,
+          tag: url.searchParams.get("tag") ?? undefined,
+          source: url.searchParams.get("source") ?? undefined,
+          syncStatus: url.searchParams.get("syncStatus") ?? undefined,
+          startDate: parseOptionalNumber(url.searchParams.get("startDate")),
+          endDate: parseOptionalNumber(url.searchParams.get("endDate")),
+          limit: Number(url.searchParams.get("limit") ?? "50"),
+        });
+        return jsonResponse(request, memories);
+      }
+
       const memory = await ctx.runQuery((api as any).missionControlCore.getAgentMemory, {
         ownerDid: authCtx.userDid,
         agentSlug,
@@ -530,6 +548,46 @@ export const memoryHandler = httpAction(async (ctx, request) => {
         value: body.value,
       });
       return jsonResponse(request, { id }, 201);
+    }
+
+    if (request.method === "PATCH") {
+      const missing = requireScopes(authCtx, ["memory:write"]);
+      if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+
+      const memoryId = parseMemoryId(url.pathname);
+      if (!memoryId) return errorResponse(request, "memory id is required", 400);
+
+      const body = await request.json().catch(() => ({})) as {
+        title?: string;
+        content?: string;
+        tags?: string[];
+      };
+
+      const result = await ctx.runMutation((api as any).memories.updateMemory, {
+        memoryId,
+        ownerDid: authCtx.userDid,
+        authorDid: authCtx.userDid,
+        title: body.title,
+        content: body.content,
+        tags: body.tags,
+      });
+
+      return jsonResponse(request, result);
+    }
+
+    if (request.method === "DELETE") {
+      const missing = requireScopes(authCtx, ["memory:write"]);
+      if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+
+      const memoryId = parseMemoryId(url.pathname);
+      if (!memoryId) return errorResponse(request, "memory id is required", 400);
+
+      const result = await ctx.runMutation((api as any).memories.deleteMemory, {
+        memoryId,
+        ownerDid: authCtx.userDid,
+      });
+
+      return jsonResponse(request, result);
     }
 
     return errorResponse(request, "Method not allowed", 405);

@@ -486,6 +486,8 @@ http.route({ path: "/api/v1/memory", method: "GET", handler: memoryHandler });
 http.route({ path: "/api/v1/memory", method: "POST", handler: memoryHandler });
 http.route({ pathPrefix: "/api/v1/memory/", method: "GET", handler: memoryHandler });
 http.route({ pathPrefix: "/api/v1/memory/", method: "POST", handler: memoryHandler });
+http.route({ pathPrefix: "/api/v1/memory/", method: "PATCH", handler: memoryHandler });
+http.route({ pathPrefix: "/api/v1/memory/", method: "DELETE", handler: memoryHandler });
 http.route({ path: "/api/v1/memory", method: "OPTIONS", handler: v1AuthCors });
 http.route({ pathPrefix: "/api/v1/memory/", method: "OPTIONS", handler: v1AuthCors });
 
