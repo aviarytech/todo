@@ -24,6 +24,9 @@ import {
 import { updateUserDID } from "./userHttp";
 import { storeDidLog, getDidLog } from "./didLogsHttp";
 import { didResourceHandler } from "./didResourcesHttp";
+import { assignItem as assignItemHttp, unassignItem as unassignItemHttp, getItemAssignees as getItemAssigneesHttp } from "./assigneesHttp";
+import { heartbeat as presenceHeartbeatHttp, listPresence as listPresenceHttp } from "./presenceHttp";
+import { getListActivity as getListActivityHttp } from "./activityHttp";
 import {
   getUserLists as agentGetUserLists,
   agentListHandler,
@@ -379,6 +382,24 @@ http.route({ path: "/api/user/updateDID", method: "OPTIONS", handler: corsHandle
 http.route({ path: "/api/did/log", method: "POST", handler: storeDidLog });
 http.route({ path: "/api/did/log", method: "GET", handler: getDidLog });
 http.route({ path: "/api/did/log", method: "OPTIONS", handler: corsHandler });
+
+// --- Assignee endpoints ---
+http.route({ path: "/api/assignees/assign", method: "POST", handler: assignItemHttp });
+http.route({ path: "/api/assignees/assign", method: "OPTIONS", handler: corsHandler });
+http.route({ path: "/api/assignees/unassign", method: "POST", handler: unassignItemHttp });
+http.route({ path: "/api/assignees/unassign", method: "OPTIONS", handler: corsHandler });
+http.route({ path: "/api/assignees/list", method: "POST", handler: getItemAssigneesHttp });
+http.route({ path: "/api/assignees/list", method: "OPTIONS", handler: corsHandler });
+
+// --- Presence endpoints ---
+http.route({ path: "/api/presence/heartbeat", method: "POST", handler: presenceHeartbeatHttp });
+http.route({ path: "/api/presence/heartbeat", method: "OPTIONS", handler: corsHandler });
+http.route({ path: "/api/presence/list", method: "POST", handler: listPresenceHttp });
+http.route({ path: "/api/presence/list", method: "OPTIONS", handler: corsHandler });
+
+// --- Activity endpoints ---
+http.route({ path: "/api/activity/list", method: "POST", handler: getListActivityHttp });
+http.route({ path: "/api/activity/list", method: "OPTIONS", handler: corsHandler });
 
 // ============================================================================
 // Agent API endpoints (RESTful API for programmatic access)
