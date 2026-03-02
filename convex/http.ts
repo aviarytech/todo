@@ -27,6 +27,7 @@ import { didResourceHandler } from "./didResourcesHttp";
 import { assignItem as assignItemHttp, unassignItem as unassignItemHttp, getItemAssignees as getItemAssigneesHttp } from "./assigneesHttp";
 import { heartbeat as presenceHeartbeatHttp, listPresence as listPresenceHttp } from "./presenceHttp";
 import { getListActivity as getListActivityHttp } from "./activityHttp";
+import { createMemory as createMemoryHttp, listMemories as listMemoriesHttp } from "./memoriesHttp";
 import {
   getUserLists as agentGetUserLists,
   agentListHandler,
@@ -401,6 +402,11 @@ http.route({ path: "/api/presence/list", method: "OPTIONS", handler: corsHandler
 // --- Activity endpoints ---
 http.route({ path: "/api/activity/list", method: "POST", handler: getListActivityHttp });
 http.route({ path: "/api/activity/list", method: "OPTIONS", handler: corsHandler });
+
+// --- Memory endpoints (Phase 3) ---
+http.route({ path: "/api/v1/memory", method: "POST", handler: createMemoryHttp });
+http.route({ path: "/api/v1/memory", method: "GET", handler: listMemoriesHttp });
+http.route({ path: "/api/v1/memory", method: "OPTIONS", handler: corsHandler });
 
 // ============================================================================
 // Agent API endpoints (RESTful API for programmatic access)

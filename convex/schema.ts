@@ -298,6 +298,28 @@ export default defineSchema({
     .index("by_list_expires", ["listId", "expiresAt"])
     .index("by_session", ["sessionId"]),
 
+  // Mission Control memory browser entries (Phase 3)
+  memories: defineTable({
+    ownerDid: v.string(),
+    authorDid: v.string(),
+    title: v.string(),
+    content: v.string(),
+    searchText: v.string(),
+    tags: v.optional(v.array(v.string())),
+    source: v.optional(v.union(v.literal("manual"), v.literal("openclaw"), v.literal("clawboot"), v.literal("import"), v.literal("api"))),
+    sourceRef: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerDid"])
+    .index("by_owner_time", ["ownerDid", "updatedAt"])
+    .index("by_owner_source", ["ownerDid", "source"])
+    .index("by_owner_author", ["ownerDid", "authorDid"])
+    .searchIndex("search_content", {
+      searchField: "searchText",
+      filterFields: ["ownerDid", "source", "authorDid"],
+    }),
+
   // Publications table - did:webvh publication tracking (Phase 4)
   publications: defineTable({
     listId: v.id("lists"),
