@@ -197,10 +197,14 @@ New endpoints for Agent Mission Control with scoped API keys.
 - API key (`X-API-Key: pa_xxx...`) for `/api/v1/*` endpoints
 
 ### API Keys
-- `GET /api/v1/auth/keys` — list keys (JWT only)
+- `GET /api/v1/auth/keys` — list keys + recent rotation events (JWT only)
 - `POST /api/v1/auth/keys` — create key (JWT only)
   - body: `{ "label": "CI Agent", "scopes": ["tasks:read","memory:write"] }`
-- `DELETE /api/v1/auth/keys/:keyId` — revoke key (JWT only)
+- `POST /api/v1/auth/keys/:keyId/rotate` — zero-downtime rotation (JWT only)
+  - creates a new key, keeps old key active for grace period
+  - body: `{ "gracePeriodHours": 24, "label": "CI Agent v2" }`
+- `POST /api/v1/auth/keys/:keyId/finalize-rotation` — revoke old key after cutover (JWT only)
+- `DELETE /api/v1/auth/keys/:keyId` — revoke key immediately (JWT only)
 
 ### Agent Registration / Profiles
 - `GET /api/v1/agents` — list agent profiles (`agents:read`)
@@ -216,6 +220,8 @@ New endpoints for Agent Mission Control with scoped API keys.
 ### Memory
 - `GET /api/v1/memory?agentSlug=<slug>[&key=<key>]` (`memory:read`)
 - `POST /api/v1/memory` (`memory:write`)
+- `GET /api/v1/memory/sync?since=<ms>&limit=<n>` (`memory:read`) — pull Convex memory changes for OpenClaw
+- `POST /api/v1/memory/sync` (`memory:write`) — push OpenClaw memory entries into Convex with conflict policy (`lww` or `preserve_both`)
   - body: `{ "agentSlug": "platform", "key": "runbook", "value": "...", "listId": "...optional..." }`
 
 ### Mission Runs (P0-6 hardening)
@@ -229,6 +235,9 @@ New endpoints for Agent Mission Control with scoped API keys.
 - `POST /api/v1/runs/:runId/artifacts` (`runs:write`)
   - body: `{ "type": "screenshot|log|diff|file|url", "ref": "...", "label": "...optional..." }`
 - `POST /api/v1/runs/monitor` (`runs:control`) — applies heartbeat timeout state updates for all owner runs
+- `GET /api/v1/runs/retention` (JWT only) — retention config + recent deletion logs
+- `PUT /api/v1/runs/retention` (JWT only) — set artifact retention days (default 30)
+- `POST /api/v1/runs/retention` (JWT only) — run retention job (`dryRun` defaults to `true`)
 
 ### Run Dashboard
 - `GET /api/v1/dashboard/runs?[windowMs=86400000]` (`dashboard:read`)

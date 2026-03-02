@@ -455,6 +455,11 @@ export default defineSchema({
       v.literal("api")
     )),
     sourceRef: v.optional(v.string()),
+    externalId: v.optional(v.string()),
+    externalUpdatedAt: v.optional(v.number()),
+    lastSyncedAt: v.optional(v.number()),
+    syncStatus: v.optional(v.union(v.literal("synced"), v.literal("conflict"), v.literal("pending"))),
+    conflictNote: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -462,9 +467,11 @@ export default defineSchema({
     .index("by_owner_time", ["ownerDid", "updatedAt"])
     .index("by_owner_source", ["ownerDid", "source"])
     .index("by_owner_author", ["ownerDid", "authorDid"])
+    .index("by_owner_external", ["ownerDid", "externalId"])
+    .index("by_owner_sync_status", ["ownerDid", "syncStatus"])
     .searchIndex("search_content", {
       searchField: "searchText",
-      filterFields: ["ownerDid", "source", "authorDid"],
+      filterFields: ["ownerDid", "source", "authorDid", "syncStatus"],
     }),
 
   // Mission Control schedule entries (Phase 4 schedule/calendar)
