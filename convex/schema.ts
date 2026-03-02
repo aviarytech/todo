@@ -159,6 +159,56 @@ export default defineSchema({
     .index("by_parent", ["parentId"])
     .index("by_due_date", ["listId", "dueDate"]),
 
+  // Item assignees table - tracks who is assigned to each item (Phase 1 foundation)
+  itemAssignees: defineTable({
+    itemId: v.id("items"),
+    listId: v.id("lists"),
+    assigneeDid: v.string(),
+    assignedByDid: v.string(),
+    assignedAt: v.number(),
+  })
+    .index("by_item", ["itemId"])
+    .index("by_list", ["listId"])
+    .index("by_assignee", ["assigneeDid"])
+    .index("by_item_assignee", ["itemId", "assigneeDid"]),
+
+  // Activity stream table - immutable audit/events for collaborative timelines
+  activities: defineTable({
+    listId: v.id("lists"),
+    itemId: v.optional(v.id("items")),
+    actorDid: v.string(),
+    type: v.union(
+      v.literal("item_assigned"),
+      v.literal("item_unassigned"),
+      v.literal("presence_heartbeat"),
+      v.literal("presence_offline"),
+      v.literal("item_updated"),
+      v.literal("list_updated")
+    ),
+    metadata: v.optional(v.object({
+      assigneeDid: v.optional(v.string()),
+      status: v.optional(v.union(v.literal("active"), v.literal("idle"), v.literal("offline"))),
+      note: v.optional(v.string()),
+    })),
+    createdAt: v.number(),
+  })
+    .index("by_list", ["listId"])
+    .index("by_item", ["itemId"])
+    .index("by_actor", ["actorDid"])
+    .index("by_list_created", ["listId", "createdAt"]),
+
+  // Presence table - ephemeral collaborator presence state per list
+  presence: defineTable({
+    listId: v.id("lists"),
+    userDid: v.string(),
+    status: v.union(v.literal("active"), v.literal("idle"), v.literal("offline")),
+    lastSeenAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_list", ["listId"])
+    .index("by_list_user", ["listId", "userDid"])
+    .index("by_last_seen", ["lastSeenAt"]),
+
   // Tags table - for categorizing items
   tags: defineTable({
     listId: v.id("lists"),

@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { withMutationObservability } from "./lib/observability";
+import { canUserEditList } from "./lib/permissions";
 
 /**
  * Creates a Verifiable Credential for item authorship (creation).
@@ -110,37 +110,6 @@ function createItemCompletionVC(
   };
 }
 
-/**
- * Helper to check if a user can edit a list.
- * Owner can always edit. If the list has an active publication, anyone can edit.
- */
-async function canUserEditList(
-  ctx: MutationCtx | QueryCtx,
-  listId: Id<"lists">,
-  userDid: string,
-  legacyDid?: string
-): Promise<boolean> {
-  const list = await ctx.db.get(listId);
-  if (!list) return false;
-
-  // Owner can always edit
-  const didsToCheck = [userDid];
-  if (legacyDid) didsToCheck.push(legacyDid);
-
-  for (const did of didsToCheck) {
-    if (list.ownerDid === did) return true;
-  }
-
-  // If list has an active publication, anyone can edit
-  const pub = await ctx.db
-    .query("publications")
-    .withIndex("by_list", (q) => q.eq("listId", listId))
-    .first();
-
-  if (pub && pub.status === "active") return true;
-
-  return false;
-}
 
 /**
  * Add an item to a list.
@@ -164,6 +133,7 @@ export const addItem = mutation({
       endDate: v.optional(v.number()),
     })),
     priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
+    assigneeDid: v.optional(v.string()),
     parentId: v.optional(v.id("items")), // For sub-items
   },
   handler: async (ctx, args) => withMutationObservability("items.addItem", async () => {
@@ -220,6 +190,7 @@ export const addItem = mutation({
       url: args.url,
       recurrence: args.recurrence,
       priority: args.priority,
+      assigneeDid: args.assigneeDid,
       parentId: args.parentId,
     });
 
@@ -261,11 +232,13 @@ export const updateItem = mutation({
     })),
     priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
     groceryAisle: v.optional(v.string()),
+    assigneeDid: v.optional(v.string()),
     clearGroceryAisle: v.optional(v.boolean()),
     clearDueDate: v.optional(v.boolean()),
     clearRecurrence: v.optional(v.boolean()),
     clearUrl: v.optional(v.boolean()),
     clearPriority: v.optional(v.boolean()),
+    clearAssigneeDid: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => withMutationObservability("items.updateItem", async () => {
     const item = await ctx.db.get(args.itemId);
@@ -289,12 +262,14 @@ export const updateItem = mutation({
     if (args.recurrence !== undefined) updates.recurrence = args.recurrence;
     if (args.priority !== undefined) updates.priority = args.priority;
     if (args.groceryAisle !== undefined) updates.groceryAisle = args.groceryAisle;
+    if (args.assigneeDid !== undefined) updates.assigneeDid = args.assigneeDid;
     
     // Clear fields if requested
     if (args.clearDueDate) updates.dueDate = undefined;
     if (args.clearRecurrence) updates.recurrence = undefined;
     if (args.clearUrl) updates.url = undefined;
     if (args.clearPriority) updates.priority = undefined;
+    if (args.clearAssigneeDid) updates.assigneeDid = undefined;
     if (args.clearGroceryAisle) updates.groceryAisle = undefined;
 
     await ctx.db.patch(args.itemId, updates);
@@ -419,6 +394,7 @@ export const checkItem = mutation({
           url: item.url,
           recurrence: item.recurrence,
           priority: item.priority,
+          assigneeDid: item.assigneeDid,
           tags: item.tags,
           parentId: item.parentId,
         });
@@ -682,6 +658,7 @@ export const batchCheckItems = mutation({
             url: item.url,
             recurrence: item.recurrence,
             priority: item.priority,
+            assigneeDid: item.assigneeDid,
             tags: item.tags,
             parentId: item.parentId,
           });
