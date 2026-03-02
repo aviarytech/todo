@@ -11,6 +11,7 @@ import { useSettings } from "../hooks/useSettings";
 
 interface CalendarViewProps {
   listId: Id<"lists">;
+  userDid: string;
   onItemClick?: (item: Doc<"items">) => void;
 }
 
@@ -20,7 +21,7 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-export function CalendarView({ listId, onItemClick }: CalendarViewProps) {
+export function CalendarView({ listId, userDid, onItemClick }: CalendarViewProps) {
   const { haptic } = useSettings();
   const [currentDate, setCurrentDate] = useState(new Date());
   
@@ -30,6 +31,13 @@ export function CalendarView({ listId, onItemClick }: CalendarViewProps) {
   // Filter items with due dates in current month
   const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+
+  const scheduleEntries = useQuery("scheduleEntries:listForList" as any, {
+    listId,
+    userDid,
+    monthStart: monthStart.getTime(),
+    monthEnd: monthEnd.getTime(),
+  }) as Array<Doc<"scheduleEntries">> | undefined;
   
   const items = useMemo(() => {
     if (!allItems) return [];
@@ -52,6 +60,18 @@ export function CalendarView({ listId, onItemClick }: CalendarViewProps) {
     }
     return map;
   }, [items]);
+
+  const scheduleByDate = useMemo(() => {
+    const map = new Map<string, Array<Doc<"scheduleEntries">>>();
+    if (!scheduleEntries) return map;
+    for (const entry of scheduleEntries) {
+      const t = entry.scheduledAt ?? entry.nextRunAt;
+      if (!t) continue;
+      const key = new Date(t).toDateString();
+      map.set(key, [...(map.get(key) ?? []), entry]);
+    }
+    return map;
+  }, [scheduleEntries]);
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
@@ -92,7 +112,7 @@ export function CalendarView({ listId, onItemClick }: CalendarViewProps) {
     return date.toDateString() === today.toDateString();
   };
 
-  if (!allItems) {
+  if (!allItems || !scheduleEntries) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 animate-pulse">
         <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
@@ -160,6 +180,7 @@ export function CalendarView({ listId, onItemClick }: CalendarViewProps) {
           }
 
           const dateItems = itemsByDate.get(date.toDateString()) ?? [];
+          const dateSchedules = scheduleByDate.get(date.toDateString()) ?? [];
           const today = isToday(date);
 
           return (
@@ -178,7 +199,7 @@ export function CalendarView({ listId, onItemClick }: CalendarViewProps) {
               </div>
               
               <div className="space-y-1">
-                {dateItems.slice(0, 3).map((item) => (
+                {dateItems.slice(0, 2).map((item) => (
                   <button
                     key={item._id}
                     onClick={() => {
@@ -198,9 +219,22 @@ export function CalendarView({ listId, onItemClick }: CalendarViewProps) {
                     {item.name}
                   </button>
                 ))}
-                {dateItems.length > 3 && (
+                {dateSchedules.slice(0, 1).map((entry) => (
+                  <div
+                    key={entry._id}
+                    className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate border ${
+                      entry.enabled
+                        ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700"
+                    }`}
+                    title={entry.cronExpr ? `${entry.title} (${entry.cronExpr})` : entry.title}
+                  >
+                    🕒 {entry.title}
+                  </div>
+                ))}
+                {(dateItems.length + dateSchedules.length) > 3 && (
                   <div className="text-[10px] text-gray-400 dark:text-gray-500 pl-1">
-                    +{dateItems.length - 3} more
+                    +{dateItems.length + dateSchedules.length - 3} more
                   </div>
                 )}
               </div>
