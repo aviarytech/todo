@@ -416,6 +416,9 @@ export default defineSchema({
     keyHash: v.string(),
     scopes: v.array(v.string()),
     agentProfileId: v.optional(v.id("agentProfiles")),
+    rotatedFromKeyId: v.optional(v.id("apiKeys")),
+    rotatedToKeyId: v.optional(v.id("apiKeys")),
+    rotationGraceEndsAt: v.optional(v.number()),
     createdAt: v.number(),
     lastUsedAt: v.optional(v.number()),
     revokedAt: v.optional(v.number()),
@@ -424,6 +427,46 @@ export default defineSchema({
     .index("by_owner", ["ownerDid"])
     .index("by_hash", ["keyHash"])
     .index("by_prefix", ["keyPrefix"]),
+
+  apiKeyRotationEvents: defineTable({
+    ownerDid: v.string(),
+    oldKeyId: v.id("apiKeys"),
+    newKeyId: v.id("apiKeys"),
+    rotatedByDid: v.string(),
+    graceEndsAt: v.number(),
+    oldKeyRevokedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner_created", ["ownerDid", "createdAt"])
+    .index("by_old_key", ["oldKeyId"]),
+
+  missionControlSettings: defineTable({
+    ownerDid: v.string(),
+    artifactRetentionDays: v.number(),
+    updatedByDid: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerDid"]),
+
+  missionArtifactDeletionLogs: defineTable({
+    ownerDid: v.string(),
+    runId: v.id("missionRuns"),
+    deletedCount: v.number(),
+    dryRun: v.boolean(),
+    retentionCutoffAt: v.number(),
+    actorDid: v.string(),
+    trigger: v.union(v.literal("operator"), v.literal("system")),
+    deletedArtifacts: v.array(v.object({
+      type: v.union(v.literal("screenshot"), v.literal("log"), v.literal("diff"), v.literal("file"), v.literal("url")),
+      ref: v.string(),
+      label: v.optional(v.string()),
+      createdAt: v.number(),
+    })),
+    createdAt: v.number(),
+  })
+    .index("by_owner_created", ["ownerDid", "createdAt"]),
 
   // Agent memory KV entries for long-lived runtime context
   agentMemory: defineTable({
@@ -455,6 +498,11 @@ export default defineSchema({
       v.literal("api")
     )),
     sourceRef: v.optional(v.string()),
+    externalId: v.optional(v.string()),
+    externalUpdatedAt: v.optional(v.number()),
+    lastSyncedAt: v.optional(v.number()),
+    syncStatus: v.optional(v.union(v.literal("synced"), v.literal("conflict"), v.literal("pending"))),
+    conflictNote: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -462,9 +510,11 @@ export default defineSchema({
     .index("by_owner_time", ["ownerDid", "updatedAt"])
     .index("by_owner_source", ["ownerDid", "source"])
     .index("by_owner_author", ["ownerDid", "authorDid"])
+    .index("by_owner_external", ["ownerDid", "externalId"])
+    .index("by_owner_sync_status", ["ownerDid", "syncStatus"])
     .searchIndex("search_content", {
       searchField: "searchText",
-      filterFields: ["ownerDid", "source", "authorDid"],
+      filterFields: ["ownerDid", "source", "authorDid", "syncStatus"],
     }),
 
   // Mission Control schedule entries (Phase 4 schedule/calendar)

@@ -74,6 +74,9 @@ async function authenticate(ctx: ActionCtx, request: Request): Promise<AuthConte
     const key = await ctx.runQuery((api as any).missionControlCore.getApiKeyByHash, { keyHash: hash }) as any;
     if (!key) throw new AuthError("Invalid API key", "INVALID_TOKEN");
     if (key.revokedAt) throw new AuthError("API key revoked", "INVALID_TOKEN");
+    if (key.rotationGraceEndsAt && key.rotationGraceEndsAt < Date.now()) {
+      throw new AuthError("API key rotation grace period ended", "EXPIRED_TOKEN");
+    }
     if (key.expiresAt && key.expiresAt < Date.now()) throw new AuthError("API key expired", "EXPIRED_TOKEN");
 
     await ctx.runMutation((api as any).missionControlCore.touchApiKeyUsage, { keyId: key._id });
@@ -111,6 +114,19 @@ function parseScheduleEntryId(pathname: string): string | null {
   return match ? match[1] : null;
 }
 
+function parseApiKeyPath(pathname: string): { keyId: string | null; action: "delete" | "rotate" | "finalize" | null } {
+  const rotateMatch = pathname.match(/\/api\/v1\/auth\/keys\/([a-z0-9]+)\/rotate$/);
+  if (rotateMatch) return { keyId: rotateMatch[1], action: "rotate" };
+
+  const finalizeMatch = pathname.match(/\/api\/v1\/auth\/keys\/([a-z0-9]+)\/finalize-rotation$/);
+  if (finalizeMatch) return { keyId: finalizeMatch[1], action: "finalize" };
+
+  const deleteMatch = pathname.match(/\/api\/v1\/auth\/keys\/([a-z0-9]+)$/);
+  if (deleteMatch) return { keyId: deleteMatch[1], action: "delete" };
+
+  return { keyId: null, action: null };
+}
+
 export const v1AuthCors = httpAction(async (_ctx, request) => {
   return new Response(null, {
     status: 204,
@@ -128,7 +144,11 @@ export const apiKeysHandler = httpAction(async (ctx, request) => {
     const userDid = await getUserDidFromJwt(ctx, request);
 
     if (request.method === "GET") {
-      const keys = await ctx.runQuery((api as any).missionControlCore.listApiKeys, { ownerDid: userDid }) as any[];
+      const [keys, rotationEvents] = await Promise.all([
+        ctx.runQuery((api as any).missionControlCore.listApiKeys, { ownerDid: userDid }) as Promise<any[]>,
+        ctx.runQuery((api as any).missionControlCore.listApiKeyRotationEvents, { ownerDid: userDid, limit: 20 }) as Promise<any[]>,
+      ]);
+
       return jsonResponse(request, {
         apiKeys: keys.map((k) => ({
           _id: k._id,
@@ -136,11 +156,15 @@ export const apiKeysHandler = httpAction(async (ctx, request) => {
           keyPrefix: k.keyPrefix,
           scopes: k.scopes,
           agentProfileId: k.agentProfileId,
+          rotatedFromKeyId: k.rotatedFromKeyId,
+          rotatedToKeyId: k.rotatedToKeyId,
+          rotationGraceEndsAt: k.rotationGraceEndsAt,
           createdAt: k.createdAt,
           lastUsedAt: k.lastUsedAt,
           revokedAt: k.revokedAt,
           expiresAt: k.expiresAt,
         })),
+        rotationEvents,
       });
     }
 
@@ -184,15 +208,120 @@ export const apiKeyByIdHandler = httpAction(async (ctx, request) => {
   try {
     const userDid = await getUserDidFromJwt(ctx, request);
     const path = new URL(request.url).pathname;
-    const id = path.split("/").pop();
-    if (!id) return errorResponse(request, "key id required", 400);
+    const { keyId, action } = parseApiKeyPath(path);
+    if (!keyId || !action) return errorResponse(request, "key id required", 400);
 
-    if (request.method === "DELETE") {
+    if (request.method === "DELETE" && action === "delete") {
       await ctx.runMutation((api as any).missionControlCore.revokeApiKey, {
-        keyId: id,
+        keyId,
         ownerDid: userDid,
       });
       return jsonResponse(request, { success: true });
+    }
+
+    if (request.method === "POST" && action === "rotate") {
+      const body = await request.json().catch(() => ({})) as {
+        label?: string;
+        gracePeriodHours?: number;
+        expiresAt?: number;
+      };
+
+      const existing = await ctx.runQuery((api as any).missionControlCore.listApiKeys, { ownerDid: userDid }) as any[];
+      const oldKey = existing.find((k) => k._id === keyId);
+      if (!oldKey) return errorResponse(request, "API key not found", 404);
+      if (oldKey.revokedAt) return errorResponse(request, "Cannot rotate revoked API key", 400);
+
+      const gracePeriodHours = Math.min(Math.max(Math.floor(body.gracePeriodHours ?? 24), 1), 168);
+      const graceEndsAt = Date.now() + gracePeriodHours * 60 * 60 * 1000;
+      const rawKey = `pa_${randomToken(8)}_${randomToken(24)}`;
+      const keyPrefix = rawKey.slice(0, 12);
+      const keyHash = await sha256Hex(rawKey);
+
+      const result = await ctx.runMutation((api as any).missionControlCore.createRotatedApiKey, {
+        ownerDid: userDid,
+        rotatedByDid: userDid,
+        oldKeyId: keyId,
+        label: body.label ?? `${oldKey.label} (rotated)`,
+        keyPrefix,
+        keyHash,
+        scopes: oldKey.scopes,
+        agentProfileId: oldKey.agentProfileId,
+        expiresAt: body.expiresAt,
+        graceEndsAt,
+      }) as any;
+
+      return jsonResponse(request, {
+        success: true,
+        rotationEventId: result.rotationEventId,
+        oldKeyId: keyId,
+        oldKeyGraceEndsAt: graceEndsAt,
+        newKeyId: result.newKeyId,
+        apiKey: rawKey,
+        keyPrefix,
+        zeroDowntime: true,
+        next: "Use the new key in production, then POST /api/v1/auth/keys/:id/finalize-rotation to revoke the old key.",
+      }, 201);
+    }
+
+    if (request.method === "POST" && action === "finalize") {
+      const result = await ctx.runMutation((api as any).missionControlCore.finalizeApiKeyRotation, {
+        ownerDid: userDid,
+        oldKeyId: keyId,
+      }) as any;
+      return jsonResponse(request, { success: true, ...result });
+    }
+
+    return errorResponse(request, "Method not allowed", 405);
+  } catch (error) {
+    if (error instanceof AuthError) return unauthorizedResponseWithCors(request, error.message);
+    return errorResponse(request, error instanceof Error ? error.message : "Failed", 500);
+  }
+});
+
+export const runRetentionHandler = httpAction(async (ctx, request) => {
+  try {
+    const userDid = await getUserDidFromJwt(ctx, request);
+
+    if (request.method === "GET") {
+      const [settings, logs] = await Promise.all([
+        ctx.runQuery((api as any).missionControlCore.getMissionControlSettings, { ownerDid: userDid }),
+        ctx.runQuery((api as any).missionControlCore.listArtifactDeletionLogs, { ownerDid: userDid, limit: 25 }),
+      ]);
+
+      return jsonResponse(request, { settings, deletionLogs: logs });
+    }
+
+    if (request.method === "PUT") {
+      const body = await request.json() as { artifactRetentionDays?: number };
+      if (!body.artifactRetentionDays || !Number.isFinite(body.artifactRetentionDays)) {
+        return errorResponse(request, "artifactRetentionDays is required", 400);
+      }
+
+      const result = await ctx.runMutation((api as any).missionControlCore.upsertMissionControlSettings, {
+        ownerDid: userDid,
+        updatedByDid: userDid,
+        artifactRetentionDays: body.artifactRetentionDays,
+      });
+
+      return jsonResponse(request, { success: true, ...result });
+    }
+
+    if (request.method === "POST") {
+      const body = await request.json().catch(() => ({})) as {
+        retentionDays?: number;
+        dryRun?: boolean;
+        maxRuns?: number;
+      };
+
+      const result = await ctx.runMutation((api as any).missionControlCore.applyArtifactRetention, {
+        ownerDid: userDid,
+        actorDid: userDid,
+        retentionDays: body.retentionDays,
+        dryRun: body.dryRun ?? true,
+        maxRuns: body.maxRuns,
+      });
+
+      return jsonResponse(request, result, 200);
     }
 
     return errorResponse(request, "Method not allowed", 405);
@@ -305,12 +434,30 @@ export const activityHandler = httpAction(async (ctx, request) => {
 export const memoryHandler = httpAction(async (ctx, request) => {
   try {
     const authCtx = await authenticate(ctx, request);
+    const url = new URL(request.url);
+    const isSyncRoute = url.pathname.endsWith("/sync");
 
     if (request.method === "GET") {
       const missing = requireScopes(authCtx, ["memory:read"]);
       if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
 
-      const url = new URL(request.url);
+      if (isSyncRoute) {
+        const since = parseOptionalNumber(url.searchParams.get("since"));
+        const limit = Number(url.searchParams.get("limit") ?? "100");
+        const result = await ctx.runQuery((api as any).memories.listMemoryChangesSince, {
+          ownerDid: authCtx.userDid,
+          since,
+          limit,
+        });
+        return jsonResponse(request, {
+          ...result,
+          sync: {
+            mode: "bidirectional",
+            policy: "lww",
+          },
+        });
+      }
+
       const agentSlug = url.searchParams.get("agentSlug");
       if (!agentSlug) return errorResponse(request, "agentSlug query param required", 400);
       const key = url.searchParams.get("key") ?? undefined;
@@ -325,6 +472,50 @@ export const memoryHandler = httpAction(async (ctx, request) => {
     if (request.method === "POST") {
       const missing = requireScopes(authCtx, ["memory:write"]);
       if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+
+      if (isSyncRoute) {
+        const body = await request.json() as {
+          policy?: "lww" | "preserve_both";
+          entries: Array<{
+            externalId: string;
+            title: string;
+            content: string;
+            tags?: string[];
+            sourceRef?: string;
+            updatedAt: number;
+            authorDid?: string;
+          }>;
+        };
+
+        if (!Array.isArray(body.entries)) return errorResponse(request, "entries array is required", 400);
+
+        const results: Array<{ externalId: string; status: string; id: string; conflictId?: string }> = [];
+        for (const entry of body.entries) {
+          if (!entry?.externalId || !entry?.title || typeof entry?.content !== "string" || !Number.isFinite(entry?.updatedAt)) {
+            return errorResponse(request, "Each entry requires externalId, title, content, and updatedAt", 400);
+          }
+          const res = await ctx.runMutation((api as any).memories.upsertOpenClawMemory, {
+            ownerDid: authCtx.userDid,
+            authorDid: entry.authorDid ?? authCtx.userDid,
+            externalId: entry.externalId,
+            title: entry.title,
+            content: entry.content,
+            tags: entry.tags,
+            sourceRef: entry.sourceRef,
+            externalUpdatedAt: entry.updatedAt,
+            policy: body.policy ?? "lww",
+          }) as { id: string; status: string; conflictId?: string };
+          results.push({ externalId: entry.externalId, status: res.status, id: res.id, conflictId: res.conflictId });
+        }
+
+        const conflicts = results.filter((r) => r.status.startsWith("conflict")).length;
+        return jsonResponse(request, {
+          applied: results.length,
+          conflicts,
+          policy: body.policy ?? "lww",
+          results,
+        }, 200);
+      }
 
       const body = await request.json() as { agentSlug: string; key: string; value: string; listId?: Id<"lists"> };
       if (!body.agentSlug || !body.key || typeof body.value !== "string") {

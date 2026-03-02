@@ -46,6 +46,7 @@ import {
   runsHandler,
   runsDashboardHandler,
   schedulesHandler,
+  runRetentionHandler,
 } from "./missionControlApi";
 
 // Rate limit configuration
@@ -461,7 +462,13 @@ http.route({ path: "/api/v1/auth/keys", method: "GET", handler: apiKeysHandler }
 http.route({ path: "/api/v1/auth/keys", method: "POST", handler: apiKeysHandler });
 http.route({ path: "/api/v1/auth/keys", method: "OPTIONS", handler: v1AuthCors });
 http.route({ pathPrefix: "/api/v1/auth/keys/", method: "DELETE", handler: apiKeyByIdHandler });
+http.route({ pathPrefix: "/api/v1/auth/keys/", method: "POST", handler: apiKeyByIdHandler });
 http.route({ pathPrefix: "/api/v1/auth/keys/", method: "OPTIONS", handler: v1AuthCors });
+
+http.route({ path: "/api/v1/runs/retention", method: "GET", handler: runRetentionHandler });
+http.route({ path: "/api/v1/runs/retention", method: "PUT", handler: runRetentionHandler });
+http.route({ path: "/api/v1/runs/retention", method: "POST", handler: runRetentionHandler });
+http.route({ path: "/api/v1/runs/retention", method: "OPTIONS", handler: v1AuthCors });
 
 http.route({ path: "/api/v1/agents", method: "GET", handler: agentsHandler });
 http.route({ path: "/api/v1/agents", method: "POST", handler: agentsHandler });
@@ -477,7 +484,10 @@ http.route({ path: "/api/v1/activity", method: "OPTIONS", handler: v1AuthCors })
 
 http.route({ path: "/api/v1/memory", method: "GET", handler: memoryHandler });
 http.route({ path: "/api/v1/memory", method: "POST", handler: memoryHandler });
+http.route({ pathPrefix: "/api/v1/memory/", method: "GET", handler: memoryHandler });
+http.route({ pathPrefix: "/api/v1/memory/", method: "POST", handler: memoryHandler });
 http.route({ path: "/api/v1/memory", method: "OPTIONS", handler: v1AuthCors });
+http.route({ pathPrefix: "/api/v1/memory/", method: "OPTIONS", handler: v1AuthCors });
 
 http.route({ path: "/api/v1/schedules", method: "GET", handler: schedulesHandler });
 http.route({ pathPrefix: "/api/v1/schedules/", method: "POST", handler: schedulesHandler });
