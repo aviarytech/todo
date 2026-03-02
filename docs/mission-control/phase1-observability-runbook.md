@@ -24,8 +24,9 @@ All baseline metrics emit as JSON logs with `[obs]` prefix. This is intentionall
 ## Dashboard + alerts mapping
 - Metrics contract: `docs/mission-control/phase1-observability-metrics.json`
 - Dashboard spec/config: `docs/mission-control/phase1-observability-dashboard-config.json`
+- Alert routing config: `docs/mission-control/phase1-observability-alert-routing.json`
 - Planning context: `docs/mission-control/phase1-observability-dashboard-plan.md`
-- Consistency validator (catalog ↔ dashboard ↔ alerts):
+- Consistency validator (catalog ↔ dashboard ↔ alerts ↔ routing):
   - `npm run mission-control:validate-observability`
 
 ## Runnable path (today)
@@ -40,6 +41,11 @@ All baseline metrics emit as JSON logs with `[obs]` prefix. This is intentionall
    - Convex function logs `[obs]` events
 4. Feed logs to your sink of choice (Datadog/Grafana Loki/OTel collector).
 5. Create dashboard panels + alerts directly from `phase1-observability-dashboard-config.json`.
+
+## E2E fixture/perf gate path
+- Default Mission Control e2e uses seeded local auth fixture (`e2e/fixtures/auth.ts`).
+- For production-sized perf runs, set fixture path:
+  - `MISSION_CONTROL_FIXTURE_PATH=e2e/fixtures/mission-control.production.json npm run test:e2e -- e2e/mission-control-phase1.spec.ts`
 
 ## Known gaps (next pass)
 - `subscription_latency_ms` not yet wired to Convex subscription timing hooks.

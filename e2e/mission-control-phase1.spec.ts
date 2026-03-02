@@ -1,81 +1,42 @@
 import { test, expect, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { seedAuthSession } from "./fixtures/auth";
 
-interface SeededAuthState {
-  user: {
-    turnkeySubOrgId: string;
-    email: string;
-    did: string;
-    displayName: string;
-  };
-  token: string;
+interface PerfFixture {
+  listOpenRuns?: number;
+  listOpenP95Ms?: number;
+  activityOpenRuns?: number;
+  activityOpenP95Ms?: number;
+  itemsPerList?: number;
 }
 
-const SEEDED_AUTH_ENV = {
-  token: process.env.E2E_AUTH_TOKEN,
-  email: process.env.E2E_AUTH_EMAIL,
-  subOrgId: process.env.E2E_AUTH_SUBORG_ID,
-  did: process.env.E2E_AUTH_DID,
-  displayName: process.env.E2E_AUTH_DISPLAY_NAME,
-} as const;
+function loadPerfFixture(): PerfFixture {
+  const fixturePath = process.env.MISSION_CONTROL_FIXTURE_PATH;
+  if (!fixturePath) return {};
 
-function getSeededAuthState(nameFallback: string): SeededAuthState | null {
-  const { token, email, subOrgId, did, displayName } = SEEDED_AUTH_ENV;
-  if (!token || !email || !subOrgId || !did) {
-    return null;
-  }
-
-  return {
-    token,
-    user: {
-      turnkeySubOrgId: subOrgId,
-      email,
-      did,
-      displayName: displayName ?? nameFallback,
-    },
-  };
+  const raw = readFileSync(resolve(process.cwd(), fixturePath), "utf8");
+  return JSON.parse(raw) as PerfFixture;
 }
 
-async function seedAuthSession(page: Page, seeded: SeededAuthState) {
-  const serialized = JSON.stringify(seeded);
-  await page.addInitScript((payload) => {
-    localStorage.setItem("lisa-auth-state", payload);
-    const parsed = JSON.parse(payload);
-    localStorage.setItem("lisa-jwt-token", parsed.token);
-  }, serialized);
-}
-
-async function resetAndCreateIdentity(page: Page, name: string) {
-  const seededAuthState = getSeededAuthState(name);
+async function openAuthenticatedApp(page: Page, displayName: string) {
+  await seedAuthSession(page, {
+    displayName,
+    email: `e2e+${displayName.toLowerCase().replace(/\s+/g, "-")}@poo.app`,
+  });
 
   await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
+  await page.goto("/app");
 
-  if (seededAuthState) {
-    await seedAuthSession(page, seededAuthState);
-    await page.reload();
-
-    const isInApp = (await page.getByRole("heading", { name: "Your Lists" }).count()) > 0
-      || /\/app/.test(page.url());
-
-    if (isInApp) {
-      await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 15000 });
-      return { ready: true as const };
-    }
-  }
-
-  await page.reload();
-
-  const hasNameField = (await page.getByLabel("Your name").count()) > 0;
-  if (!hasNameField) {
+  const inAppShell = (await page.getByRole("heading", { name: /your lists/i }).count()) > 0;
+  if (!inAppShell) {
     return {
       ready: false as const,
-      reason: "Identity bootstrap UI is unavailable (OTP auth gate). Set E2E_AUTH_TOKEN/E2E_AUTH_EMAIL/E2E_AUTH_SUBORG_ID/E2E_AUTH_DID to run seeded Phase 1 acceptance tests.",
+      reason: "Authenticated app shell unavailable in this environment (likely backend auth mismatch).",
     };
   }
 
-  await page.getByLabel("Your name").fill(name);
-  await page.getByRole("button", { name: "Get Started" }).click();
-  await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole("heading", { name: /your lists/i })).toBeVisible({ timeout: 15000 });
   return { ready: true as const };
 }
 
@@ -99,13 +60,16 @@ function p95(values: number[]) {
 }
 
 test.describe("Mission Control Phase 1 acceptance", () => {
+  const perfFixture = loadPerfFixture();
+
   test("baseline harness boots app shell", async ({ page }) => {
+    await seedAuthSession(page);
     await page.goto("/");
-    await expect(page).toHaveURL(/\//);
+    await expect(page).toHaveURL(/\/(app)?/);
   });
 
   test("AC1 assignee round-trip: assignee updates propagate to all active clients in <1s", async ({ page }) => {
-    const setup = await resetAndCreateIdentity(page, "MC Assignee User");
+    const setup = await openAuthenticatedApp(page, "MC Assignee User");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(page, "MC Assignee List");
     await createItem(page, "MC Assigned Item");
@@ -123,7 +87,7 @@ test.describe("Mission Control Phase 1 acceptance", () => {
   });
 
   test("AC2 activity log completeness: created|completed|assigned|commented|edited each writes exactly one activity row", async ({ page }) => {
-    const setup = await resetAndCreateIdentity(page, "MC Activity User");
+    const setup = await openAuthenticatedApp(page, "MC Activity User");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(page, "MC Activity List");
     await createItem(page, "Activity Item");
@@ -156,12 +120,13 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     const pageA = await contextA.newPage();
     const pageB = await contextB.newPage();
 
-    const setup = await resetAndCreateIdentity(pageA, "MC Presence A");
+    await seedAuthSession(pageA, { displayName: "MC Presence A" });
+    await seedAuthSession(pageB, { displayName: "MC Presence B" });
+
+    const setup = await openAuthenticatedApp(pageA, "MC Presence A");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(pageA, "MC Presence List");
 
-    // Current app keeps identity local per browser context; true multi-user presence
-    // validation requires shared fixture auth/session setup.
     const hasPresenceUi = (await pageA.getByText(/online|active now|viewing/i).count()) > 0;
     test.skip(!hasPresenceUi, "Presence indicators are not yet wired in e2e environment.");
 
@@ -177,7 +142,7 @@ test.describe("Mission Control Phase 1 acceptance", () => {
   });
 
   test("AC4 no-regression core UX: non-collab user flow has no required new fields and no agent UI by default", async ({ page }) => {
-    const setup = await resetAndCreateIdentity(page, "MC No Regression");
+    const setup = await openAuthenticatedApp(page, "MC No Regression");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(page, "MC Core Flow");
     await createItem(page, "Core Item");
@@ -192,15 +157,21 @@ test.describe("Mission Control Phase 1 acceptance", () => {
   });
 
   test("AC5a perf floor harness: P95 list open <500ms", async ({ page }) => {
-    const setup = await resetAndCreateIdentity(page, "MC Perf User");
+    const setup = await openAuthenticatedApp(page, "MC Perf User");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
 
     const samples: number[] = [];
-    const runs = 6;
+    const runs = perfFixture.listOpenRuns ?? 6;
+    const thresholdMs = perfFixture.listOpenP95Ms ?? 500;
+    const itemsPerList = perfFixture.itemsPerList ?? 1;
 
     for (let i = 0; i < runs; i += 1) {
       const listName = `Perf List ${i + 1}`;
       await createList(page, listName);
+
+      for (let j = 0; j < itemsPerList; j += 1) {
+        await createItem(page, `Perf Item ${i + 1}.${j + 1}`);
+      }
 
       await page.getByRole("link", { name: "Back to lists" }).click();
       await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 10000 });
@@ -214,12 +185,12 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     }
 
     const listOpenP95 = p95(samples);
-    test.info().annotations.push({ type: "metric", description: `list_open_p95_ms=${listOpenP95};samples=${samples.join(",")}` });
-    expect(listOpenP95).toBeLessThan(500);
+    test.info().annotations.push({ type: "metric", description: `list_open_p95_ms=${listOpenP95};samples=${samples.join(",")};fixturePath=${process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none"}` });
+    expect(listOpenP95).toBeLessThan(thresholdMs);
   });
 
   test("AC5b perf floor harness: activity panel load P95 <700ms", async ({ page }) => {
-    const setup = await resetAndCreateIdentity(page, "MC Perf Activity User");
+    const setup = await openAuthenticatedApp(page, "MC Perf Activity User");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(page, "MC Perf Activity List");
 
@@ -227,7 +198,10 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     test.skip(!hasActivityPanel, "Activity panel UI is not in current build; harness reserved for Phase 1 completion.");
 
     const samples: number[] = [];
-    for (let i = 0; i < 6; i += 1) {
+    const runs = perfFixture.activityOpenRuns ?? 6;
+    const thresholdMs = perfFixture.activityOpenP95Ms ?? 700;
+
+    for (let i = 0; i < runs; i += 1) {
       const t0 = Date.now();
       await page.getByRole("button", { name: /activity/i }).first().click();
       await expect(page.getByText(/activity/i)).toBeVisible({ timeout: 5000 });
@@ -236,7 +210,7 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     }
 
     const activityOpenP95 = p95(samples);
-    test.info().annotations.push({ type: "metric", description: `activity_open_p95_ms=${activityOpenP95};samples=${samples.join(",")}` });
-    expect(activityOpenP95).toBeLessThan(700);
+    test.info().annotations.push({ type: "metric", description: `activity_open_p95_ms=${activityOpenP95};samples=${samples.join(",")};fixturePath=${process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none"}` });
+    expect(activityOpenP95).toBeLessThan(thresholdMs);
   });
 });
