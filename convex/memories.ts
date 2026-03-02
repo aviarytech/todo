@@ -157,7 +157,16 @@ export const upsertOpenClawMemory = mutation({
 });
 
 export const listMemories = query({
-  args: { ownerDid: v.string(), query: v.optional(v.string()), tag: v.optional(v.string()), source: v.optional(memorySource), limit: v.optional(v.number()), syncStatus: v.optional(v.union(v.literal("synced"), v.literal("conflict"), v.literal("pending"))) },
+  args: {
+    ownerDid: v.string(),
+    query: v.optional(v.string()),
+    tag: v.optional(v.string()),
+    source: v.optional(memorySource),
+    limit: v.optional(v.number()),
+    syncStatus: v.optional(v.union(v.literal("synced"), v.literal("conflict"), v.literal("pending"))),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const limit = Math.min(Math.max(args.limit ?? 50, 1), 100);
     const queryText = args.query?.trim();
@@ -176,11 +185,61 @@ export const listMemories = query({
     const memories = rows
       .filter((m) => (tag ? (m.tags ?? []).includes(tag) : true))
       .filter((m) => (args.syncStatus ? m.syncStatus === args.syncStatus : true))
+      .filter((m) => (args.startDate !== undefined ? m.updatedAt >= args.startDate : true))
+      .filter((m) => (args.endDate !== undefined ? m.updatedAt <= args.endDate : true))
       .slice(0, limit);
     const availableTags = Array.from(new Set(memories.flatMap((m) => m.tags ?? []))).sort((a, b) => a.localeCompare(b));
     const conflictCount = rows.filter((m) => m.syncStatus === "conflict").length;
     return { memories, availableTags, conflictCount };
   }
+});
+
+export const updateMemory = mutation({
+  args: {
+    memoryId: v.id("memories"),
+    ownerDid: v.string(),
+    authorDid: v.string(),
+    title: v.optional(v.string()),
+    content: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const memory = await ctx.db.get(args.memoryId);
+    if (!memory || memory.ownerDid !== args.ownerDid) throw new Error("Memory not found");
+
+    const nextTitle = args.title !== undefined ? args.title.trim() : memory.title;
+    const nextContent = args.content !== undefined ? args.content.trim() : memory.content;
+    if (!nextTitle || !nextContent) throw new Error("title and content are required");
+
+    const nextTags = args.tags !== undefined ? normalizeTags(args.tags) : memory.tags;
+    const now = Date.now();
+
+    await ctx.db.patch(args.memoryId, {
+      title: nextTitle,
+      content: nextContent,
+      tags: nextTags,
+      authorDid: args.authorDid,
+      searchText: computeSearchText(nextTitle, nextContent, nextTags),
+      syncStatus: "pending",
+      conflictNote: undefined,
+      updatedAt: now,
+    });
+
+    return { ok: true, id: args.memoryId, updatedAt: now };
+  },
+});
+
+export const deleteMemory = mutation({
+  args: {
+    memoryId: v.id("memories"),
+    ownerDid: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const memory = await ctx.db.get(args.memoryId);
+    if (!memory || memory.ownerDid !== args.ownerDid) throw new Error("Memory not found");
+    await ctx.db.delete(args.memoryId);
+    return { ok: true, id: args.memoryId };
+  },
 });
 
 export const listMemoryChangesSince = query({

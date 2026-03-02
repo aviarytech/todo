@@ -595,14 +595,14 @@ Required endpoints/events:
 - Tenant isolation checks on all run/task/memory reads and writes
 
 ## 13. Phase 2 Execution Checklist (engineering)
-- [ ] Implement operator control endpoints + UI actions
-- [ ] Implement run-state machine + heartbeat monitor worker
-- [ ] Extend `missionRuns` schema with required fields
-- [ ] Add failure taxonomy + retry/escalation handlers
-- [ ] Add scoped API key middleware + rotation flow
-- [ ] Add artifact retention job + admin policy setting
-- [ ] Ship dashboards for run health (success rate, intervention rate, timeout rate)
-- [ ] Run production readiness drill (pause/kill/escalation/test alerts)
+- [x] Implement operator control endpoints + UI actions *(API shipped; UI surfaced in Team Dashboard operator controls)*
+- [x] Implement run-state machine + heartbeat monitor worker
+- [x] Extend `missionRuns` schema with required fields
+- [x] Add failure taxonomy + retry/escalation handlers
+- [x] Add scoped API key middleware + rotation flow
+- [x] Add artifact retention job + admin policy setting
+- [x] Ship dashboards for run health (success rate, intervention rate, timeout rate)
+- [x] Run production readiness drill (pause/kill/escalation/test alerts) *(scripted drill path + dry-run/live modes in `scripts/mission-control-readiness-drill.mjs`)*
 
 ---
 
