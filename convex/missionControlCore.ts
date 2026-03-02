@@ -131,6 +131,205 @@ export const touchApiKeyUsage = mutation({
   },
 });
 
+export const createRotatedApiKey = mutation({
+  args: {
+    ownerDid: v.string(),
+    rotatedByDid: v.string(),
+    oldKeyId: v.id("apiKeys"),
+    label: v.string(),
+    keyPrefix: v.string(),
+    keyHash: v.string(),
+    scopes: v.array(v.string()),
+    agentProfileId: v.optional(v.id("agentProfiles")),
+    expiresAt: v.optional(v.number()),
+    graceEndsAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const oldKey = await ctx.db.get(args.oldKeyId);
+    if (!oldKey || oldKey.ownerDid !== args.ownerDid) throw new Error("API key not found");
+    if (oldKey.revokedAt) throw new Error("Cannot rotate revoked API key");
+
+    const newKeyId = await ctx.db.insert("apiKeys", {
+      ownerDid: args.ownerDid,
+      label: args.label,
+      keyPrefix: args.keyPrefix,
+      keyHash: args.keyHash,
+      scopes: args.scopes,
+      agentProfileId: args.agentProfileId,
+      rotatedFromKeyId: oldKey._id,
+      createdAt: now,
+      expiresAt: args.expiresAt,
+    });
+
+    await ctx.db.patch(oldKey._id, {
+      rotatedToKeyId: newKeyId,
+      rotationGraceEndsAt: args.graceEndsAt,
+    });
+
+    const rotationEventId = await ctx.db.insert("apiKeyRotationEvents", {
+      ownerDid: args.ownerDid,
+      oldKeyId: oldKey._id,
+      newKeyId,
+      rotatedByDid: args.rotatedByDid,
+      graceEndsAt: args.graceEndsAt,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { newKeyId, rotationEventId };
+  },
+});
+
+export const finalizeApiKeyRotation = mutation({
+  args: { ownerDid: v.string(), oldKeyId: v.id("apiKeys") },
+  handler: async (ctx, args) => {
+    const oldKey = await ctx.db.get(args.oldKeyId);
+    if (!oldKey || oldKey.ownerDid !== args.ownerDid) throw new Error("API key not found");
+    if (!oldKey.rotatedToKeyId) throw new Error("API key is not in rotation");
+
+    const now = Date.now();
+    await ctx.db.patch(oldKey._id, { revokedAt: now });
+
+    const event = await ctx.db
+      .query("apiKeyRotationEvents")
+      .withIndex("by_old_key", (q) => q.eq("oldKeyId", oldKey._id))
+      .first();
+
+    if (event) {
+      await ctx.db.patch(event._id, { oldKeyRevokedAt: now, updatedAt: now });
+    }
+
+    return { ok: true, revokedAt: now };
+  },
+});
+
+export const listApiKeyRotationEvents = query({
+  args: { ownerDid: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = Math.min(Math.max(args.limit ?? 20, 1), 100);
+    return await ctx.db
+      .query("apiKeyRotationEvents")
+      .withIndex("by_owner_created", (q) => q.eq("ownerDid", args.ownerDid))
+      .order("desc")
+      .take(limit);
+  },
+});
+
+const DEFAULT_ARTIFACT_RETENTION_DAYS = 30;
+
+export const getMissionControlSettings = query({
+  args: { ownerDid: v.string() },
+  handler: async (ctx, args) => {
+    const settings = await ctx.db
+      .query("missionControlSettings")
+      .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
+      .first();
+
+    return settings ?? { artifactRetentionDays: DEFAULT_ARTIFACT_RETENTION_DAYS };
+  },
+});
+
+export const upsertMissionControlSettings = mutation({
+  args: { ownerDid: v.string(), updatedByDid: v.string(), artifactRetentionDays: v.number() },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const artifactRetentionDays = Math.min(Math.max(Math.floor(args.artifactRetentionDays), 1), 365);
+    const existing = await ctx.db
+      .query("missionControlSettings")
+      .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { artifactRetentionDays, updatedByDid: args.updatedByDid, updatedAt: now });
+      return { ok: true, artifactRetentionDays };
+    }
+
+    await ctx.db.insert("missionControlSettings", {
+      ownerDid: args.ownerDid,
+      artifactRetentionDays,
+      updatedByDid: args.updatedByDid,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { ok: true, artifactRetentionDays };
+  },
+});
+
+export const applyArtifactRetention = mutation({
+  args: {
+    ownerDid: v.string(),
+    actorDid: v.string(),
+    retentionDays: v.optional(v.number()),
+    dryRun: v.optional(v.boolean()),
+    maxRuns: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const settings = await ctx.db
+      .query("missionControlSettings")
+      .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
+      .first();
+
+    const retentionDays = Math.min(Math.max(Math.floor(args.retentionDays ?? settings?.artifactRetentionDays ?? DEFAULT_ARTIFACT_RETENTION_DAYS), 1), 365);
+    const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+    const dryRun = args.dryRun ?? true;
+    const maxRuns = Math.min(Math.max(args.maxRuns ?? 250, 1), 1000);
+
+    const runs = await ctx.db
+      .query("missionRuns")
+      .withIndex("by_owner_created", (q) => q.eq("ownerDid", args.ownerDid))
+      .order("desc")
+      .take(maxRuns);
+
+    let runsTouched = 0;
+    let deletedArtifacts = 0;
+    const now = Date.now();
+
+    for (const run of runs) {
+      const artifacts = run.artifactRefs ?? [];
+      const staleArtifacts = artifacts.filter((a) => a.createdAt < cutoff);
+      if (!staleArtifacts.length) continue;
+
+      runsTouched += 1;
+      deletedArtifacts += staleArtifacts.length;
+
+      await ctx.db.insert("missionArtifactDeletionLogs", {
+        ownerDid: args.ownerDid,
+        runId: run._id,
+        deletedCount: staleArtifacts.length,
+        dryRun,
+        retentionCutoffAt: cutoff,
+        actorDid: args.actorDid,
+        trigger: "operator",
+        deletedArtifacts: staleArtifacts,
+        createdAt: now,
+      });
+
+      if (!dryRun) {
+        await ctx.db.patch(run._id, {
+          artifactRefs: artifacts.filter((a) => a.createdAt >= cutoff),
+          updatedAt: now,
+        });
+      }
+    }
+
+    return { ok: true, dryRun, retentionDays, retentionCutoffAt: cutoff, runsScanned: runs.length, runsTouched, deletedArtifacts };
+  },
+});
+
+export const listArtifactDeletionLogs = query({
+  args: { ownerDid: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
+    return await ctx.db
+      .query("missionArtifactDeletionLogs")
+      .withIndex("by_owner_created", (q) => q.eq("ownerDid", args.ownerDid))
+      .order("desc")
+      .take(limit);
+  },
+});
+
 export const listTasksForList = query({
   args: { listId: v.id("lists"), userDid: v.string(), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
