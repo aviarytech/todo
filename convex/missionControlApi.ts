@@ -100,12 +100,6 @@ function parseRunId(pathname: string): string | null {
   return match ? match[1] : null;
 }
 
-function parseOptionalNumber(value: string | null): number | undefined {
-  if (!value) return undefined;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : undefined;
-}
-
 function parseScheduleEntryId(pathname: string): string | null {
   const match = pathname.match(/\/api\/v1\/schedules\/([a-z0-9]+)/);
   return match ? match[1] : null;
