@@ -1,7 +1,7 @@
 {
   "sprintDate": "2026-02-23",
   "block": "5/5",
-  "updatedAt": "2026-02-23T14:00:00Z",
+  "updatedAt": "2026-03-02T07:35:00Z",
   "pooAppAgentApiTracking": {
     "attempted": true,
     "status": "blocked",
@@ -21,7 +21,9 @@
       "title": "Block 2 acceptance test implementation pass (AC1-AC5 harness + gating)",
       "status": "done",
       "artifacts": [
-        "e2e/mission-control-phase1.spec.ts"
+        "e2e/mission-control-phase1.spec.ts",
+        "e2e/fixtures/auth.ts",
+        "e2e/fixtures/mission-control.production.json"
       ]
     },
     {
@@ -30,7 +32,9 @@
       "status": "done",
       "artifacts": [
         "docs/mission-control/phase1-observability-dashboard-plan.md",
-        "docs/mission-control/phase1-observability-metrics.json"
+        "docs/mission-control/phase1-observability-metrics.json",
+        "docs/mission-control/phase1-observability-alert-routing.json",
+        "scripts/validate-mission-control-observability.mjs"
       ]
     },
     {
@@ -42,10 +46,8 @@
     {
       "id": "MC-P1-PR-OPEN",
       "title": "Open/update PR with overnight mission control scope summary",
-      "status": "done",
-      "artifacts": [
-        "https://github.com/aviarytech/todo/pull/139"
-      ]
+      "status": "pending",
+      "artifacts": []
     }
   ],
   "validation": {
@@ -56,15 +58,19 @@
       "skipped": 6,
       "failed": 0
     },
+    "observabilityValidation": {
+      "command": "npm run mission-control:validate-observability",
+      "passed": true
+    },
     "notes": [
-      "Installed Playwright Chromium for local runs (npx playwright install chromium).",
-      "AC1-AC5 harness implemented; ACs requiring authenticated collab/session features are intentionally gated/skipped until seeded OTP auth + Phase 1 UI surfaces are available."
+      "Seeded local auth fixture added for OTP-gated routes; baseline harness remains runnable.",
+      "AC1/AC2/AC3/AC5b remain conditionally skipped when assignee/activity/presence UI surfaces are absent in current build.",
+      "Perf harness supports production-sized fixture path via MISSION_CONTROL_FIXTURE_PATH."
     ]
   },
   "next": [
-    "Provision seeded e2e auth/session fixture to unblock AC1/AC2/AC3/AC5b execution",
     "Wire assignee/activity/presence UI+backend then remove dynamic skips",
-    "Add production-sized fixture seeding path and re-enable strict perf assertions",
-    "Provision dashboard + alerts once telemetry backend is selected"
+    "Run production-sized perf profile: MISSION_CONTROL_FIXTURE_PATH=e2e/fixtures/mission-control.production.json npm run test:e2e -- e2e/mission-control-phase1.spec.ts",
+    "Open PR with this P0-3/P0-4 delta and CI artifacts"
   ]
 }

@@ -21,9 +21,11 @@ function pass(message) {
 
 const metricsPath = "docs/mission-control/phase1-observability-metrics.json";
 const dashboardPath = "docs/mission-control/phase1-observability-dashboard-config.json";
+const routingPath = "docs/mission-control/phase1-observability-alert-routing.json";
 
 const metrics = readJson(metricsPath);
 const dashboard = readJson(dashboardPath);
+const routing = readJson(routingPath);
 
 if (!Array.isArray(metrics.metrics) || metrics.metrics.length === 0) {
   fail(`${metricsPath} must contain a non-empty metrics array`);
@@ -32,6 +34,11 @@ if (!Array.isArray(metrics.metrics) || metrics.metrics.length === 0) {
 
 if (!Array.isArray(dashboard.dashboard?.panels) || dashboard.dashboard.panels.length === 0) {
   fail(`${dashboardPath} must contain dashboard.panels`);
+  process.exit(process.exitCode ?? 1);
+}
+
+if (!Array.isArray(routing.alerts) || routing.alerts.length === 0) {
+  fail(`${routingPath} must contain alerts`);
   process.exit(process.exitCode ?? 1);
 }
 
@@ -63,9 +70,11 @@ if (missingFromCatalog.length > 0) {
 
 const metricAlertNames = new Set((metrics.alerts ?? []).map((a) => a.name));
 const dashboardAlertNames = new Set((dashboard.alerts ?? []).map((a) => a.name));
+const routingAlertNames = new Set((routing.alerts ?? []).map((a) => a.name));
 
 const missingInDashboard = [...metricAlertNames].filter((name) => !dashboardAlertNames.has(name));
 const missingInMetrics = [...dashboardAlertNames].filter((name) => !metricAlertNames.has(name));
+const missingInRouting = [...metricAlertNames].filter((name) => !routingAlertNames.has(name));
 
 if (missingInDashboard.length > 0) {
   fail(`Alerts declared in metrics but missing in dashboard config: ${missingInDashboard.join(", ")}`);
@@ -73,9 +82,35 @@ if (missingInDashboard.length > 0) {
 if (missingInMetrics.length > 0) {
   fail(`Alerts declared in dashboard config but missing in metrics catalog: ${missingInMetrics.join(", ")}`);
 }
-if (missingInDashboard.length === 0 && missingInMetrics.length === 0) {
-  pass(`Alert definitions are in sync (${dashboardAlertNames.size} total)`);
+if (missingInRouting.length > 0) {
+  fail(`Alerts declared in metrics but missing in routing config: ${missingInRouting.join(", ")}`);
 }
+if (missingInDashboard.length === 0 && missingInMetrics.length === 0 && missingInRouting.length === 0) {
+  pass(`Alert definitions are in sync (${metricAlertNames.size} total)`);
+}
+
+const placeholderTokens = ["internal-dev-channel", "on-call-channel", "pager"];
+const routes = (dashboard.alerts ?? []).flatMap((a) => [
+  ...(a.route?.staging ?? []),
+  ...(a.route?.production ?? []),
+]);
+
+const hasPlaceholder = routes.some((r) => placeholderTokens.includes(String(r)));
+if (hasPlaceholder) {
+  fail("Dashboard alert routes still contain placeholder values");
+} else {
+  pass("Dashboard alert routes are concrete (non-placeholder)");
+}
+
+for (const alert of routing.alerts ?? []) {
+  if (!Array.isArray(alert.route?.staging) || alert.route.staging.length === 0) {
+    fail(`Routing alert ${alert.name} missing staging route`);
+  }
+  if (!Array.isArray(alert.route?.production) || alert.route.production.length === 0) {
+    fail(`Routing alert ${alert.name} missing production route`);
+  }
+}
+pass("Routing config includes staging and production targets for each alert");
 
 if (process.exitCode && process.exitCode !== 0) {
   console.error("Mission Control observability validation failed.");

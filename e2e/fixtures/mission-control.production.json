@@ -1,0 +1,7 @@
+{
+  "listOpenRuns": 10,
+  "listOpenP95Ms": 500,
+  "activityOpenRuns": 10,
+  "activityOpenP95Ms": 700,
+  "itemsPerList": 50
+}

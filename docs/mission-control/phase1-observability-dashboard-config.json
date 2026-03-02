@@ -49,8 +49,8 @@
       "condition": "(sum(rate(mutation_error_total[10m])) / clamp_min(sum(rate(mutation_total[10m])), 1)) > 0.02",
       "severity": "high",
       "route": {
-        "staging": ["internal-dev-channel"],
-        "production": ["on-call-channel", "pager"]
+        "staging": ["slack://aviary-mission-control-dev"],
+        "production": ["slack://aviary-oncall-mission-control", "pagerduty://mission-control-primary"]
       }
     },
     {
@@ -58,8 +58,8 @@
       "condition": "histogram_quantile(0.95, rate(subscription_latency_ms_bucket[10m])) > 1200",
       "severity": "high",
       "route": {
-        "staging": ["internal-dev-channel"],
-        "production": ["on-call-channel", "pager"]
+        "staging": ["slack://aviary-mission-control-dev"],
+        "production": ["slack://aviary-oncall-mission-control", "pagerduty://mission-control-primary"]
       }
     },
     {
@@ -67,8 +67,8 @@
       "condition": "(max_over_time(invalid_assignee_reference_total[15m]) + max_over_time(duplicate_activity_event_total[15m]) + max_over_time(out_of_order_activity_timestamps_total[15m])) > 0",
       "severity": "critical",
       "route": {
-        "staging": ["internal-dev-channel"],
-        "production": ["on-call-channel", "pager"]
+        "staging": ["slack://aviary-mission-control-dev"],
+        "production": ["slack://aviary-oncall-mission-control", "pagerduty://mission-control-primary"]
       }
     }
   ]
