@@ -13,6 +13,6 @@
    - [ ] pause path tested
    - [ ] kill path tested
    - [ ] escalation path tested
-   - [x] alerts routed to Slack + PagerDuty (`npm run mission-control:validate-observability`)
+   - [x] alerts routed to Slack + PagerDuty (`npm run mission-control:test-readiness-drill` and `npm run mission-control:readiness-drill` preflight now enforce this)
 
 Stop rollout if any run-control path fails or critical stale agents remain unresolved.

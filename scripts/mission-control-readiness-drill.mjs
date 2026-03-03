@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   validateApiKeyInventoryPayload,
   validateFinalizeRotationResponse,
@@ -85,6 +87,43 @@ export function selectRunControlTargets(runsPayload) {
     primaryRunId: runs[0]?._id ?? null,
     killRunId: runs[1]?._id ?? null,
   };
+}
+
+function routeScheme(route) {
+  return String(route ?? "").trim().split("://")[0];
+}
+
+function routeListHasScheme(routes, scheme) {
+  return (routes ?? []).some((route) => routeScheme(route) === scheme);
+}
+
+export function validateAlertRoutingReadiness(routingPayload) {
+  const errors = [];
+  const productionChannel = String(routingPayload?.routing?.production?.channel ?? "").trim();
+  const productionPager = String(routingPayload?.routing?.production?.pager ?? "").trim();
+
+  if (!productionChannel || routeScheme(productionChannel) !== "slack") {
+    errors.push("routing.production.channel must be a slack:// endpoint");
+  }
+
+  if (!productionPager || routeScheme(productionPager) !== "pagerduty") {
+    errors.push("routing.production.pager must be a pagerduty:// endpoint");
+  }
+
+  for (const alert of routingPayload?.alerts ?? []) {
+    const severity = String(alert?.severity ?? "").toLowerCase();
+    if (severity !== "high" && severity !== "critical") continue;
+
+    const productionRoutes = alert?.route?.production ?? [];
+    if (!routeListHasScheme(productionRoutes, "slack")) {
+      errors.push(`alert ${alert.name} (${severity}) missing slack production route`);
+    }
+    if (!routeListHasScheme(productionRoutes, "pagerduty")) {
+      errors.push(`alert ${alert.name} (${severity}) missing pagerduty production route`);
+    }
+  }
+
+  return errors;
 }
 
 async function checkApiKeyRotationVisibility() {
@@ -184,6 +223,14 @@ async function cleanupCreatedKeys() {
 async function main() {
   console.log("Mission Control readiness drill");
   console.log(`Mode: ${dryRun ? "dry-run" : "live"}`);
+
+  const routingPath = resolve(process.cwd(), "docs/mission-control/phase1-observability-alert-routing.json");
+  const routingPayload = JSON.parse(readFileSync(routingPath, "utf8"));
+  const routingErrors = validateAlertRoutingReadiness(routingPayload);
+  if (routingErrors.length > 0) {
+    fail(`alert routing readiness failed: ${routingErrors.join("; ")}`);
+  }
+  ok("alert routing includes Slack + PagerDuty for high/critical production alerts");
 
   const dashboard = await call("/api/v1/dashboard/runs", { authMode: "auto" });
   if (dashboard.skipped) {
