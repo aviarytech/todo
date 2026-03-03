@@ -68,8 +68,10 @@ export const ListItem = memo(function ListItem({
   const checkItemMutation = useMutation(api.items.checkItem);
   const uncheckItemMutation = useMutation(api.items.uncheckItem);
   const removeItem = useMutation(api.items.removeItem);
+  const updateItemMutation = useMutation(api.items.updateItem);
 
   const [isUpdating, setIsUpdating] = useState(false);
+  const [assignFeedback, setAssignFeedback] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const itemRef = useRef<HTMLDivElement>(null);
   const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,6 +181,31 @@ export const ListItem = memo(function ListItem({
     } catch (error) {
       console.error('Share failed:', error);
       haptic('error');
+    }
+  };
+
+  const handleQuickAssign = async () => {
+    if (!canUserEdit || isUpdating) return;
+
+    haptic("light");
+    setIsUpdating(true);
+
+    try {
+      await updateItemMutation({
+        itemId: item._id,
+        userDid,
+        legacyDid,
+        assigneeDid: userDid,
+      });
+      setAssignFeedback("Assigned");
+      window.setTimeout(() => setAssignFeedback(null), 1600);
+    } catch (err) {
+      console.error("Failed to assign item:", err);
+      setAssignFeedback("Assign failed");
+      window.setTimeout(() => setAssignFeedback(null), 2000);
+      haptic("error");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -425,6 +452,27 @@ export const ListItem = memo(function ListItem({
           )}
         </div>
       </div>
+
+      {/* Quick assign control */}
+      {!isSelectMode && canUserEdit && !assigneeDid && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleQuickAssign();
+          }}
+          disabled={isUpdating}
+          className="flex-shrink-0 h-7 px-2 text-[10px] font-medium rounded-md border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all disabled:opacity-50"
+          aria-label="Assign"
+        >
+          Assign
+        </button>
+      )}
+
+      {assignFeedback && (
+        <span className="text-[10px] text-green-600 dark:text-green-400" aria-live="polite">
+          {assignFeedback}
+        </span>
+      )}
 
       {/* Share button - only show if not in select mode */}
       {!isSelectMode && (

@@ -1,7 +1,7 @@
 {
   "sprintDate": "2026-02-23",
   "block": "5/5",
-  "updatedAt": "2026-03-02T07:35:00Z",
+  "updatedAt": "2026-03-03T08:05:00Z",
   "pooAppAgentApiTracking": {
     "attempted": true,
     "status": "blocked",
@@ -46,16 +46,27 @@
     {
       "id": "MC-P1-PR-OPEN",
       "title": "Open/update PR with overnight mission control scope summary",
-      "status": "pending",
-      "artifacts": []
+      "status": "done",
+      "artifacts": [
+        "https://github.com/aviarytech/todo/pull/153"
+      ]
+    },
+    {
+      "id": "MC-P1-AC3-PRESENCE-WIRE",
+      "title": "Wire list-level presence indicator + heartbeat and unskip AC3 feature gate",
+      "status": "done",
+      "artifacts": [
+        "src/pages/ListView.tsx",
+        "e2e/mission-control-phase1.spec.ts"
+      ]
     }
   ],
   "validation": {
     "playwrightSpecRun": "partial",
-    "command": "npm run test:e2e -- e2e/mission-control-phase1.spec.ts",
+    "command": "npm run test:e2e -- e2e/mission-control-phase1.spec.ts -g \"AC3 presence freshness\"",
     "result": {
-      "passed": 1,
-      "skipped": 6,
+      "passed": 0,
+      "skipped": 1,
       "failed": 0
     },
     "observabilityValidation": {
@@ -63,14 +74,15 @@
       "passed": true
     },
     "notes": [
-      "Seeded local auth fixture added for OTP-gated routes; baseline harness remains runnable.",
-      "AC1/AC2/AC3/AC5b remain conditionally skipped when assignee/activity/presence UI surfaces are absent in current build.",
-      "Perf harness supports production-sized fixture path via MISSION_CONTROL_FIXTURE_PATH."
+      "Added quick Assign action in list item UI wired to items.updateItem(assigneeDid=userDid).",
+      "Removed AC1 feature-availability dynamic skip; AC1 now asserts Assign control visibility.",
+      "Remaining AC1 skip is environment readiness gate (authenticated app shell availability).",
+      "AC3 feature dynamic skip removed; scenario still environment-gated on authenticated app-shell readiness."
     ]
   },
   "next": [
-    "Wire assignee/activity/presence UI+backend then remove dynamic skips",
-    "Run production-sized perf profile: MISSION_CONTROL_FIXTURE_PATH=e2e/fixtures/mission-control.production.json npm run test:e2e -- e2e/mission-control-phase1.spec.ts",
-    "Open PR with this P0-3/P0-4 delta and CI artifacts"
+    "Acquire stable authenticated e2e backend session so AC3 can execute instead of setup-skip",
+    "Run full mission-control-phase1 spec on production-sized fixture to capture AC5 metrics without skips",
+    "Close MC-P1-TRACKING-AUTH blocker once agent API credentials/session are provisioned"
   ]
 }
