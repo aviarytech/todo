@@ -1,7 +1,7 @@
 {
   "sprintDate": "2026-02-23",
   "block": "5/5",
-  "updatedAt": "2026-03-02T07:35:00Z",
+  "updatedAt": "2026-03-03T07:30:00Z",
   "pooAppAgentApiTracking": {
     "attempted": true,
     "status": "blocked",
@@ -46,16 +46,18 @@
     {
       "id": "MC-P1-PR-OPEN",
       "title": "Open/update PR with overnight mission control scope summary",
-      "status": "pending",
-      "artifacts": []
+      "status": "done",
+      "artifacts": [
+        "https://github.com/aviarytech/todo/pull/153"
+      ]
     }
   ],
   "validation": {
     "playwrightSpecRun": "partial",
-    "command": "npm run test:e2e -- e2e/mission-control-phase1.spec.ts",
+    "command": "npm run test:e2e -- e2e/mission-control-phase1.spec.ts -g \"baseline harness boots app shell|AC1 assignee round-trip\"",
     "result": {
       "passed": 1,
-      "skipped": 6,
+      "skipped": 1,
       "failed": 0
     },
     "observabilityValidation": {
@@ -63,14 +65,14 @@
       "passed": true
     },
     "notes": [
-      "Seeded local auth fixture added for OTP-gated routes; baseline harness remains runnable.",
-      "AC1/AC2/AC3/AC5b remain conditionally skipped when assignee/activity/presence UI surfaces are absent in current build.",
-      "Perf harness supports production-sized fixture path via MISSION_CONTROL_FIXTURE_PATH."
+      "Added quick Assign action in list item UI wired to items.updateItem(assigneeDid=userDid).",
+      "Removed AC1 feature-availability dynamic skip; AC1 now asserts Assign control visibility.",
+      "Remaining AC1 skip is environment readiness gate (authenticated app shell availability)."
     ]
   },
   "next": [
-    "Wire assignee/activity/presence UI+backend then remove dynamic skips",
-    "Run production-sized perf profile: MISSION_CONTROL_FIXTURE_PATH=e2e/fixtures/mission-control.production.json npm run test:e2e -- e2e/mission-control-phase1.spec.ts",
-    "Open PR with this P0-3/P0-4 delta and CI artifacts"
+    "Wire activity panel trigger/button to remove AC2/AC5b dynamic skips",
+    "Wire explicit list-level presence indicator to remove AC3 dynamic skip",
+    "Run production-sized perf profile: MISSION_CONTROL_FIXTURE_PATH=e2e/fixtures/mission-control.production.json npm run test:e2e -- e2e/mission-control-phase1.spec.ts"
   ]
 }
