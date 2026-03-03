@@ -74,10 +74,7 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     await createList(page, "MC Assignee List");
     await createItem(page, "MC Assigned Item");
 
-    const hasAssigneeUi = (await page.getByRole("button", { name: /assign/i }).count()) > 0
-      || (await page.getByText(/assignee/i).count()) > 0;
-
-    test.skip(!hasAssigneeUi, "Assignee UI is not shipped in current build; keeping runnable AC1 harness.");
+    await expect(page.getByRole("button", { name: /assign/i }).first()).toBeVisible({ timeout: 5000 });
 
     const start = Date.now();
     await page.getByRole("button", { name: /assign/i }).first().click();
