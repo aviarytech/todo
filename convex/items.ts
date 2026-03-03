@@ -3,6 +3,7 @@ import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { withMutationObservability } from "./lib/observability";
 import { canUserEditList } from "./lib/permissions";
+import { insertActivityEvent } from "./lib/activityEvents";
 
 /**
  * Creates a Verifiable Credential for item authorship (creation).
@@ -206,6 +207,14 @@ export const addItem = mutation({
     // Store the VC proof on the item
     await ctx.db.patch(itemId, { vcProofs: [authorshipVC] });
 
+    await insertActivityEvent(ctx, {
+      listId: args.listId,
+      itemId,
+      eventType: "created",
+      actorDid: args.createdByDid,
+      createdAt: now,
+    });
+
     return itemId;
   }),
 });
@@ -272,7 +281,31 @@ export const updateItem = mutation({
     if (args.clearAssigneeDid) updates.assigneeDid = undefined;
     if (args.clearGroceryAisle) updates.groceryAisle = undefined;
 
+    const assigneeChanged = Object.prototype.hasOwnProperty.call(updates, "assigneeDid") && updates.assigneeDid !== item.assigneeDid;
+    const editedKeys = Object.keys(updates).filter((key) => key !== "updatedAt" && key !== "assigneeDid");
+
     await ctx.db.patch(args.itemId, updates);
+
+    if (assigneeChanged) {
+      await insertActivityEvent(ctx, {
+        listId: item.listId,
+        itemId: args.itemId,
+        eventType: "assigned",
+        actorDid: args.userDid,
+        assigneeDid: (updates.assigneeDid as string | undefined) ?? undefined,
+      });
+    }
+
+    if (editedKeys.length > 0) {
+      await insertActivityEvent(ctx, {
+        listId: item.listId,
+        itemId: args.itemId,
+        eventType: "edited",
+        actorDid: args.userDid,
+        metadata: { fields: editedKeys },
+      });
+    }
+
     return args.itemId;
   }),
 });
@@ -356,6 +389,14 @@ export const checkItem = mutation({
       checkedAt: args.checkedAt,
       updatedAt: now,
       vcProofs: updatedProofs,
+    });
+
+    await insertActivityEvent(ctx, {
+      listId: item.listId,
+      itemId: args.itemId,
+      eventType: "completed",
+      actorDid: args.checkedByDid,
+      createdAt: args.checkedAt,
     });
 
     // If item has recurrence, create a new unchecked copy with next due date

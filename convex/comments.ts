@@ -7,6 +7,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { insertActivityEvent } from "./lib/activityEvents";
 
 /**
  * Helper to check if a user can view a list.
@@ -116,12 +117,24 @@ export const addComment = mutation({
       throw new Error("Not authorized to comment on this item");
     }
 
-    return await ctx.db.insert("comments", {
+    const createdAt = Date.now();
+    const commentId = await ctx.db.insert("comments", {
       itemId: args.itemId,
       userDid: args.userDid,
       text: args.text.trim(),
-      createdAt: Date.now(),
+      createdAt,
     });
+
+    await insertActivityEvent(ctx, {
+      listId: item.listId,
+      itemId: args.itemId,
+      eventType: "commented",
+      actorDid: args.userDid,
+      metadata: { commentId, textPreview: args.text.trim().slice(0, 120) },
+      createdAt,
+    });
+
+    return commentId;
   },
 });
 

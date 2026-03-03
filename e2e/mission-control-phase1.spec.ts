@@ -116,12 +116,19 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     await page.getByRole("button", { name: /save/i }).click();
 
     await expect(page.getByText("Activity Item Renamed")).toBeVisible({ timeout: 5000 });
-    await openItemDetails(page, "Activity Item Renamed");
+    await page.getByRole("button", { name: "Check item" }).first().click();
+    await expect(page.getByRole("button", { name: "Uncheck item" }).first()).toBeVisible({ timeout: 5000 });
 
-    await expect(page.getByText(/created item/i)).toBeVisible();
-    await expect(page.getByText(/commented: mission-control-comment/i)).toBeVisible();
-    await expect(page.getByText(/mission-control-comment/i)).toBeVisible();
-    await expect(page.getByRole("button", { name: /save/i })).toBeVisible();
+    await page.getByRole("button", { name: /open activity log/i }).click();
+    await expect(page.getByRole("heading", { name: /activity log/i })).toBeVisible();
+
+    await expect(page.getByText(/created “Activity Item”/i)).toHaveCount(1);
+    await expect(page.getByText(/completed “Activity Item Renamed”/i)).toHaveCount(1);
+    await expect(page.getByText(/assigned “Activity Item” to You/i)).toHaveCount(1);
+    await expect(page.getByText(/commented on “Activity Item Renamed”/i)).toHaveCount(1);
+    await expect(page.getByText(/edited “Activity Item Renamed”/i)).toHaveCount(1);
+
+    await page.getByRole("button", { name: /close activity log/i }).click();
   });
 
   test("AC3 presence freshness: presence disappears <= 90s after list close", async ({ browser }) => {

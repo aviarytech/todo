@@ -42,6 +42,7 @@ const ItemDetailsModal = lazy(() => import("../components/ItemDetailsModal").the
 const SaveAsTemplateModal = lazy(() => import("../components/SaveAsTemplateModal").then(m => ({ default: m.SaveAsTemplateModal })));
 const RenameListDialog = lazy(() => import("../components/RenameListDialog").then(m => ({ default: m.RenameListDialog })));
 const ChangeCategoryDialog = lazy(() => import("../components/ChangeCategoryDialog").then(m => ({ default: m.ChangeCategoryDialog })));
+const ActivityLogPanel = lazy(() => import("../components/ActivityLogPanel").then(m => ({ default: m.ActivityLogPanel })));
 
 type ViewMode = "list" | "calendar";
 type ItemViewMode = "alphabetical" | "categorized";
@@ -59,6 +60,7 @@ export function ListView() {
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [isActivityLogOpen, setIsActivityLogOpen] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<Id<"items"> | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<Id<"items"> | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -813,6 +815,20 @@ export function ListView() {
             </button>
           )}
 
+          <button
+            onClick={() => {
+              haptic('light');
+              setIsActivityLogOpen(true);
+            }}
+            className="inline-flex items-center justify-center p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95"
+            aria-label="Open activity log"
+            title="Activity log"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+
           {/* More actions menu - consolidates Publish, Template, Delete, Keyboard shortcuts */}
           <HeaderActionsMenu
             canShare={canUserInvite}
@@ -1243,6 +1259,14 @@ export function ListView() {
             listId={listId}
             listName={list.name}
             onClose={() => setIsSaveTemplateModalOpen(false)}
+          />
+        )}
+
+        {isActivityLogOpen && (
+          <ActivityLogPanel
+            listId={listId}
+            userDid={did}
+            onClose={() => setIsActivityLogOpen(false)}
           />
         )}
 
