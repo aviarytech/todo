@@ -3,6 +3,48 @@ import { seedAuthSession } from "./fixtures/auth";
 import { loadPerfFixtureFromEnv } from "./fixtures/mission-control-perf-fixture";
 import { computeP95, writePerfGateResult } from "./fixtures/mission-control-perf-report";
 
+async function attachFeatureGateDiagnostics(
+  page: Page,
+  testInfo: TestInfo,
+  featureGate: string,
+  reason: string,
+) {
+  const now = Date.now();
+  const diagnostics = {
+    featureGate,
+    reason,
+    url: page.url(),
+    title: await page.title(),
+  };
+
+  await testInfo.attach(`${featureGate}-diagnostics-${now}.json`, {
+    body: Buffer.from(JSON.stringify(diagnostics, null, 2), "utf8"),
+    contentType: "application/json",
+  });
+
+  await testInfo.attach(`${featureGate}-gate-${now}.png`, {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+
+  testInfo.annotations.push({ type: "feature-gated", description: `${featureGate}: ${reason}` });
+}
+
+async function skipWhenFeatureUnavailable(
+  page: Page,
+  testInfo: TestInfo,
+  featureGate: string,
+  available: boolean,
+  reason: string,
+) {
+  if (available) {
+    return;
+  }
+
+  await attachFeatureGateDiagnostics(page, testInfo, featureGate, reason);
+  test.skip(true, reason);
+}
+
 async function attachAuthDiagnostics(page: Page, testInfo: TestInfo, reason: string) {
   const now = Date.now();
 
@@ -166,7 +208,13 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     const hasAssigneeUi = (await page.getByRole("button", { name: /assign/i }).count()) > 0
       || (await page.getByText(/assignee/i).count()) > 0;
 
-    test.skip(!hasAssigneeUi, "Assignee UI is not shipped in current build; keeping runnable AC1 harness.");
+    await skipWhenFeatureUnavailable(
+      page,
+      testInfo,
+      "ac1-assignee-ui",
+      hasAssigneeUi,
+      "Assignee UI is not shipped in current build; keeping runnable AC1 harness.",
+    );
 
     const start = Date.now();
     await page.getByRole("button", { name: /assign/i }).first().click();
@@ -192,7 +240,13 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     }
 
     const hasActivityPanel = (await page.getByRole("button", { name: /activity/i }).count()) > 0;
-    test.skip(!hasActivityPanel, "Activity panel not available yet; AC2 action harness is in place.");
+    await skipWhenFeatureUnavailable(
+      page,
+      testInfo,
+      "ac2-activity-panel",
+      hasActivityPanel,
+      "Activity panel not available yet; AC2 action harness is in place.",
+    );
 
     await page.getByRole("button", { name: /activity/i }).first().click();
 
@@ -219,7 +273,13 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     test.skip(!listWrite.ready, !listWrite.ready ? listWrite.reason : "");
 
     const hasPresenceUi = (await pageA.getByText(/online|active now|viewing/i).count()) > 0;
-    test.skip(!hasPresenceUi, "Presence indicators are not yet wired in e2e environment.");
+    await skipWhenFeatureUnavailable(
+      pageA,
+      testInfo,
+      "ac3-presence-ui",
+      hasPresenceUi,
+      "Presence indicators are not yet wired in e2e environment.",
+    );
 
     await pageB.goto(pageA.url());
     await pageB.close();
@@ -301,7 +361,13 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     test.skip(!listWrite.ready, !listWrite.ready ? listWrite.reason : "");
 
     const hasActivityPanel = (await page.getByRole("button", { name: /activity/i }).count()) > 0;
-    test.skip(!hasActivityPanel, "Activity panel UI is not in current build; harness reserved for Phase 1 completion.");
+    await skipWhenFeatureUnavailable(
+      page,
+      testInfo,
+      "ac5b-activity-panel",
+      hasActivityPanel,
+      "Activity panel UI is not in current build; harness reserved for Phase 1 completion.",
+    );
 
     const samples: number[] = [];
     const runs = perfFixture.activityOpenRuns;
