@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 
+import {
+  validateApiKeyInventoryPayload,
+  validateFinalizeRotationResponse,
+  validateRotateApiKeyResponse,
+} from "./lib/mission-control-api-contracts.mjs";
+
 const baseUrl = process.env.MISSION_CONTROL_BASE_URL;
 const apiKey = process.env.MISSION_CONTROL_API_KEY;
 const jwtToken = process.env.MISSION_CONTROL_JWT;
 const dryRun = process.env.MISSION_CONTROL_DRILL_DRY_RUN !== "false";
 
 const skippedChecks = [];
+const createdKeys = [];
 
 function fail(msg, code = 1) {
   console.error(`❌ ${msg}`);
@@ -18,6 +25,10 @@ function ok(msg) {
 
 function warn(msg) {
   console.log(`⚠️ ${msg}`);
+}
+
+function assert(condition, message) {
+  if (!condition) fail(message);
 }
 
 function canAuth(mode) {
@@ -75,6 +86,7 @@ async function checkApiKeyRotationVisibility() {
     return;
   }
   if (!result.ok) fail(`api key rotation visibility failed (${result.status})`);
+  validateApiKeyInventoryPayload(result.data);
   ok("api key inventory + rotation events reachable");
 }
 
@@ -94,6 +106,71 @@ async function checkRetentionAuditIntegration() {
   });
   if (!retention.ok) fail(`retention dry-run failed (${retention.status})`);
   ok("artifact retention dry-run succeeded");
+}
+
+async function checkZeroDowntimeRotationFlow() {
+  if (!jwtToken || !apiKey) {
+    skippedChecks.push("zero-downtime api key rotation drill (requires both MISSION_CONTROL_JWT and MISSION_CONTROL_API_KEY)");
+    return;
+  }
+
+  const create = await call("/api/v1/auth/keys", {
+    method: "POST",
+    authMode: "jwt",
+    body: { label: `readiness-drill-${Date.now()}`, scopes: ["dashboard:read"] },
+  });
+  if (!create.ok) fail(`api key create for rotation drill failed (${create.status})`);
+  assert(typeof create.data?.keyId === "string", "rotation drill create contract mismatch (keyId)");
+  assert(typeof create.data?.apiKey === "string", "rotation drill create contract mismatch (apiKey)");
+  createdKeys.push(create.data.keyId);
+
+  const rotate = await call(`/api/v1/auth/keys/${create.data.keyId}/rotate`, {
+    method: "POST",
+    authMode: "jwt",
+    body: { gracePeriodHours: 1, label: `readiness-rotated-${Date.now()}` },
+  });
+  if (!rotate.ok) fail(`api key rotate drill failed (${rotate.status})`);
+  validateRotateApiKeyResponse(rotate.data);
+  createdKeys.push(rotate.data.newKeyId);
+
+  const oldDuringGrace = await fetch(`${baseUrl}/api/v1/dashboard/runs`, {
+    headers: { "X-API-Key": create.data.apiKey },
+  });
+  assert(oldDuringGrace.ok, `old api key should remain usable during grace (${oldDuringGrace.status})`);
+
+  const newDuringGrace = await fetch(`${baseUrl}/api/v1/dashboard/runs`, {
+    headers: { "X-API-Key": rotate.data.apiKey },
+  });
+  assert(newDuringGrace.ok, `new api key should be usable immediately (${newDuringGrace.status})`);
+
+  const finalize = await call(`/api/v1/auth/keys/${create.data.keyId}/finalize-rotation`, {
+    method: "POST",
+    authMode: "jwt",
+  });
+  if (!finalize.ok) fail(`api key finalize rotation failed (${finalize.status})`);
+  validateFinalizeRotationResponse(finalize.data);
+
+  const oldAfterFinalize = await fetch(`${baseUrl}/api/v1/dashboard/runs`, {
+    headers: { "X-API-Key": create.data.apiKey },
+  });
+  assert(oldAfterFinalize.status === 401, `old api key should be rejected after finalize (${oldAfterFinalize.status})`);
+
+  const newAfterFinalize = await fetch(`${baseUrl}/api/v1/dashboard/runs`, {
+    headers: { "X-API-Key": rotate.data.apiKey },
+  });
+  assert(newAfterFinalize.ok, `new api key should keep working after finalize (${newAfterFinalize.status})`);
+
+  ok("zero-downtime API key rotation flow assertions passed");
+}
+
+async function cleanupCreatedKeys() {
+  if (!jwtToken || !baseUrl || createdKeys.length === 0) return;
+  for (const keyId of createdKeys.reverse()) {
+    const result = await call(`/api/v1/auth/keys/${keyId}`, { method: "DELETE", authMode: "jwt" });
+    if (!result.skipped && !result.ok && result.status !== 400 && result.status !== 404) {
+      warn(`cleanup failed for ${keyId} (${result.status})`);
+    }
+  }
 }
 
 async function main() {
@@ -119,6 +196,8 @@ async function main() {
     ok("Operator control simulation complete (dry-run, no run mutations sent)");
     return;
   }
+
+  await checkZeroDowntimeRotationFlow();
 
   const runs = await call("/api/v1/runs?limit=1", { authMode: "apiKey" });
   if (runs.skipped) {
@@ -153,4 +232,8 @@ async function main() {
   console.log("🎯 Readiness drill completed");
 }
 
-main().catch((error) => fail(error instanceof Error ? error.message : String(error)));
+main()
+  .catch((error) => fail(error instanceof Error ? error.message : String(error)))
+  .finally(async () => {
+    await cleanupCreatedKeys();
+  });
