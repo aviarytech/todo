@@ -2,7 +2,10 @@
 
 const baseUrl = process.env.MISSION_CONTROL_BASE_URL;
 const apiKey = process.env.MISSION_CONTROL_API_KEY;
+const jwtToken = process.env.MISSION_CONTROL_JWT;
 const dryRun = process.env.MISSION_CONTROL_DRILL_DRY_RUN !== "false";
+
+const skippedChecks = [];
 
 function fail(msg, code = 1) {
   console.error(`❌ ${msg}`);
@@ -13,15 +16,44 @@ function ok(msg) {
   console.log(`✅ ${msg}`);
 }
 
-async function call(path, { method = "GET", body } = {}) {
-  if (!baseUrl || !apiKey) {
-    return { skipped: true, reason: "MISSION_CONTROL_BASE_URL or MISSION_CONTROL_API_KEY missing" };
+function warn(msg) {
+  console.log(`⚠️ ${msg}`);
+}
+
+function canAuth(mode) {
+  if (mode === "apiKey") return Boolean(apiKey);
+  if (mode === "jwt") return Boolean(jwtToken);
+  return Boolean(apiKey || jwtToken);
+}
+
+function authHeaders(mode) {
+  if (mode === "apiKey") return { "X-API-Key": apiKey };
+  if (mode === "jwt") return { Authorization: `Bearer ${jwtToken}` };
+
+  if (apiKey) return { "X-API-Key": apiKey };
+  if (jwtToken) return { Authorization: `Bearer ${jwtToken}` };
+  return {};
+}
+
+async function call(path, { method = "GET", body, authMode = "auto" } = {}) {
+  if (!baseUrl || !canAuth(authMode)) {
+    return {
+      skipped: true,
+      reason: !baseUrl
+        ? "MISSION_CONTROL_BASE_URL missing"
+        : authMode === "jwt"
+          ? "MISSION_CONTROL_JWT missing"
+          : authMode === "apiKey"
+            ? "MISSION_CONTROL_API_KEY missing"
+            : "MISSION_CONTROL_API_KEY or MISSION_CONTROL_JWT missing",
+    };
   }
+
   const res = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
       "Content-Type": "application/json",
-      "X-API-Key": apiKey,
+      ...authHeaders(authMode),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -36,44 +68,88 @@ async function call(path, { method = "GET", body } = {}) {
   return { ok: res.ok, status: res.status, data };
 }
 
+async function checkApiKeyRotationVisibility() {
+  const result = await call("/api/v1/auth/keys", { authMode: "jwt" });
+  if (result.skipped) {
+    skippedChecks.push(`api key rotation visibility (${result.reason})`);
+    return;
+  }
+  if (!result.ok) fail(`api key rotation visibility failed (${result.status})`);
+  ok("api key inventory + rotation events reachable");
+}
+
+async function checkRetentionAuditIntegration() {
+  const settings = await call("/api/v1/runs/retention", { authMode: "jwt" });
+  if (settings.skipped) {
+    skippedChecks.push(`retention settings/audit logs (${settings.reason})`);
+    return;
+  }
+  if (!settings.ok) fail(`retention settings check failed (${settings.status})`);
+  ok("retention settings + deletion logs reachable");
+
+  const retention = await call("/api/v1/runs/retention", {
+    method: "POST",
+    authMode: "jwt",
+    body: { dryRun: true, maxRuns: 20 },
+  });
+  if (!retention.ok) fail(`retention dry-run failed (${retention.status})`);
+  ok("artifact retention dry-run succeeded");
+}
+
 async function main() {
   console.log("Mission Control readiness drill");
   console.log(`Mode: ${dryRun ? "dry-run" : "live"}`);
 
-  const dashboard = await call("/api/v1/dashboard/runs");
+  const dashboard = await call("/api/v1/dashboard/runs", { authMode: "auto" });
   if (dashboard.skipped) {
-    console.log(`⚠️ Skipping remote checks: ${dashboard.reason}`);
+    warn(`Skipping remote checks: ${dashboard.reason}`);
     ok("Readiness drill script wiring validated (env-less mode)");
     return;
   }
   if (!dashboard.ok) fail(`dashboard check failed (${dashboard.status})`);
   ok("dashboard/runs reachable");
 
-  const retention = await call("/api/v1/runs/retention", {
-    method: "POST",
-    body: { dryRun: true, maxRuns: 20 },
-  });
-  if (!retention.ok) fail(`retention dry-run failed (${retention.status})`);
-  ok("artifact retention dry-run succeeded");
+  await checkApiKeyRotationVisibility();
+  await checkRetentionAuditIntegration();
 
   if (dryRun) {
+    if (skippedChecks.length) {
+      warn(`Skipped checks: ${skippedChecks.join("; ")}`);
+    }
     ok("Operator control simulation complete (dry-run, no run mutations sent)");
     return;
   }
 
-  const runs = await call("/api/v1/runs?limit=1");
+  const runs = await call("/api/v1/runs?limit=1", { authMode: "apiKey" });
+  if (runs.skipped) {
+    skippedChecks.push(`live run control simulation (${runs.reason})`);
+    warn(`Skipping live run control simulation: ${runs.reason}`);
+    console.log("🎯 Readiness drill completed with partial coverage");
+    return;
+  }
   if (!runs.ok) fail(`run list failed (${runs.status})`);
   const runId = runs.data?.runs?.[0]?._id;
   if (!runId) fail("no runs available to execute live drill", 2);
 
-  const pause = await call(`/api/v1/runs/${runId}/pause`, { method: "POST", body: { reason: "readiness_drill" } });
+  const pause = await call(`/api/v1/runs/${runId}/pause`, {
+    method: "POST",
+    authMode: "apiKey",
+    body: { reason: "readiness_drill" },
+  });
   if (!pause.ok) fail(`pause failed (${pause.status})`);
   ok("pause action succeeded");
 
-  const escalate = await call(`/api/v1/runs/${runId}/escalate`, { method: "POST", body: { reason: "readiness_drill" } });
+  const escalate = await call(`/api/v1/runs/${runId}/escalate`, {
+    method: "POST",
+    authMode: "apiKey",
+    body: { reason: "readiness_drill" },
+  });
   if (!escalate.ok) fail(`escalate failed (${escalate.status})`);
   ok("escalate action succeeded");
 
+  if (skippedChecks.length) {
+    warn(`Skipped checks: ${skippedChecks.join("; ")}`);
+  }
   console.log("🎯 Readiness drill completed");
 }
 
