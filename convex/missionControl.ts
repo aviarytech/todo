@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { dedupeActivePresenceSessions } from "./lib/presenceSessions";
 
 const PRESENCE_TTL_MS = 90_000;
 
@@ -61,6 +62,15 @@ export const recordPresenceHeartbeat = mutation({
 
     const now = Date.now();
     const expiresAt = now + PRESENCE_TTL_MS;
+
+    const expired = await ctx.db
+      .query("presenceSessions")
+      .withIndex("by_list_expires", (q) => q.eq("listId", args.listId).lt("expiresAt", now))
+      .collect();
+
+    for (const session of expired) {
+      await ctx.db.delete(session._id);
+    }
 
     const existing = await ctx.db
       .query("presenceSessions")
@@ -130,7 +140,7 @@ export const getActivePresence = query({
       .withIndex("by_list", (q) => q.eq("listId", args.listId))
       .collect();
 
-    return sessions.filter((s) => s.expiresAt > now);
+    return dedupeActivePresenceSessions(sessions, now);
   },
 });
 
