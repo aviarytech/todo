@@ -1,8 +1,45 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type TestInfo } from "@playwright/test";
 import { seedAuthSession } from "./fixtures/auth";
 import { loadPerfFixtureFromEnv } from "./fixtures/mission-control-perf-fixture";
+import { computeP95, writePerfGateResult } from "./fixtures/mission-control-perf-report";
 
-async function openAuthenticatedApp(page: Page, displayName: string) {
+async function attachAuthDiagnostics(page: Page, testInfo: TestInfo, reason: string) {
+  const now = Date.now();
+
+  const diagnostics = {
+    reason,
+    url: page.url(),
+    hasOtpUi:
+      (await page.getByRole("button", { name: /send code|verify code/i }).count()) > 0
+      || (await page.getByLabel(/email/i).count()) > 0
+      || (await page.getByLabel(/verification code|otp/i).count()) > 0,
+    hasAppShell: (await page.getByRole("heading", { name: /your lists/i }).count()) > 0,
+    hasAuthEnvToken: Boolean(process.env.E2E_AUTH_TOKEN),
+    authEnv: {
+      email: process.env.E2E_AUTH_EMAIL ?? null,
+      subOrgId: process.env.E2E_AUTH_SUBORG_ID ?? null,
+      did: process.env.E2E_AUTH_DID ?? null,
+    },
+    localStorageKeys: await page.evaluate(() => Object.keys(localStorage)),
+  };
+
+  await testInfo.attach(`auth-diagnostics-${now}.json`, {
+    body: Buffer.from(JSON.stringify(diagnostics, null, 2), "utf8"),
+    contentType: "application/json",
+  });
+
+  await testInfo.attach(`auth-gate-${now}.png`, {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+
+  await testInfo.attach(`auth-gate-${now}.html`, {
+    body: Buffer.from(await page.content(), "utf8"),
+    contentType: "text/html",
+  });
+}
+
+async function openAuthenticatedApp(page: Page, testInfo: TestInfo, displayName: string) {
   await seedAuthSession(page, {
     displayName,
     email: `e2e+${displayName.toLowerCase().replace(/\s+/g, "-")}@poo.app`,
@@ -24,24 +61,30 @@ async function openAuthenticatedApp(page: Page, displayName: string) {
 
   const usingSeededEnvAuth = Boolean(process.env.E2E_AUTH_TOKEN);
   if (hasOtpUi && !usingSeededEnvAuth) {
+    const reason =
+      "Environment requires server-validated auth. Set E2E_AUTH_TOKEN + E2E_AUTH_EMAIL + E2E_AUTH_SUBORG_ID + E2E_AUTH_DID to run Mission Control AC paths.";
+    await attachAuthDiagnostics(page, testInfo, reason);
     return {
       ready: false as const,
-      reason:
-        "Environment requires server-validated auth. Set E2E_AUTH_TOKEN + E2E_AUTH_EMAIL + E2E_AUTH_SUBORG_ID + E2E_AUTH_DID to run Mission Control AC paths.",
+      reason,
     };
   }
 
   if (hasOtpUi && usingSeededEnvAuth) {
+    const reason =
+      "Seeded auth env vars are present, but app still shows OTP UI. Verify E2E_AUTH_* values match backend environment.";
+    await attachAuthDiagnostics(page, testInfo, reason);
     return {
       ready: false as const,
-      reason:
-        "Seeded auth env vars are present, but app still shows OTP UI. Verify E2E_AUTH_* values match backend environment.",
+      reason,
     };
   }
 
+  const reason = "Authenticated app shell unavailable; no lists shell or OTP UI detected.";
+  await attachAuthDiagnostics(page, testInfo, reason);
   return {
     ready: false as const,
-    reason: "Authenticated app shell unavailable; no lists shell or OTP UI detected.",
+    reason,
   };
 }
 
@@ -77,14 +120,19 @@ async function seedPerfLists(page: Page, listCount: number, itemsPerList: number
   return seededListNames;
 }
 
-function p95(values: number[]) {
-  const sorted = [...values].sort((a, b) => a - b);
-  const idx = Math.ceil(sorted.length * 0.95) - 1;
-  return sorted[Math.max(0, idx)] ?? 0;
-}
-
 test.describe("Mission Control Phase 1 acceptance", () => {
   const perfFixture = loadPerfFixtureFromEnv();
+
+  test("AC0 auth readiness probe: capture deterministic diagnostics and proceed when shell is available", async ({ page }, testInfo) => {
+    const setup = await openAuthenticatedApp(page, testInfo, "MC Auth Probe");
+    if (setup.ready) {
+      await expect(page.getByRole("heading", { name: /your lists/i })).toBeVisible();
+      return;
+    }
+
+    testInfo.annotations.push({ type: "auth-gated", description: setup.reason });
+    expect(setup.ready).toBe(false);
+  });
 
   test("baseline harness boots app shell", async ({ page }) => {
     await seedAuthSession(page);
@@ -92,8 +140,8 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     await expect(page).toHaveURL(/\/(app)?/);
   });
 
-  test("AC1 assignee round-trip: assignee updates propagate to all active clients in <1s", async ({ page }) => {
-    const setup = await openAuthenticatedApp(page, "MC Assignee User");
+  test("AC1 assignee round-trip: assignee updates propagate to all active clients in <1s", async ({ page }, testInfo) => {
+    const setup = await openAuthenticatedApp(page, testInfo, "MC Assignee User");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(page, "MC Assignee List");
     await createItem(page, "MC Assigned Item");
@@ -110,8 +158,8 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     expect(elapsed).toBeLessThan(1000);
   });
 
-  test("AC2 activity log completeness: created|completed|assigned|commented|edited each writes exactly one activity row", async ({ page }) => {
-    const setup = await openAuthenticatedApp(page, "MC Activity User");
+  test("AC2 activity log completeness: created|completed|assigned|commented|edited each writes exactly one activity row", async ({ page }, testInfo) => {
+    const setup = await openAuthenticatedApp(page, testInfo, "MC Activity User");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(page, "MC Activity List");
     await createItem(page, "Activity Item");
@@ -138,7 +186,7 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     await expect(page.getByText(/edited|renamed/i)).toHaveCount(1);
   });
 
-  test("AC3 presence freshness: presence disappears <= 90s after list close", async ({ browser }) => {
+  test("AC3 presence freshness: presence disappears <= 90s after list close", async ({ browser }, testInfo) => {
     const contextA = await browser.newContext();
     const contextB = await browser.newContext();
     const pageA = await contextA.newPage();
@@ -147,7 +195,7 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     await seedAuthSession(pageA, { displayName: "MC Presence A" });
     await seedAuthSession(pageB, { displayName: "MC Presence B" });
 
-    const setup = await openAuthenticatedApp(pageA, "MC Presence A");
+    const setup = await openAuthenticatedApp(pageA, testInfo, "MC Presence A");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(pageA, "MC Presence List");
 
@@ -165,8 +213,8 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     await contextB.close();
   });
 
-  test("AC4 no-regression core UX: non-collab user flow has no required new fields and no agent UI by default", async ({ page }) => {
-    const setup = await openAuthenticatedApp(page, "MC No Regression");
+  test("AC4 no-regression core UX: non-collab user flow has no required new fields and no agent UI by default", async ({ page }, testInfo) => {
+    const setup = await openAuthenticatedApp(page, testInfo, "MC No Regression");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(page, "MC Core Flow");
     await createItem(page, "Core Item");
@@ -180,8 +228,8 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     await expect(page.getByRole("button", { name: /agent/i })).toHaveCount(0);
   });
 
-  test("AC5a perf floor harness: P95 list open <500ms", async ({ page }) => {
-    const setup = await openAuthenticatedApp(page, "MC Perf User");
+  test("AC5a perf floor harness: P95 list open <500ms", async ({ page }, testInfo) => {
+    const setup = await openAuthenticatedApp(page, testInfo, "MC Perf User");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
 
     const samples: number[] = [];
@@ -220,8 +268,8 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     expect(listOpenP95).toBeLessThan(thresholdMs);
   });
 
-  test("AC5b perf floor harness: activity panel load P95 <700ms", async ({ page }) => {
-    const setup = await openAuthenticatedApp(page, "MC Perf Activity User");
+  test("AC5b perf floor harness: activity panel load P95 <700ms", async ({ page }, testInfo) => {
+    const setup = await openAuthenticatedApp(page, testInfo, "MC Perf Activity User");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(page, "MC Perf Activity List");
 
