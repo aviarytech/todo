@@ -220,7 +220,7 @@ New endpoints for Agent Mission Control with scoped API keys.
 ### Memory
 - `GET /api/v1/memory?agentSlug=<slug>[&key=<key>]` (`memory:read`)
 - `POST /api/v1/memory` (`memory:write`)
-- `GET /api/v1/memory/sync?since=<ms>&limit=<n>` (`memory:read`) — pull Convex memory changes for OpenClaw
+- `GET /api/v1/memory/sync?since=<ms>&limit=<n>` (`memory:read`) — pull Convex memory changes for OpenClaw (results are ordered oldest→newest after `since`; response `cursor` equals newest returned `updatedAt` for lossless paging)
 - `POST /api/v1/memory/sync` (`memory:write`) — push OpenClaw memory entries into Convex with conflict policy (`lww` or `preserve_both`)
   - body: `{ "agentSlug": "platform", "key": "runbook", "value": "...", "listId": "...optional..." }`
 

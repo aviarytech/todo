@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { selectMemoryChangesSince } from "./lib/memorySync";
 
 const memorySource = v.union(v.literal("manual"), v.literal("openclaw"), v.literal("clawboot"), v.literal("import"), v.literal("api"));
 const conflictPolicy = v.union(v.literal("lww"), v.literal("preserve_both"));
@@ -252,29 +253,6 @@ export const listMemoryChangesSince = query({
       .order("desc")
       .take(400);
 
-    const since = args.since ?? 0;
-    const changes = rows
-      .filter((row) => row.updatedAt > since)
-      .slice(0, limit)
-      .map((row) => ({
-        id: row._id,
-        ownerDid: row.ownerDid,
-        authorDid: row.authorDid,
-        externalId: row.externalId,
-        title: row.title,
-        content: row.content,
-        tags: row.tags,
-        source: row.source,
-        sourceRef: row.sourceRef,
-        updatedAt: row.updatedAt,
-        externalUpdatedAt: row.externalUpdatedAt,
-        syncStatus: row.syncStatus,
-        conflictNote: row.conflictNote,
-      }));
-
-    return {
-      changes,
-      cursor: changes.length ? changes[0].updatedAt : since,
-    };
+    return selectMemoryChangesSince(rows, args.since ?? 0, limit);
   },
 });
