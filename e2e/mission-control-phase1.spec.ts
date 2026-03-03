@@ -190,22 +190,33 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     const itemsPerList = perfFixture.itemsPerList;
     const seededListCount = Math.max(perfFixture.seededListCount, runs);
 
-    const seededListNames = await seedPerfLists(page, seededListCount, itemsPerList, `${Date.now()}`);
+    const runLabel = `${testInfo.project.name}-w${testInfo.workerIndex}`;
+    const seededListNames = await seedPerfLists(page, seededListCount, itemsPerList, runLabel);
 
     for (let i = 0; i < runs; i += 1) {
       const listName = seededListNames[i % seededListNames.length];
 
-      const t0 = Date.now();
+      const t0 = performance.now();
       await page.getByRole("heading", { name: listName }).click();
       await expect(page.getByRole("heading", { name: listName })).toBeVisible({ timeout: 10000 });
-      samples.push(Date.now() - t0);
+      samples.push(Math.round(performance.now() - t0));
 
       await page.getByRole("link", { name: "Back to lists" }).click();
       await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 10000 });
     }
 
-    const listOpenP95 = p95(samples);
-    test.info().annotations.push({ type: "metric", description: `list_open_p95_ms=${listOpenP95};samples=${samples.join(",")};fixturePath=${process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none"};seededLists=${seededListCount};itemsPerList=${itemsPerList}` });
+    const listOpenP95 = computeP95(samples);
+    const reportPath = writePerfGateResult(testInfo, {
+      gate: "ac5a_list_open",
+      p95Ms: listOpenP95,
+      thresholdMs,
+      samplesMs: samples,
+      fixturePath: process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none",
+      seededListCount,
+      itemsPerList,
+    });
+
+    test.info().annotations.push({ type: "metric", description: `list_open_p95_ms=${listOpenP95};threshold_ms=${thresholdMs};report=${reportPath}` });
     expect(listOpenP95).toBeLessThan(thresholdMs);
   });
 
@@ -222,15 +233,23 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     const thresholdMs = perfFixture.activityOpenP95Ms;
 
     for (let i = 0; i < runs; i += 1) {
-      const t0 = Date.now();
+      const t0 = performance.now();
       await page.getByRole("button", { name: /activity/i }).first().click();
       await expect(page.getByText(/activity/i)).toBeVisible({ timeout: 5000 });
-      samples.push(Date.now() - t0);
+      samples.push(Math.round(performance.now() - t0));
       await page.keyboard.press("Escape");
     }
 
-    const activityOpenP95 = p95(samples);
-    test.info().annotations.push({ type: "metric", description: `activity_open_p95_ms=${activityOpenP95};samples=${samples.join(",")};fixturePath=${process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none"}` });
+    const activityOpenP95 = computeP95(samples);
+    const reportPath = writePerfGateResult(testInfo, {
+      gate: "ac5b_activity_open",
+      p95Ms: activityOpenP95,
+      thresholdMs,
+      samplesMs: samples,
+      fixturePath: process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none",
+    });
+
+    test.info().annotations.push({ type: "metric", description: `activity_open_p95_ms=${activityOpenP95};threshold_ms=${thresholdMs};report=${reportPath}` });
     expect(activityOpenP95).toBeLessThan(thresholdMs);
   });
 });

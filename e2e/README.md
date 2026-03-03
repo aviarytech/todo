@@ -39,3 +39,18 @@ Supported fields:
 - `seededListCount` (optional, defaults to `listOpenRuns`)
 
 The loader validates shape/ranges and fails fast for runaway seed plans (`seededListCount * itemsPerList > 3000`) so production-sized fixture jobs error clearly instead of hanging/flaking.
+
+You can also override any AC5 gate values directly in CI without changing fixture files:
+
+- `MISSION_CONTROL_PERF_LIST_OPEN_RUNS`
+- `MISSION_CONTROL_PERF_LIST_OPEN_P95_MS`
+- `MISSION_CONTROL_PERF_ACTIVITY_OPEN_RUNS`
+- `MISSION_CONTROL_PERF_ACTIVITY_OPEN_P95_MS`
+- `MISSION_CONTROL_PERF_ITEMS_PER_LIST`
+- `MISSION_CONTROL_PERF_SEEDED_LIST_COUNT`
+
+AC5 tests now emit newline-delimited JSON perf gate artifacts by default at:
+
+- `test-results/mission-control-perf-gates.ndjson`
+
+Set `MISSION_CONTROL_PERF_REPORT_PATH` to customize this output path in CI artifact collection.
