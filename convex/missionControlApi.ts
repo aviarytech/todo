@@ -105,6 +105,25 @@ function parseRunId(pathname: string): string | null {
   return match ? match[1] : null;
 }
 
+const RUN_CONTROL_ACTION_SUFFIXES = ["/monitor", "/pause", "/kill", "/escalate", "/reassign", "/transition", "/retry"] as const;
+
+type RunControlAction = "monitor" | "pause" | "kill" | "escalate" | "reassign" | "transition" | "retry";
+
+function runControlActionFromPath(pathname: string): RunControlAction | null {
+  for (const suffix of RUN_CONTROL_ACTION_SUFFIXES) {
+    if (pathname.endsWith(suffix)) return suffix.slice(1) as RunControlAction;
+  }
+  return null;
+}
+
+function emitRunControlMetric(action: RunControlAction, result: "success" | "failed", errorCode?: string) {
+  emitServerMetric("run_control_action_total", "counter", 1, {
+    action,
+    result,
+    ...(errorCode ? { errorCode } : {}),
+  });
+}
+
 function parseOptionalNumber(value: string | null): number | undefined {
   if (!value) return undefined;
   const parsed = Number(value);
@@ -699,7 +718,13 @@ export const runsHandler = httpAction(async (ctx, request) => {
     if (request.method === "POST") {
       const path = url.pathname;
       const runId = parseRunId(path);
+      const runControlAction = runControlActionFromPath(path);
       const isActionPath = path.includes("/heartbeat") || path.includes("/transition") || path.includes("/retry") || path.includes("/artifacts") || path.includes("/monitor") || path.includes("/pause") || path.includes("/kill") || path.includes("/escalate") || path.includes("/reassign");
+
+      const runControlError = (action: RunControlAction, message: string, status: number, errorCode: string) => {
+        emitRunControlMetric(action, "failed", errorCode);
+        return errorResponse(request, message, status);
+      };
 
       if (!isActionPath) {
         const missing = requireScopes(authCtx, ["runs:write"]);
@@ -735,21 +760,24 @@ export const runsHandler = httpAction(async (ctx, request) => {
 
       if (path.endsWith("/monitor")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("monitor", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json().catch(() => ({})) as { now?: number };
         const result = await ctx.runMutation((api as any).missionControlCore.monitorMissionRunHeartbeats, {
           ownerDid: authCtx.userDid,
           now: body.now,
         });
-        emitServerMetric("run_control_action_total", "counter", 1, { action: "monitor", result: "success" });
+        emitRunControlMetric("monitor", "success");
         return jsonResponse(request, result);
       }
 
-      if (!runId) return errorResponse(request, "runId is required", 400);
+      if (!runId) {
+        if (runControlAction) return runControlError(runControlAction, "runId is required", 400, "missing_run_id");
+        return errorResponse(request, "runId is required", 400);
+      }
 
       if (path.endsWith("/pause")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("pause", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json().catch(() => ({})) as { reason?: string };
         const result = await ctx.runMutation((api as any).missionControlCore.transitionMissionRun, {
           ownerDid: authCtx.userDid,
@@ -763,13 +791,13 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ref: `pause:${body.reason ?? "operator_requested"}`,
           label: "runtime_control",
         });
-        emitServerMetric("run_control_action_total", "counter", 1, { action: "pause", result: "success" });
+        emitRunControlMetric("pause", "success");
         return jsonResponse(request, { ok: true, action: "pause", ...result });
       }
 
       if (path.endsWith("/kill")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("kill", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json().catch(() => ({})) as { reason?: string };
         const result = await ctx.runMutation((api as any).missionControlCore.transitionMissionRun, {
           ownerDid: authCtx.userDid,
@@ -784,13 +812,13 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ref: `kill:${body.reason ?? "operator_requested"}`,
           label: "runtime_control",
         });
-        emitServerMetric("run_control_action_total", "counter", 1, { action: "kill", result: "success" });
+        emitRunControlMetric("kill", "success");
         return jsonResponse(request, { ok: true, action: "kill", ...result });
       }
 
       if (path.endsWith("/escalate")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("escalate", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json().catch(() => ({})) as { targetAgentSlug?: string; reason?: string };
         const now = Date.now();
         const result = await ctx.runMutation((api as any).missionControlCore.transitionMissionRun, {
@@ -814,20 +842,20 @@ export const runsHandler = httpAction(async (ctx, request) => {
             reason: body.reason,
           });
         }
-        emitServerMetric("run_control_action_total", "counter", 1, { action: "escalate", result: "success" });
+        emitRunControlMetric("escalate", "success");
         return jsonResponse(request, { ok: true, action: "escalate", ...result });
       }
 
       if (path.endsWith("/reassign")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("reassign", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json().catch(() => ({})) as { targetAgentSlug?: string; reason?: string };
-        if (!body.targetAgentSlug) return errorResponse(request, "targetAgentSlug is required", 400);
+        if (!body.targetAgentSlug) return runControlError("reassign", "targetAgentSlug is required", 400, "missing_target_agent");
         const run = await ctx.runQuery((api as any).missionControlCore.getMissionRunById, {
           ownerDid: authCtx.userDid,
           runId,
         }) as { agentSlug?: string } | null;
-        if (!run?.agentSlug) return errorResponse(request, "Run not found", 404);
+        if (!run?.agentSlug) return runControlError("reassign", "Run not found", 404, "run_not_found");
         await ctx.runMutation((api as any).missionControlCore.controlAgentLaunch, {
           ownerDid: authCtx.userDid,
           actorDid: authCtx.userDid,
@@ -843,7 +871,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ref: `reassign:${body.targetAgentSlug}:${body.reason ?? "operator_requested"}`,
           label: "runtime_control",
         });
-        emitServerMetric("run_control_action_total", "counter", 1, { action: "reassign", result: "success" });
+        emitRunControlMetric("reassign", "success");
         return jsonResponse(request, { ok: true, action: "reassign", runId, targetAgentSlug: body.targetAgentSlug });
       }
 
@@ -861,7 +889,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
 
       if (path.endsWith("/transition")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("transition", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json() as {
           nextStatus: "starting" | "running" | "degraded" | "blocked" | "failed" | "finished";
           terminalReason?: "completed" | "killed" | "timeout" | "error" | "escalated";
@@ -874,18 +902,18 @@ export const runsHandler = httpAction(async (ctx, request) => {
           runId,
           ...body,
         });
-        emitServerMetric("run_control_action_total", "counter", 1, { action: "transition", result: "success" });
+        emitRunControlMetric("transition", "success");
         return jsonResponse(request, result);
       }
 
       if (path.endsWith("/retry")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("retry", `Missing required scope: ${missing}`, 403, "missing_scope");
         const result = await ctx.runMutation((api as any).missionControlCore.createRetryForMissionRun, {
           ownerDid: authCtx.userDid,
           runId,
         });
-        emitServerMetric("run_control_action_total", "counter", 1, { action: "retry", result: "success" });
+        emitRunControlMetric("retry", "success");
         return jsonResponse(request, result);
       }
 
@@ -911,7 +939,14 @@ export const runsHandler = httpAction(async (ctx, request) => {
 
     return errorResponse(request, "Method not allowed", 405);
   } catch (error) {
-    if (error instanceof AuthError) return unauthorizedResponseWithCors(request, error.message);
+    const runControlAction = request.method === "POST"
+      ? runControlActionFromPath(new URL(request.url).pathname)
+      : null;
+    if (error instanceof AuthError) {
+      if (runControlAction) emitRunControlMetric(runControlAction, "failed", "auth_error");
+      return unauthorizedResponseWithCors(request, error.message);
+    }
+    if (runControlAction) emitRunControlMetric(runControlAction, "failed", "server_error");
     return errorResponse(request, error instanceof Error ? error.message : "Failed", 500);
   }
 });

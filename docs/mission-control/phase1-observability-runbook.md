@@ -57,5 +57,5 @@ All baseline metrics emit as JSON logs with `[obs]` prefix. This is intentionall
 ## Known gaps (next pass)
 - `subscription_latency_ms` not yet wired to Convex subscription timing hooks.
 - Data integrity detectors (`invalid_assignee_reference_total`, `duplicate_activity_event_total`, `out_of_order_activity_timestamps_total`) still need scheduled jobs.
-- `run_control_action_total` currently emits success paths; explicit failure-path metric emission remains to be wired for rejected/invalid control attempts.
+- `run_control_action_total` now emits both `result=success` and `result=failed` for run-control endpoints (`monitor`, `pause`, `kill`, `escalate`, `reassign`, `transition`, `retry`) including rejected requests (e.g., missing scope/runId/targetAgentSlug) and server/auth failures.
 - Alert acknowledgement + incident note enforcement depends on external paging provider setup.
