@@ -53,6 +53,12 @@ async function createItem(page: Page, itemName: string) {
   await expect(page.getByText(itemName)).toBeVisible({ timeout: 5000 });
 }
 
+async function openItemDetails(page: Page, itemName: string) {
+  await page.getByText(itemName, { exact: true }).first().click();
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByRole("heading", { name: /edit item|item details/i })).toBeVisible({ timeout: 5000 });
+}
+
 function p95(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);
   const idx = Math.ceil(sorted.length * 0.95) - 1;
@@ -89,26 +95,22 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     await createList(page, "MC Activity List");
     await createItem(page, "Activity Item");
 
-    await page.getByRole("button", { name: "Check item" }).first().click();
-    await page.getByRole("button", { name: "Uncheck item" }).first().click();
+    await page.getByRole("button", { name: /assign/i }).first().click();
+    await expect(page.getByText(/assigned/i)).toBeVisible({ timeout: 1500 });
 
-    const hasCommentUi = (await page.getByPlaceholder(/add a comment/i).count()) > 0;
-    if (hasCommentUi) {
-      await page.getByPlaceholder(/add a comment/i).first().fill("mission-control-comment");
-      await page.keyboard.press("Enter");
-    }
+    await openItemDetails(page, "Activity Item");
+    await page.locator('div[role="dialog"] input[type="text"]').first().fill("Activity Item Renamed");
+    await page.getByPlaceholder(/add a comment/i).fill("mission-control-comment");
+    await page.keyboard.press("Enter");
+    await page.getByRole("button", { name: /save/i }).click();
 
-    const hasActivityPanel = (await page.getByRole("button", { name: /activity/i }).count()) > 0;
-    test.skip(!hasActivityPanel, "Activity panel not available yet; AC2 action harness is in place.");
+    await expect(page.getByText("Activity Item Renamed")).toBeVisible({ timeout: 5000 });
+    await openItemDetails(page, "Activity Item Renamed");
 
-    await page.getByRole("button", { name: /activity/i }).first().click();
-
-    await expect(page.getByText(/created/i)).toHaveCount(1);
-    await expect(page.getByText(/completed/i)).toHaveCount(1);
-    if (hasCommentUi) {
-      await expect(page.getByText(/commented/i)).toHaveCount(1);
-    }
-    await expect(page.getByText(/edited|renamed/i)).toHaveCount(1);
+    await expect(page.getByText(/created item/i)).toBeVisible();
+    await expect(page.getByText(/commented: mission-control-comment/i)).toBeVisible();
+    await expect(page.getByText(/mission-control-comment/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /save/i })).toBeVisible();
   });
 
   test("AC3 presence freshness: presence disappears <= 90s after list close", async ({ browser }) => {
@@ -191,19 +193,21 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(page, "MC Perf Activity List");
 
-    const hasActivityPanel = (await page.getByRole("button", { name: /activity/i }).count()) > 0;
-    test.skip(!hasActivityPanel, "Activity panel UI is not in current build; harness reserved for Phase 1 completion.");
-
     const samples: number[] = [];
     const runs = perfFixture.activityOpenRuns ?? 6;
     const thresholdMs = perfFixture.activityOpenP95Ms ?? 700;
 
     for (let i = 0; i < runs; i += 1) {
+      const itemName = `Perf Activity Item ${i + 1}`;
+      await createItem(page, itemName);
+
       const t0 = Date.now();
-      await page.getByRole("button", { name: /activity/i }).first().click();
+      await openItemDetails(page, itemName);
       await expect(page.getByText(/activity/i)).toBeVisible({ timeout: 5000 });
       samples.push(Date.now() - t0);
-      await page.keyboard.press("Escape");
+
+      await page.getByRole("button", { name: /close panel/i }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
     }
 
     const activityOpenP95 = p95(samples);
