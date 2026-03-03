@@ -29,6 +29,9 @@ All baseline metrics emit as JSON logs with `[obs]` prefix. This is intentionall
 - Consistency validator (catalog ↔ dashboard ↔ alerts ↔ routing ↔ provisioned endpoints):
   - `npm run mission-control:validate-observability`
   - Enforces route parity between dashboard + routing files and fails if a route target is not declared in the routing endpoint catalog (`routing.staging/production channel|pager`).
+  - Enforces severity-to-routing policy for production: `low|medium → slack`, `high|critical → slack + pagerduty`.
+- Policy unit tests:
+  - `npm run mission-control:test-observability`
 
 ## Runnable path (today)
 1. Start app and Convex dev stack.
