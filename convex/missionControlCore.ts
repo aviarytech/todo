@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { emitServerMetric } from "./lib/observability";
 import { clampRetentionDays, computeRetentionCutoff, normalizeArtifactRefs, selectStaleArtifacts, shouldInsertDeletionLog } from "./lib/artifactRetention";
 
 async function hasListAccess(ctx: any, listId: Id<"lists">, userDid: string) {
@@ -883,6 +884,21 @@ export const getMissionRunsDashboard = query({
 
     const activeRuns = runs.filter((r) => !isTerminal(r.status as RunStatus));
     const degradedRuns = activeRuns.filter((r) => r.status === "degraded");
+
+    let staleRuns = 0;
+    for (const run of activeRuns) {
+      const heartbeatAgeMs = Math.max(0, now - (run.lastHeartbeatAt ?? run.startedAt));
+      emitServerMetric("agent_heartbeat_age_ms", "gauge", heartbeatAgeMs, {
+        agentSlug: run.agentSlug,
+      });
+
+      const intervalMs = run.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_DEFAULT_MS;
+      const degradedThreshold = run.heartbeatDegradedThreshold ?? HEARTBEAT_DEGRADED_DEFAULT_MISSES;
+      if (heartbeatAgeMs >= intervalMs * degradedThreshold) {
+        staleRuns += 1;
+      }
+    }
+    emitServerMetric("agent_stale_total", "gauge", staleRuns);
 
     return {
       windowMs,

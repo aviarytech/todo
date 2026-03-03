@@ -4,6 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import type { ActionCtx } from "./_generated/server";
 import { requireAuth, AuthError, unauthorizedResponseWithCors } from "./lib/auth";
 import { errorResponse, getCorsHeaders, jsonResponse } from "./lib/httpResponses";
+import { emitServerMetric } from "./lib/observability";
 import { normalizeArtifactRefs } from "./lib/artifactRetention";
 
 const ALL_SCOPES = [
@@ -740,6 +741,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ownerDid: authCtx.userDid,
           now: body.now,
         });
+        emitServerMetric("run_control_action_total", "counter", 1, { action: "monitor", result: "success" });
         return jsonResponse(request, result);
       }
 
@@ -761,6 +763,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ref: `pause:${body.reason ?? "operator_requested"}`,
           label: "runtime_control",
         });
+        emitServerMetric("run_control_action_total", "counter", 1, { action: "pause", result: "success" });
         return jsonResponse(request, { ok: true, action: "pause", ...result });
       }
 
@@ -781,6 +784,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ref: `kill:${body.reason ?? "operator_requested"}`,
           label: "runtime_control",
         });
+        emitServerMetric("run_control_action_total", "counter", 1, { action: "kill", result: "success" });
         return jsonResponse(request, { ok: true, action: "kill", ...result });
       }
 
@@ -810,6 +814,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
             reason: body.reason,
           });
         }
+        emitServerMetric("run_control_action_total", "counter", 1, { action: "escalate", result: "success" });
         return jsonResponse(request, { ok: true, action: "escalate", ...result });
       }
 
@@ -838,6 +843,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ref: `reassign:${body.targetAgentSlug}:${body.reason ?? "operator_requested"}`,
           label: "runtime_control",
         });
+        emitServerMetric("run_control_action_total", "counter", 1, { action: "reassign", result: "success" });
         return jsonResponse(request, { ok: true, action: "reassign", runId, targetAgentSlug: body.targetAgentSlug });
       }
 
@@ -868,6 +874,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
           runId,
           ...body,
         });
+        emitServerMetric("run_control_action_total", "counter", 1, { action: "transition", result: "success" });
         return jsonResponse(request, result);
       }
 
@@ -878,6 +885,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ownerDid: authCtx.userDid,
           runId,
         });
+        emitServerMetric("run_control_action_total", "counter", 1, { action: "retry", result: "success" });
         return jsonResponse(request, result);
       }
 
