@@ -69,6 +69,7 @@ Behavior guarantees:
 - `MISSION_CONTROL_API_KEY` for API-key scoped routes (dashboard/runs + run controls)
 - `MISSION_CONTROL_JWT` for JWT-only routes (`/api/v1/auth/keys`, `/api/v1/runs/retention`)
 - `MISSION_CONTROL_BASE_URL` required for remote checks
+- Response contracts are now schema-asserted for key inventory, rotation/finalize responses, retention settings/deletion logs, and retention dry-run apply results.
 
 Live mode (`MISSION_CONTROL_DRILL_DRY_RUN=false`) also runs zero-downtime rotation assertions:
 1. create temporary API key
