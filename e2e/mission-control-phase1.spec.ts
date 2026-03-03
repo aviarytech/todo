@@ -9,6 +9,8 @@ interface PerfFixture {
   activityOpenRuns?: number;
   activityOpenP95Ms?: number;
   itemsPerList?: number;
+  seedListCount?: number;
+  seedViaApi?: boolean;
 }
 
 function loadPerfFixture(): PerfFixture {
@@ -51,6 +53,47 @@ async function createItem(page: Page, itemName: string) {
   await page.getByPlaceholder("Add an item...").fill(itemName);
   await page.getByRole("button", { name: "Add" }).click();
   await expect(page.getByText(itemName)).toBeVisible({ timeout: 5000 });
+}
+
+function convexSiteUrl() {
+  const convexUrl = process.env.VITE_CONVEX_URL;
+  if (!convexUrl) return null;
+  if (convexUrl.includes("127.0.0.1") || convexUrl.includes("localhost")) {
+    return convexUrl.replace(":3210", ":3211");
+  }
+  return convexUrl.replace(".convex.cloud", ".convex.site");
+}
+
+async function seedPerfListsViaApi(page: Page, listCount: number, itemsPerList: number) {
+  const token = process.env.E2E_AUTH_TOKEN;
+  const apiBase = convexSiteUrl();
+  if (!token || !apiBase) return { seeded: false as const, listNames: [] as string[] };
+
+  const listNames: string[] = [];
+  for (let i = 0; i < listCount; i += 1) {
+    const listName = `Seeded Perf List ${i + 1}`;
+    const listResp = await page.request.post(`${apiBase}/api/lists/create`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        assetDid: `did:webvh:e2e.poo.app:lists:${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+        name: listName,
+      },
+    });
+    if (!listResp.ok()) return { seeded: false as const, listNames: [] as string[] };
+
+    const { listId } = (await listResp.json()) as { listId: string };
+    listNames.push(listName);
+
+    for (let j = 0; j < itemsPerList; j += 1) {
+      const itemResp = await page.request.post(`${apiBase}/api/items/add`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { listId, name: `Perf Item ${i + 1}.${j + 1}` },
+      });
+      if (!itemResp.ok()) return { seeded: false as const, listNames: [] as string[] };
+    }
+  }
+
+  return { seeded: true as const, listNames };
 }
 
 function p95(values: number[]) {
@@ -164,13 +207,23 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     const runs = perfFixture.listOpenRuns ?? 6;
     const thresholdMs = perfFixture.listOpenP95Ms ?? 500;
     const itemsPerList = perfFixture.itemsPerList ?? 1;
+    const seedListCount = perfFixture.seedListCount ?? runs;
+    const shouldSeedViaApi = perfFixture.seedViaApi ?? Boolean(process.env.MISSION_CONTROL_FIXTURE_PATH);
+
+    let seededListNames: string[] = [];
+    if (shouldSeedViaApi) {
+      const seeded = await seedPerfListsViaApi(page, seedListCount, itemsPerList);
+      if (seeded.seeded) seededListNames = seeded.listNames;
+    }
 
     for (let i = 0; i < runs; i += 1) {
-      const listName = `Perf List ${i + 1}`;
-      await createList(page, listName);
+      const listName = seededListNames[i] ?? `Perf List ${i + 1}`;
+      if (!seededListNames[i]) {
+        await createList(page, listName);
 
-      for (let j = 0; j < itemsPerList; j += 1) {
-        await createItem(page, `Perf Item ${i + 1}.${j + 1}`);
+        for (let j = 0; j < itemsPerList; j += 1) {
+          await createItem(page, `Perf Item ${i + 1}.${j + 1}`);
+        }
       }
 
       await page.getByRole("link", { name: "Back to lists" }).click();
@@ -185,20 +238,35 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     }
 
     const listOpenP95 = p95(samples);
-    test.info().annotations.push({ type: "metric", description: `list_open_p95_ms=${listOpenP95};samples=${samples.join(",")};fixturePath=${process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none"}` });
+    test.info().annotations.push({ type: "metric", description: `list_open_p95_ms=${listOpenP95};samples=${samples.join(",")};fixturePath=${process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none"};seededLists=${seededListNames.length}` });
     expect(listOpenP95).toBeLessThan(thresholdMs);
   });
 
   test("AC5b perf floor harness: activity panel load P95 <700ms", async ({ page }) => {
     const setup = await openAuthenticatedApp(page, "MC Perf Activity User");
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
-    await createList(page, "MC Perf Activity List");
+
+    const runs = perfFixture.activityOpenRuns ?? 6;
+    const itemsPerList = perfFixture.itemsPerList ?? 1;
+    const shouldSeedViaApi = perfFixture.seedViaApi ?? Boolean(process.env.MISSION_CONTROL_FIXTURE_PATH);
+
+    if (shouldSeedViaApi) {
+      const seeded = await seedPerfListsViaApi(page, 1, Math.max(itemsPerList, runs));
+      if (seeded.seeded) {
+        await page.getByRole("link", { name: "Back to lists" }).click();
+        await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 10000 });
+        await page.getByRole("heading", { name: /seeded perf list/i }).first().click();
+      } else {
+        await createList(page, "MC Perf Activity List");
+      }
+    } else {
+      await createList(page, "MC Perf Activity List");
+    }
 
     const hasActivityPanel = (await page.getByRole("button", { name: /activity/i }).count()) > 0;
     test.skip(!hasActivityPanel, "Activity panel UI is not in current build; harness reserved for Phase 1 completion.");
 
     const samples: number[] = [];
-    const runs = perfFixture.activityOpenRuns ?? 6;
     const thresholdMs = perfFixture.activityOpenP95Ms ?? 700;
 
     for (let i = 0; i < runs; i += 1) {
@@ -210,7 +278,7 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     }
 
     const activityOpenP95 = p95(samples);
-    test.info().annotations.push({ type: "metric", description: `activity_open_p95_ms=${activityOpenP95};samples=${samples.join(",")};fixturePath=${process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none"}` });
+    test.info().annotations.push({ type: "metric", description: `activity_open_p95_ms=${activityOpenP95};samples=${samples.join(",")};fixturePath=${process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none"};seedMode=${shouldSeedViaApi ? "api" : "ui"}` });
     expect(activityOpenP95).toBeLessThan(thresholdMs);
   });
 });
