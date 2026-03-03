@@ -26,6 +26,8 @@ When these vars are present, tests seed `lisa-auth-state` + `lisa-jwt-token` in 
 
 If these vars are absent, the fixture falls back to a fake local token (fine for local/dev auth, but cloud environments that validate JWTs will redirect to OTP and AC tests will skip with an explicit reason).
 
+`mission-control-phase1.spec.ts` now always runs **AC0 auth readiness probe** in CI: it captures deterministic auth diagnostics artifacts (`auth-diagnostics-*.json`, `auth-gate-*.png`, `auth-gate-*.html`) when the app is OTP-gated so failures/skips are actionable without reproducing locally.
+
 ## Mission Control AC5 perf fixture
 
 Set `MISSION_CONTROL_FIXTURE_PATH` to a JSON file for AC5 perf gate tuning (example: `e2e/fixtures/mission-control.production.json`).
