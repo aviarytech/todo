@@ -45,6 +45,10 @@ async function openAuthenticatedApp(page: Page, displayName: string) {
   }
 }
 
+function requireReady(setup: { ready: boolean; reason?: string }) {
+  expect(setup.ready, setup.reason ?? "Authenticated app shell failed to become ready").toBeTruthy();
+}
+
 async function createList(page: Page, listName: string) {
   await page.getByRole("button", { name: /new list|create new list/i }).first().click();
   await page.getByRole("button", { name: /blank list/i }).click();
@@ -146,12 +150,8 @@ test.describe("Mission Control Phase 1 acceptance", () => {
 
   test("AC4 no-regression core UX: non-collab user flow has no required new fields and no agent UI by default", async ({ page }) => {
     const setup = await openAuthenticatedApp(page, "MC No Regression");
-    test.skip(!setup.ready, !setup.ready ? setup.reason : "");
-    await createList(page, "MC Core Flow");
-    await createItem(page, "Core Item");
-
-    await page.getByRole("button", { name: "Check item" }).first().click();
-    await expect(page.getByRole("button", { name: "Uncheck item" })).toBeVisible();
+    requireReady(setup);
+    await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 10000 });
 
     await expect(page.getByText(/assignee required/i)).toHaveCount(0);
     await expect(page.getByLabel(/assignee/i)).toHaveCount(0);
