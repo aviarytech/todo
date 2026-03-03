@@ -64,6 +64,7 @@
     },
     "notes": [
       "Seeded local auth fixture added for OTP-gated routes; baseline harness remains runnable.",
+      "List-create flow harness now targets New List -> Blank List panel path and exits early with env-gate annotation when list-create navigation is unavailable.",
       "AC1/AC2/AC3/AC5b remain conditionally skipped when assignee/activity/presence UI surfaces are absent in current build.",
       "Perf harness supports production-sized fixture path via MISSION_CONTROL_FIXTURE_PATH."
     ]
