@@ -46,9 +46,15 @@ Requires scope: `runs:write`.
 Control endpoints require scope: `runs:control`.
 
 ## Retention + audit
-- `GET /api/v1/runs/retention` (settings + deletion logs)
-- `PUT /api/v1/runs/retention` (update policy)
-- `POST /api/v1/runs/retention` (apply retention dry-run/live)
+- `GET /api/v1/runs/retention` (settings + deletion logs, **JWT only**)
+- `PUT /api/v1/runs/retention` (update policy, **JWT only**)
+- `POST /api/v1/runs/retention` (apply retention dry-run/live, **JWT only**)
+
+### Readiness drill auth notes
+`scripts/mission-control-readiness-drill.mjs` now supports split-auth checks so launch gates can validate both key rotation and retention/audit integration:
+- `MISSION_CONTROL_API_KEY` for API-key scoped routes (dashboard/runs + run controls)
+- `MISSION_CONTROL_JWT` for JWT-only routes (`/api/v1/auth/keys`, `/api/v1/runs/retention`)
+- `MISSION_CONTROL_BASE_URL` required for remote checks
 
 ## Dashboard
 `GET /api/v1/dashboard/runs`

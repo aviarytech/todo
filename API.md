@@ -239,6 +239,12 @@ New endpoints for Agent Mission Control with scoped API keys.
 - `PUT /api/v1/runs/retention` (JWT only) — set artifact retention days (default 30)
 - `POST /api/v1/runs/retention` (JWT only) — run retention job (`dryRun` defaults to `true`)
 
+### Launch-gate drill auth split
+For `npm run mission-control:readiness-drill`:
+- `MISSION_CONTROL_BASE_URL` — Convex site base URL
+- `MISSION_CONTROL_API_KEY` — used for API-key routes (dashboard/run controls)
+- `MISSION_CONTROL_JWT` — used for JWT-only routes (API key rotation inventory + retention/audit endpoints)
+
 ### Run Dashboard
 - `GET /api/v1/dashboard/runs?[windowMs=86400000]` (`dashboard:read`)
   - returns success/intervention/timeout rates plus active/degraded run visibility
