@@ -23,3 +23,18 @@ npm run test:e2e -- e2e/mission-control-phase1.spec.ts
 ```
 
 When these vars are present, tests seed `lisa-auth-state` + `lisa-jwt-token` in localStorage and skip OTP bootstrap.
+
+## Perf gates (AC5)
+
+Run perf gates against the production-sized fixture profile (10 runs, 50 items/list):
+
+```bash
+npm run mission-control:perf-gates
+```
+
+Equivalent explicit invocation:
+
+```bash
+MISSION_CONTROL_FIXTURE_PATH=e2e/fixtures/mission-control.production.json \
+  npm run test:e2e -- e2e/mission-control-phase1.spec.ts -g "AC5"
+```
