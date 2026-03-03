@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
 async function hasListAccess(ctx: any, listId: Id<"lists">, userDid: string) {
@@ -217,6 +217,7 @@ export const listApiKeyRotationEvents = query({
 });
 
 const DEFAULT_ARTIFACT_RETENTION_DAYS = 30;
+const SYSTEM_RETENTION_ACTOR_DID = "system:artifact-retention-job";
 
 export const getMissionControlSettings = query({
   args: { ownerDid: v.string() },
@@ -327,6 +328,88 @@ export const listArtifactDeletionLogs = query({
       .withIndex("by_owner_created", (q) => q.eq("ownerDid", args.ownerDid))
       .order("desc")
       .take(limit);
+  },
+});
+
+export const runArtifactRetentionSweep = internalMutation({
+  args: {
+    ownerDid: v.optional(v.string()),
+    retentionDays: v.optional(v.number()),
+    maxRunsPerOwner: v.optional(v.number()),
+    maxOwners: v.optional(v.number()),
+    schedulerJobId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const maxRunsPerOwner = Math.min(Math.max(args.maxRunsPerOwner ?? 250, 1), 1000);
+    const maxOwners = Math.min(Math.max(args.maxOwners ?? 250, 1), 1000);
+
+    const ownerDidList = args.ownerDid
+      ? [args.ownerDid]
+      : (await ctx.db.query("users").take(maxOwners))
+          .map((user) => user.did)
+          .filter((did): did is string => Boolean(did));
+
+    let totalRunsScanned = 0;
+    let totalRunsTouched = 0;
+    let totalDeletedArtifacts = 0;
+
+    for (const ownerDid of ownerDidList) {
+      const settings = await ctx.db
+        .query("missionControlSettings")
+        .withIndex("by_owner", (q) => q.eq("ownerDid", ownerDid))
+        .first();
+
+      const retentionDays = Math.min(
+        Math.max(Math.floor(args.retentionDays ?? settings?.artifactRetentionDays ?? DEFAULT_ARTIFACT_RETENTION_DAYS), 1),
+        365,
+      );
+      const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+
+      const runs = await ctx.db
+        .query("missionRuns")
+        .withIndex("by_owner_created", (q) => q.eq("ownerDid", ownerDid))
+        .order("desc")
+        .take(maxRunsPerOwner);
+
+      totalRunsScanned += runs.length;
+      const now = Date.now();
+
+      for (const run of runs) {
+        const artifacts = run.artifactRefs ?? [];
+        const staleArtifacts = artifacts.filter((a) => a.createdAt < cutoff);
+        if (!staleArtifacts.length) continue;
+
+        totalRunsTouched += 1;
+        totalDeletedArtifacts += staleArtifacts.length;
+
+        await ctx.db.insert("missionArtifactDeletionLogs", {
+          ownerDid,
+          runId: run._id,
+          deletedCount: staleArtifacts.length,
+          dryRun: false,
+          retentionCutoffAt: cutoff,
+          actorDid: SYSTEM_RETENTION_ACTOR_DID,
+          trigger: "system",
+          schedulerJobId: args.schedulerJobId,
+          deletedArtifacts: staleArtifacts,
+          createdAt: now,
+        });
+
+        await ctx.db.patch(run._id, {
+          artifactRefs: artifacts.filter((a) => a.createdAt >= cutoff),
+          updatedAt: now,
+        });
+      }
+    }
+
+    return {
+      ok: true,
+      ownerCount: ownerDidList.length,
+      totalRunsScanned,
+      totalRunsTouched,
+      totalDeletedArtifacts,
+      schedulerJobId: args.schedulerJobId,
+    };
   },
 });
 

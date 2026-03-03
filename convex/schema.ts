@@ -458,6 +458,7 @@ export default defineSchema({
     retentionCutoffAt: v.number(),
     actorDid: v.string(),
     trigger: v.union(v.literal("operator"), v.literal("system")),
+    schedulerJobId: v.optional(v.string()),
     deletedArtifacts: v.array(v.object({
       type: v.union(v.literal("screenshot"), v.literal("log"), v.literal("diff"), v.literal("file"), v.literal("url")),
       ref: v.string(),
@@ -466,7 +467,8 @@ export default defineSchema({
     })),
     createdAt: v.number(),
   })
-    .index("by_owner_created", ["ownerDid", "createdAt"]),
+    .index("by_owner_created", ["ownerDid", "createdAt"])
+    .index("by_run_created", ["runId", "createdAt"]),
 
   // Agent memory KV entries for long-lived runtime context
   agentMemory: defineTable({

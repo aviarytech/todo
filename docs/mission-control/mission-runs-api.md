@@ -50,6 +50,16 @@ Control endpoints require scope: `runs:control`.
 - `PUT /api/v1/runs/retention` (update policy)
 - `POST /api/v1/runs/retention` (apply retention dry-run/live)
 
+Behavior:
+- Default policy is `30` days unless overridden per owner.
+- A daily scheduler job (`mission-control-artifact-retention`) performs non-dry-run cleanup across owners.
+- Every deletion operation writes an auditable row to `missionArtifactDeletionLogs`, including:
+  - `trigger` (`operator` or `system`)
+  - `actorDid`
+  - `retentionCutoffAt`
+  - `deletedArtifacts[]`
+  - `schedulerJobId` (when triggered by cron)
+
 ## Dashboard
 `GET /api/v1/dashboard/runs`
 

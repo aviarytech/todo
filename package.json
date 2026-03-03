@@ -19,7 +19,8 @@
     "env:turnkey:prod": "bash ./scripts/sync-convex-turnkey-env.sh .env.local prod",
     "cap:sync": "npx cap sync",
     "cap:build": "npm run build && npx cap sync",
-    "mission-control:readiness-drill": "node scripts/mission-control-readiness-drill.mjs"
+    "mission-control:readiness-drill": "node scripts/mission-control-readiness-drill.mjs",
+    "mission-control:validate-retention": "node scripts/validate-mission-control-retention.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.2",
