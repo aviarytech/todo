@@ -202,7 +202,8 @@ New endpoints for Agent Mission Control with scoped API keys.
   - body: `{ "label": "CI Agent", "scopes": ["tasks:read","memory:write"] }`
 - `POST /api/v1/auth/keys/:keyId/rotate` — zero-downtime rotation (JWT only)
   - creates a new key, keeps old key active for grace period
-  - body: `{ "gracePeriodHours": 24, "label": "CI Agent v2" }`
+  - body: `{ "gracePeriodHours": 24, "label": "CI Agent v2" }` or `{ "gracePeriodMinutes": 30, "label": "CI Agent v2" }`
+  - provide exactly one grace field: `gracePeriodHours` (1..168) or `gracePeriodMinutes` (1..10080)
 - `POST /api/v1/auth/keys/:keyId/finalize-rotation` — revoke old key after cutover (JWT only)
 - `DELETE /api/v1/auth/keys/:keyId` — revoke key immediately (JWT only)
 

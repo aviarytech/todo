@@ -228,6 +228,7 @@ export const apiKeyByIdHandler = httpAction(async (ctx, request) => {
       const body = await request.json().catch(() => ({})) as {
         label?: string;
         gracePeriodHours?: number;
+        gracePeriodMinutes?: number;
         expiresAt?: number;
       };
 
@@ -236,8 +237,14 @@ export const apiKeyByIdHandler = httpAction(async (ctx, request) => {
       if (!oldKey) return errorResponse(request, "API key not found", 404);
       if (oldKey.revokedAt) return errorResponse(request, "Cannot rotate revoked API key", 400);
 
-      const gracePeriodHours = Math.min(Math.max(Math.floor(body.gracePeriodHours ?? 24), 1), 168);
-      const graceEndsAt = Date.now() + gracePeriodHours * 60 * 60 * 1000;
+      if (body.gracePeriodHours !== undefined && body.gracePeriodMinutes !== undefined) {
+        return errorResponse(request, "Provide either gracePeriodHours or gracePeriodMinutes, not both", 400);
+      }
+
+      const gracePeriodMs = body.gracePeriodMinutes !== undefined
+        ? Math.min(Math.max(Math.floor(body.gracePeriodMinutes), 1), 7 * 24 * 60) * 60 * 1000
+        : Math.min(Math.max(Math.floor(body.gracePeriodHours ?? 24), 1), 168) * 60 * 60 * 1000;
+      const graceEndsAt = Date.now() + gracePeriodMs;
       const rawKey = `pa_${randomToken(8)}_${randomToken(24)}`;
       const keyPrefix = rawKey.slice(0, 12);
       const keyHash = await sha256Hex(rawKey);
@@ -260,6 +267,7 @@ export const apiKeyByIdHandler = httpAction(async (ctx, request) => {
         rotationEventId: result.rotationEventId,
         oldKeyId: keyId,
         oldKeyGraceEndsAt: graceEndsAt,
+        gracePeriodMs,
         newKeyId: result.newKeyId,
         apiKey: rawKey,
         keyPrefix,

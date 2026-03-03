@@ -65,3 +65,7 @@ Requires scope: `dashboard:read`.
 `DELETE /api/v1/runs/:id`
 
 Requires scope: `runs:control`.
+
+## API key rotation launch-gate
+
+See `docs/mission-control/api-key-rotation-zero-downtime.md`.
