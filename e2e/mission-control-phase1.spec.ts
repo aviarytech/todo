@@ -28,23 +28,30 @@ async function openAuthenticatedApp(page: Page, displayName: string) {
   await page.goto("/");
   await page.goto("/app");
 
-  const inAppShell = (await page.getByRole("heading", { name: /your lists/i }).count()) > 0;
-  if (!inAppShell) {
+  // Give auth restore + route guards time to settle before deciding readiness.
+  // Previous immediate count checks caused false setup-skips while the shell was still hydrating.
+  try {
+    await expect(page.getByRole("heading", { name: /your lists/i })).toBeVisible({ timeout: 15000 });
+    return { ready: true as const };
+  } catch {
+    const currentUrl = page.url();
+    const redirectedToLogin = /\/login(?:$|[?#])/.test(currentUrl);
     return {
       ready: false as const,
-      reason: "Authenticated app shell unavailable in this environment (likely backend auth mismatch).",
+      reason: redirectedToLogin
+        ? "Authenticated app shell unavailable: redirected to /login after seeded session restore."
+        : "Authenticated app shell unavailable in this environment (likely backend auth mismatch).",
     };
   }
-
-  await expect(page.getByRole("heading", { name: /your lists/i })).toBeVisible({ timeout: 15000 });
-  return { ready: true as const };
 }
 
 async function createList(page: Page, listName: string) {
-  await page.getByRole("button", { name: "New List" }).click();
-  await page.getByLabel("List name").fill(listName);
+  await page.getByRole("button", { name: /new list|create new list/i }).first().click();
+  await page.getByRole("button", { name: /blank list/i }).click();
+  await page.getByLabel(/list name/i).fill(listName);
   await page.getByRole("button", { name: "Create List" }).click();
-  await expect(page.getByRole("heading", { name: listName })).toBeVisible({ timeout: 10000 });
+  await expect(page).toHaveURL(/\/list\//, { timeout: 10000 });
+  await expect(page.getByText(listName, { exact: true }).first()).toBeVisible({ timeout: 10000 });
 }
 
 async function createItem(page: Page, itemName: string) {
