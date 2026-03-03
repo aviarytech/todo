@@ -34,6 +34,37 @@ test.describe("mission-control perf fixture parser", () => {
     }
   });
 
+  test("applies env overrides on top of fixture values", () => {
+    const dir = mkdtempSync(join(tmpdir(), "mc-perf-fixture-"));
+    const fixturePath = join(dir, "fixture.json");
+
+    try {
+      writeFileSync(
+        fixturePath,
+        JSON.stringify({
+          listOpenRuns: 10,
+          listOpenP95Ms: 500,
+          activityOpenRuns: 8,
+          activityOpenP95Ms: 700,
+          itemsPerList: 3,
+          seededListCount: 10,
+        }),
+      );
+
+      const fixture = loadPerfFixtureFromEnv({
+        MISSION_CONTROL_FIXTURE_PATH: fixturePath,
+        MISSION_CONTROL_PERF_LIST_OPEN_P95_MS: "420",
+        MISSION_CONTROL_PERF_SEEDED_LIST_COUNT: "12",
+      });
+
+      expect(fixture.listOpenP95Ms).toBe(420);
+      expect(fixture.seededListCount).toBe(12);
+      expect(fixture.listOpenRuns).toBe(10);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("rejects runaway production seeding plans", () => {
     const dir = mkdtempSync(join(tmpdir(), "mc-perf-fixture-"));
     const fixturePath = join(dir, "fixture.json");

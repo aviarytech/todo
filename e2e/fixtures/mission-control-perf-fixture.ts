@@ -26,6 +26,15 @@ const HARD_LIMITS = {
   seededListCount: 100,
 };
 
+const ENV_OVERRIDES: Array<{ env: keyof NodeJS.ProcessEnv; field: keyof PerfFixture }> = [
+  { env: "MISSION_CONTROL_PERF_LIST_OPEN_RUNS", field: "listOpenRuns" },
+  { env: "MISSION_CONTROL_PERF_LIST_OPEN_P95_MS", field: "listOpenP95Ms" },
+  { env: "MISSION_CONTROL_PERF_ACTIVITY_OPEN_RUNS", field: "activityOpenRuns" },
+  { env: "MISSION_CONTROL_PERF_ACTIVITY_OPEN_P95_MS", field: "activityOpenP95Ms" },
+  { env: "MISSION_CONTROL_PERF_ITEMS_PER_LIST", field: "itemsPerList" },
+  { env: "MISSION_CONTROL_PERF_SEEDED_LIST_COUNT", field: "seededListCount" },
+];
+
 function asBoundedPositiveInt(value: unknown, fieldName: string, fallback: number, max: number): number {
   if (value === undefined) return fallback;
 
@@ -43,6 +52,13 @@ function asBoundedPositiveInt(value: unknown, fieldName: string, fallback: numbe
   }
 
   return asInt;
+}
+
+function getFieldLimit(fieldName: keyof PerfFixture) {
+  if (fieldName === "listOpenRuns" || fieldName === "activityOpenRuns") return HARD_LIMITS.runs;
+  if (fieldName === "listOpenP95Ms" || fieldName === "activityOpenP95Ms") return HARD_LIMITS.latencyMs;
+  if (fieldName === "itemsPerList") return HARD_LIMITS.itemsPerList;
+  return HARD_LIMITS.seededListCount;
 }
 
 function parsePerfFixture(rawFixture: unknown): PerfFixture {
@@ -99,27 +115,50 @@ function parsePerfFixture(rawFixture: unknown): PerfFixture {
   return parsed;
 }
 
+function applyEnvOverrides(base: PerfFixture, env: NodeJS.ProcessEnv): PerfFixture {
+  const next = { ...base };
+
+  for (const { env: envKey, field } of ENV_OVERRIDES) {
+    const raw = env[envKey];
+    if (raw === undefined || raw.trim() === "") continue;
+
+    const parsed = Number(raw);
+    next[field] = asBoundedPositiveInt(parsed, envKey, next[field], getFieldLimit(field));
+  }
+
+  const totalSeededItems = next.seededListCount * next.itemsPerList;
+  if (totalSeededItems > 3_000) {
+    throw new Error(`[mission-control/perf-fixture] seededListCount * itemsPerList must be <= 3000. Received ${totalSeededItems}.`);
+  }
+
+  return next;
+}
+
 export function loadPerfFixtureFromEnv(env: NodeJS.ProcessEnv = process.env): PerfFixture {
   const fixturePath = env.MISSION_CONTROL_FIXTURE_PATH;
-  if (!fixturePath) return DEFAULT_PERF_FIXTURE;
+  let fixture = DEFAULT_PERF_FIXTURE;
 
-  const absolutePath = isAbsolute(fixturePath) ? fixturePath : resolve(process.cwd(), fixturePath);
+  if (fixturePath) {
+    const absolutePath = isAbsolute(fixturePath) ? fixturePath : resolve(process.cwd(), fixturePath);
 
-  let raw: string;
-  try {
-    raw = readFileSync(absolutePath, "utf8");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`[mission-control/perf-fixture] failed to read ${absolutePath}: ${message}`);
+    let raw: string;
+    try {
+      raw = readFileSync(absolutePath, "utf8");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`[mission-control/perf-fixture] failed to read ${absolutePath}: ${message}`);
+    }
+
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(raw);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`[mission-control/perf-fixture] invalid JSON in ${absolutePath}: ${message}`);
+    }
+
+    fixture = parsePerfFixture(parsedJson);
   }
 
-  let parsedJson: unknown;
-  try {
-    parsedJson = JSON.parse(raw);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`[mission-control/perf-fixture] invalid JSON in ${absolutePath}: ${message}`);
-  }
-
-  return parsePerfFixture(parsedJson);
+  return applyEnvOverrides(fixture, env);
 }
