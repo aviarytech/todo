@@ -203,11 +203,13 @@ export default defineSchema({
     userDid: v.string(),
     status: v.union(v.literal("active"), v.literal("idle"), v.literal("offline")),
     lastSeenAt: v.number(),
+    expiresAt: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_list", ["listId"])
     .index("by_list_user", ["listId", "userDid"])
-    .index("by_last_seen", ["lastSeenAt"]),
+    .index("by_last_seen", ["lastSeenAt"])
+    .index("by_expires_at", ["expiresAt"]),
 
   // Tags table - for categorizing items
   tags: defineTable({

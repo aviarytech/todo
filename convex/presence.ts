@@ -2,7 +2,21 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { canUserEditList } from "./lib/permissions";
 
-const ACTIVE_WINDOW_MS = 60_000;
+const PRESENCE_EXPIRY_MS = 90_000;
+
+async function cleanupExpiredPresenceForList(ctx: { db: any }, listId: unknown, now: number) {
+  const rows = await ctx.db
+    .query("presence")
+    .withIndex("by_list", (q) => q.eq("listId", listId as any))
+    .collect();
+
+  for (const row of rows) {
+    const expiresAt = row.expiresAt ?? (row.lastSeenAt + PRESENCE_EXPIRY_MS);
+    if (expiresAt <= now) {
+      await ctx.db.delete(row._id);
+    }
+  }
+}
 
 export const heartbeat = mutation({
   args: {
@@ -17,6 +31,9 @@ export const heartbeat = mutation({
 
     const now = Date.now();
     const status = args.status ?? "active";
+    const expiresAt = now + PRESENCE_EXPIRY_MS;
+
+    await cleanupExpiredPresenceForList(ctx, args.listId, now);
 
     const existing = await ctx.db
       .query("presence")
@@ -24,13 +41,14 @@ export const heartbeat = mutation({
       .first();
 
     if (existing) {
-      await ctx.db.patch(existing._id, { status, lastSeenAt: now, updatedAt: now });
+      await ctx.db.patch(existing._id, { status, lastSeenAt: now, expiresAt, updatedAt: now });
     } else {
       await ctx.db.insert("presence", {
         listId: args.listId,
         userDid: args.userDid,
         status,
         lastSeenAt: now,
+        expiresAt,
         updatedAt: now,
       });
     }
@@ -43,7 +61,7 @@ export const heartbeat = mutation({
       createdAt: now,
     });
 
-    return { success: true, status, lastSeenAt: now };
+    return { success: true, status, lastSeenAt: now, expiresAt };
   },
 });
 
@@ -64,8 +82,15 @@ export const markOffline = mutation({
 
     const now = Date.now();
     if (existing) {
-      await ctx.db.patch(existing._id, { status: "offline", updatedAt: now, lastSeenAt: now });
+      await ctx.db.patch(existing._id, {
+        status: "offline",
+        updatedAt: now,
+        lastSeenAt: now,
+        expiresAt: now + PRESENCE_EXPIRY_MS,
+      });
     }
+
+    await cleanupExpiredPresenceForList(ctx, args.listId, now);
 
     await ctx.db.insert("activities", {
       listId: args.listId,
@@ -88,11 +113,12 @@ export const getListPresence = query({
       .withIndex("by_list", (q) => q.eq("listId", args.listId))
       .collect();
 
-    return rows.map((row) => {
-      const computedStatus = row.lastSeenAt >= now - ACTIVE_WINDOW_MS
-        ? row.status === "offline" ? "offline" : "active"
-        : "idle";
-      return { ...row, computedStatus };
-    });
+    return rows
+      .filter((row) => (row.expiresAt ?? (row.lastSeenAt + PRESENCE_EXPIRY_MS)) > now)
+      .map((row) => {
+        const computedStatus = row.status === "offline" ? "offline" : "active";
+        const expiresAt = row.expiresAt ?? (row.lastSeenAt + PRESENCE_EXPIRY_MS);
+        return { ...row, expiresAt, computedStatus };
+      });
   },
 });
