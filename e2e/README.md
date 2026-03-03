@@ -22,4 +22,6 @@ E2E_AUTH_DID="did:webvh:e2e:mission-control" \
 npm run test:e2e -- e2e/mission-control-phase1.spec.ts
 ```
 
-When these vars are present, tests seed `lisa-auth-state` + `lisa-jwt-token` in localStorage and skip OTP bootstrap.
+When these vars are present, tests seed `lisa-auth-state` + `lisa-jwt-token` in localStorage using your real backend JWT and skip OTP bootstrap.
+
+If these vars are absent, the fixture falls back to a fake local token (fine for local/dev auth, but cloud environments that validate JWTs will redirect to OTP and AC tests will skip with an explicit reason).

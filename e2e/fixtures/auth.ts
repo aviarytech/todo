@@ -7,6 +7,31 @@ export interface SeededAuthUser {
   displayName: string;
 }
 
+function envAuthSeed(): { user: SeededAuthUser; token: string } | null {
+  const token = process.env.E2E_AUTH_TOKEN;
+  const email = process.env.E2E_AUTH_EMAIL;
+  const turnkeySubOrgId = process.env.E2E_AUTH_SUBORG_ID;
+  const did = process.env.E2E_AUTH_DID;
+
+  if (!token) return null;
+
+  if (!email || !turnkeySubOrgId || !did) {
+    throw new Error(
+      "E2E_AUTH_TOKEN is set, but E2E_AUTH_EMAIL/E2E_AUTH_SUBORG_ID/E2E_AUTH_DID are missing."
+    );
+  }
+
+  return {
+    token,
+    user: {
+      turnkeySubOrgId,
+      email,
+      did,
+      displayName: process.env.E2E_AUTH_DISPLAY_NAME ?? "E2E Mission Control",
+    },
+  };
+}
+
 export function buildFakeJwt(expSecondsFromNow = 60 * 60 * 24): string {
   const header = { alg: "HS256", typ: "JWT" };
   const payload = {
@@ -18,14 +43,16 @@ export function buildFakeJwt(expSecondsFromNow = 60 * 60 * 24): string {
 }
 
 export async function seedAuthSession(page: Page, user?: Partial<SeededAuthUser>) {
+  const seededFromEnv = envAuthSeed();
+
   const authUser: SeededAuthUser = {
-    turnkeySubOrgId: user?.turnkeySubOrgId ?? "e2e-suborg-001",
-    email: user?.email ?? "e2e+mission-control@poo.app",
-    did: user?.did ?? "did:webvh:e2e.poo.app:users:e2e-suborg-001",
-    displayName: user?.displayName ?? "E2E Mission Control",
+    turnkeySubOrgId: user?.turnkeySubOrgId ?? seededFromEnv?.user.turnkeySubOrgId ?? "e2e-suborg-001",
+    email: user?.email ?? seededFromEnv?.user.email ?? "e2e+mission-control@poo.app",
+    did: user?.did ?? seededFromEnv?.user.did ?? "did:webvh:e2e.poo.app:users:e2e-suborg-001",
+    displayName: user?.displayName ?? seededFromEnv?.user.displayName ?? "E2E Mission Control",
   };
 
-  const token = buildFakeJwt();
+  const token = seededFromEnv?.token ?? buildFakeJwt();
   const authState = {
     user: authUser,
     token,

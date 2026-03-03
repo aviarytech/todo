@@ -1,23 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { seedAuthSession } from "./fixtures/auth";
-
-interface PerfFixture {
-  listOpenRuns?: number;
-  listOpenP95Ms?: number;
-  activityOpenRuns?: number;
-  activityOpenP95Ms?: number;
-  itemsPerList?: number;
-}
-
-function loadPerfFixture(): PerfFixture {
-  const fixturePath = process.env.MISSION_CONTROL_FIXTURE_PATH;
-  if (!fixturePath) return {};
-
-  const raw = readFileSync(resolve(process.cwd(), fixturePath), "utf8");
-  return JSON.parse(raw) as PerfFixture;
-}
+import { loadPerfFixtureFromEnv } from "./fixtures/mission-control-perf-fixture";
 
 async function openAuthenticatedApp(page: Page, displayName: string) {
   await seedAuthSession(page, {
@@ -29,15 +12,37 @@ async function openAuthenticatedApp(page: Page, displayName: string) {
   await page.goto("/app");
 
   const inAppShell = (await page.getByRole("heading", { name: /your lists/i }).count()) > 0;
-  if (!inAppShell) {
+  if (inAppShell) {
+    await expect(page.getByRole("heading", { name: /your lists/i })).toBeVisible({ timeout: 15000 });
+    return { ready: true as const };
+  }
+
+  const hasOtpUi =
+    (await page.getByRole("button", { name: /send code|verify code/i }).count()) > 0
+    || (await page.getByLabel(/email/i).count()) > 0
+    || (await page.getByLabel(/verification code|otp/i).count()) > 0;
+
+  const usingSeededEnvAuth = Boolean(process.env.E2E_AUTH_TOKEN);
+  if (hasOtpUi && !usingSeededEnvAuth) {
     return {
       ready: false as const,
-      reason: "Authenticated app shell unavailable in this environment (likely backend auth mismatch).",
+      reason:
+        "Environment requires server-validated auth. Set E2E_AUTH_TOKEN + E2E_AUTH_EMAIL + E2E_AUTH_SUBORG_ID + E2E_AUTH_DID to run Mission Control AC paths.",
     };
   }
 
-  await expect(page.getByRole("heading", { name: /your lists/i })).toBeVisible({ timeout: 15000 });
-  return { ready: true as const };
+  if (hasOtpUi && usingSeededEnvAuth) {
+    return {
+      ready: false as const,
+      reason:
+        "Seeded auth env vars are present, but app still shows OTP UI. Verify E2E_AUTH_* values match backend environment.",
+    };
+  }
+
+  return {
+    ready: false as const,
+    reason: "Authenticated app shell unavailable; no lists shell or OTP UI detected.",
+  };
 }
 
 async function createList(page: Page, listName: string) {
@@ -53,6 +58,25 @@ async function createItem(page: Page, itemName: string) {
   await expect(page.getByText(itemName)).toBeVisible({ timeout: 5000 });
 }
 
+async function seedPerfLists(page: Page, listCount: number, itemsPerList: number, runId: string) {
+  const seededListNames: string[] = [];
+
+  for (let i = 0; i < listCount; i += 1) {
+    const listName = `Perf List ${runId}-${i + 1}`;
+    seededListNames.push(listName);
+    await createList(page, listName);
+
+    for (let j = 0; j < itemsPerList; j += 1) {
+      await createItem(page, `Perf Item ${i + 1}.${j + 1}`);
+    }
+
+    await page.getByRole("link", { name: "Back to lists" }).click();
+    await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 10000 });
+  }
+
+  return seededListNames;
+}
+
 function p95(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);
   const idx = Math.ceil(sorted.length * 0.95) - 1;
@@ -60,7 +84,7 @@ function p95(values: number[]) {
 }
 
 test.describe("Mission Control Phase 1 acceptance", () => {
-  const perfFixture = loadPerfFixture();
+  const perfFixture = loadPerfFixtureFromEnv();
 
   test("baseline harness boots app shell", async ({ page }) => {
     await seedAuthSession(page);
