@@ -14,7 +14,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:mission-control": "playwright test e2e/mission-control-phase1.spec.ts",
     "test:e2e:mission-control:ac5": "playwright test e2e/mission-control-phase1.spec.ts --grep \"AC5\"",
-    "mission-control:test-observability": "node --test scripts/mission-control-alert-severity-policy.test.mjs",
+    "mission-control:test-observability": "node --test scripts/mission-control-alert-severity-policy.test.mjs scripts/mission-control-alert-routing-coverage.test.mjs",
     "mission-control:validate-observability": "node scripts/validate-mission-control-observability.mjs",
     "env:dev": "bash -c 'export $(grep -v \"^#\" .env.local | grep -E \"^(TURNKEY_|JWT_SECRET|WEBVH_DOMAIN)\" | xargs) && for k in TURNKEY_API_PUBLIC_KEY TURNKEY_API_PRIVATE_KEY TURNKEY_ORGANIZATION_ID JWT_SECRET WEBVH_DOMAIN; do npx convex env set \"$k\" \"${!k}\"; done'",
     "env:prod": "bash -c 'export $(grep -v \"^#\" .env.local | grep -E \"^(TURNKEY_|JWT_SECRET|WEBVH_DOMAIN)\" | xargs) && for k in TURNKEY_API_PUBLIC_KEY TURNKEY_API_PRIVATE_KEY TURNKEY_ORGANIZATION_ID JWT_SECRET WEBVH_DOMAIN; do npx convex env set --prod \"$k\" \"${!k}\"; done'",
@@ -23,7 +23,7 @@
     "cap:sync": "npx cap sync",
     "cap:build": "npm run build && npx cap sync",
     "mission-control:readiness-drill": "node scripts/mission-control-readiness-drill.mjs",
-    "mission-control:test-readiness-drill": "node --test scripts/mission-control-readiness-drill.test.mjs"
+    "mission-control:test-readiness-drill": "node --test scripts/mission-control-readiness-drill.test.mjs scripts/lib/mission-control-api-contracts.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.2",

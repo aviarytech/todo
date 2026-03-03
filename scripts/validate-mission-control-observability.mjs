@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { validateSeverityRoutePolicy } from "./mission-control-alert-severity-policy.mjs";
+import { validateEscalationChannelCoverage } from "./lib/mission-control-alert-routing-coverage.mjs";
 
 function readJson(path) {
   return JSON.parse(readFileSync(resolve(process.cwd(), path), "utf8"));
@@ -198,6 +199,15 @@ for (const alert of routing.alerts ?? []) {
 pass("Routing config includes staging and production targets for each alert");
 pass("Alert routes match between dashboard and routing config");
 pass("Severity-based production routing policy is satisfied");
+
+const escalationCoverageErrors = validateEscalationChannelCoverage(routing);
+if (escalationCoverageErrors.length > 0) {
+  for (const error of escalationCoverageErrors) {
+    fail(error);
+  }
+} else {
+  pass("High/critical alerts are routed to both Slack and PagerDuty");
+}
 
 if (process.exitCode && process.exitCode !== 0) {
   console.error("Mission Control observability validation failed.");
