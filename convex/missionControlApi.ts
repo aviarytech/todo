@@ -235,9 +235,31 @@ export const apiKeyByIdHandler = httpAction(async (ctx, request) => {
       const oldKey = existing.find((k) => k._id === keyId);
       if (!oldKey) return errorResponse(request, "API key not found", 404);
       if (oldKey.revokedAt) return errorResponse(request, "Cannot rotate revoked API key", 400);
+      if (oldKey.rotatedToKeyId) return errorResponse(request, "API key rotation already in progress", 409);
 
+      const now = Date.now();
+      if (body.gracePeriodHours !== undefined && !Number.isFinite(body.gracePeriodHours)) {
+        return errorResponse(request, "gracePeriodHours must be a finite number", 400);
+      }
       const gracePeriodHours = Math.min(Math.max(Math.floor(body.gracePeriodHours ?? 24), 1), 168);
-      const graceEndsAt = Date.now() + gracePeriodHours * 60 * 60 * 1000;
+      const graceEndsAt = now + gracePeriodHours * 60 * 60 * 1000;
+
+      if (body.expiresAt !== undefined) {
+        if (!Number.isFinite(body.expiresAt)) {
+          return errorResponse(request, "expiresAt must be a unix epoch timestamp in milliseconds", 400);
+        }
+        if (body.expiresAt <= now) {
+          return errorResponse(request, "expiresAt must be in the future", 400);
+        }
+        if (body.expiresAt <= graceEndsAt) {
+          return errorResponse(request, "expiresAt must be after the old key grace window ends", 400);
+        }
+      }
+
+      const label = typeof body.label === "string" && body.label.trim().length
+        ? body.label.trim()
+        : `${oldKey.label} (rotated)`;
+
       const rawKey = `pa_${randomToken(8)}_${randomToken(24)}`;
       const keyPrefix = rawKey.slice(0, 12);
       const keyHash = await sha256Hex(rawKey);
@@ -246,7 +268,7 @@ export const apiKeyByIdHandler = httpAction(async (ctx, request) => {
         ownerDid: userDid,
         rotatedByDid: userDid,
         oldKeyId: keyId,
-        label: body.label ?? `${oldKey.label} (rotated)`,
+        label,
         keyPrefix,
         keyHash,
         scopes: oldKey.scopes,
@@ -279,7 +301,19 @@ export const apiKeyByIdHandler = httpAction(async (ctx, request) => {
     return errorResponse(request, "Method not allowed", 405);
   } catch (error) {
     if (error instanceof AuthError) return unauthorizedResponseWithCors(request, error.message);
-    return errorResponse(request, error instanceof Error ? error.message : "Failed", 500);
+    if (error instanceof Error) {
+      if (
+        error.message.includes("already in progress")
+        || error.message.includes("must be in the future")
+        || error.message.includes("must outlive")
+        || error.message.includes("Cannot rotate revoked API key")
+      ) {
+        const status = error.message.includes("already in progress") ? 409 : 400;
+        return errorResponse(request, error.message, status);
+      }
+      return errorResponse(request, error.message, 500);
+    }
+    return errorResponse(request, "Failed", 500);
   }
 });
 

@@ -149,6 +149,18 @@ export const createRotatedApiKey = mutation({
     const oldKey = await ctx.db.get(args.oldKeyId);
     if (!oldKey || oldKey.ownerDid !== args.ownerDid) throw new Error("API key not found");
     if (oldKey.revokedAt) throw new Error("Cannot rotate revoked API key");
+    if (oldKey.rotatedToKeyId) throw new Error("API key rotation already in progress");
+    if (!Number.isFinite(args.graceEndsAt) || args.graceEndsAt <= now) {
+      throw new Error("Rotation grace window must end in the future");
+    }
+    if (args.expiresAt !== undefined) {
+      if (!Number.isFinite(args.expiresAt) || args.expiresAt <= now) {
+        throw new Error("Rotated API key expiry must be in the future");
+      }
+      if (args.expiresAt <= args.graceEndsAt) {
+        throw new Error("Rotated API key must outlive the old key grace window");
+      }
+    }
 
     const newKeyId = await ctx.db.insert("apiKeys", {
       ownerDid: args.ownerDid,
@@ -189,18 +201,21 @@ export const finalizeApiKeyRotation = mutation({
     if (!oldKey.rotatedToKeyId) throw new Error("API key is not in rotation");
 
     const now = Date.now();
-    await ctx.db.patch(oldKey._id, { revokedAt: now });
+    const revokedAt = oldKey.revokedAt ?? now;
+    if (!oldKey.revokedAt) {
+      await ctx.db.patch(oldKey._id, { revokedAt });
+    }
 
     const event = await ctx.db
       .query("apiKeyRotationEvents")
       .withIndex("by_old_key", (q) => q.eq("oldKeyId", oldKey._id))
       .first();
 
-    if (event) {
-      await ctx.db.patch(event._id, { oldKeyRevokedAt: now, updatedAt: now });
+    if (event && !event.oldKeyRevokedAt) {
+      await ctx.db.patch(event._id, { oldKeyRevokedAt: revokedAt, updatedAt: now });
     }
 
-    return { ok: true, revokedAt: now };
+    return { ok: true, revokedAt, alreadyRevoked: Boolean(oldKey.revokedAt) };
   },
 });
 
