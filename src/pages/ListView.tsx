@@ -128,15 +128,15 @@ export function ListView() {
   useEffect(() => {
     if (!did) return;
 
-    void heartbeatPresence({ listId, userDid: did, legacyDid, status: "active" });
+    void heartbeatPresence({ listId, userDid: did, legacyDid: legacyDid ?? undefined, status: "active" });
 
     const timer = window.setInterval(() => {
-      void heartbeatPresence({ listId, userDid: did, legacyDid, status: "active" });
+      void heartbeatPresence({ listId, userDid: did, legacyDid: legacyDid ?? undefined, status: "active" });
     }, 30_000);
 
     return () => {
       window.clearInterval(timer);
-      void markPresenceOffline({ listId, userDid: did, legacyDid });
+      void markPresenceOffline({ listId, userDid: did, legacyDid: legacyDid ?? undefined });
     };
   }, [did, legacyDid, listId, heartbeatPresence, markPresenceOffline]);
 
