@@ -185,20 +185,15 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
 
     const samples: number[] = [];
-    const runs = perfFixture.listOpenRuns ?? 6;
-    const thresholdMs = perfFixture.listOpenP95Ms ?? 500;
-    const itemsPerList = perfFixture.itemsPerList ?? 1;
+    const runs = perfFixture.listOpenRuns;
+    const thresholdMs = perfFixture.listOpenP95Ms;
+    const itemsPerList = perfFixture.itemsPerList;
+    const seededListCount = Math.max(perfFixture.seededListCount, runs);
+
+    const seededListNames = await seedPerfLists(page, seededListCount, itemsPerList, `${Date.now()}`);
 
     for (let i = 0; i < runs; i += 1) {
-      const listName = `Perf List ${i + 1}`;
-      await createList(page, listName);
-
-      for (let j = 0; j < itemsPerList; j += 1) {
-        await createItem(page, `Perf Item ${i + 1}.${j + 1}`);
-      }
-
-      await page.getByRole("link", { name: "Back to lists" }).click();
-      await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 10000 });
+      const listName = seededListNames[i % seededListNames.length];
 
       const t0 = Date.now();
       await page.getByRole("heading", { name: listName }).click();
@@ -206,10 +201,11 @@ test.describe("Mission Control Phase 1 acceptance", () => {
       samples.push(Date.now() - t0);
 
       await page.getByRole("link", { name: "Back to lists" }).click();
+      await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 10000 });
     }
 
     const listOpenP95 = p95(samples);
-    test.info().annotations.push({ type: "metric", description: `list_open_p95_ms=${listOpenP95};samples=${samples.join(",")};fixturePath=${process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none"}` });
+    test.info().annotations.push({ type: "metric", description: `list_open_p95_ms=${listOpenP95};samples=${samples.join(",")};fixturePath=${process.env.MISSION_CONTROL_FIXTURE_PATH ?? "none"};seededLists=${seededListCount};itemsPerList=${itemsPerList}` });
     expect(listOpenP95).toBeLessThan(thresholdMs);
   });
 
@@ -222,8 +218,8 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     test.skip(!hasActivityPanel, "Activity panel UI is not in current build; harness reserved for Phase 1 completion.");
 
     const samples: number[] = [];
-    const runs = perfFixture.activityOpenRuns ?? 6;
-    const thresholdMs = perfFixture.activityOpenP95Ms ?? 700;
+    const runs = perfFixture.activityOpenRuns;
+    const thresholdMs = perfFixture.activityOpenP95Ms;
 
     for (let i = 0; i < runs; i += 1) {
       const t0 = Date.now();
