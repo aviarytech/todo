@@ -59,6 +59,11 @@ Control endpoints require scope: `runs:control`.
 
 `POST /api/v1/auth/keys/:id/finalize-rotation` is idempotent and returns the effective `revokedAt` timestamp.
 
+Behavior guarantees:
+- Retention day input is clamped to `1..365` and cutoff logic is strict (`createdAt < cutoff` is stale).
+- Deletion logs are idempotent per `(runId, retentionCutoffAt, dryRun)` + artifact fingerprint to avoid duplicate audit rows during retries.
+- Deletion log artifacts are schema-normalized before response serialization to harden API consumers.
+
 ### Readiness drill auth notes
 `scripts/mission-control-readiness-drill.mjs` supports split-auth checks so launch gates can validate key rotation and retention/audit integration:
 - `MISSION_CONTROL_API_KEY` for API-key scoped routes (dashboard/runs + run controls)

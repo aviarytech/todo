@@ -238,6 +238,8 @@ New endpoints for Agent Mission Control with scoped API keys.
 - `GET /api/v1/runs/retention` (JWT only) — retention config + recent deletion logs
 - `PUT /api/v1/runs/retention` (JWT only) — set artifact retention days (default 30)
 - `POST /api/v1/runs/retention` (JWT only) — run retention job (`dryRun` defaults to `true`)
+  - retention clamp: `1..365` days, stale rule: `artifact.createdAt < cutoff`
+  - audit logs are idempotent on `(runId, retentionCutoffAt, dryRun, deletedArtifacts fingerprint)`
 
 ### Launch-gate drill auth split
 For `npm run mission-control:readiness-drill`:

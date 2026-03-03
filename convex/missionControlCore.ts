@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { clampRetentionDays, computeRetentionCutoff, normalizeArtifactRefs, selectStaleArtifacts, shouldInsertDeletionLog } from "./lib/artifactRetention";
 
 async function hasListAccess(ctx: any, listId: Id<"lists">, userDid: string) {
   const list = await ctx.db.get(listId);
@@ -249,7 +250,7 @@ export const upsertMissionControlSettings = mutation({
   args: { ownerDid: v.string(), updatedByDid: v.string(), artifactRetentionDays: v.number() },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const artifactRetentionDays = Math.min(Math.max(Math.floor(args.artifactRetentionDays), 1), 365);
+    const artifactRetentionDays = clampRetentionDays(args.artifactRetentionDays, DEFAULT_ARTIFACT_RETENTION_DAYS);
     const existing = await ctx.db
       .query("missionControlSettings")
       .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
@@ -286,8 +287,9 @@ export const applyArtifactRetention = mutation({
       .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
       .first();
 
-    const retentionDays = Math.min(Math.max(Math.floor(args.retentionDays ?? settings?.artifactRetentionDays ?? DEFAULT_ARTIFACT_RETENTION_DAYS), 1), 365);
-    const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+    const retentionDays = clampRetentionDays(args.retentionDays, settings?.artifactRetentionDays ?? DEFAULT_ARTIFACT_RETENTION_DAYS);
+    const now = Date.now();
+    const cutoff = computeRetentionCutoff(now, retentionDays);
     const dryRun = args.dryRun ?? true;
     const maxRuns = Math.min(Math.max(args.maxRuns ?? 250, 1), 1000);
 
@@ -299,27 +301,33 @@ export const applyArtifactRetention = mutation({
 
     let runsTouched = 0;
     let deletedArtifacts = 0;
-    const now = Date.now();
 
     for (const run of runs) {
-      const artifacts = run.artifactRefs ?? [];
-      const staleArtifacts = artifacts.filter((a) => a.createdAt < cutoff);
+      const artifacts = normalizeArtifactRefs(run.artifactRefs ?? []);
+      const staleArtifacts = selectStaleArtifacts(artifacts, cutoff);
       if (!staleArtifacts.length) continue;
+
+      const existingLog = await ctx.db
+        .query("missionArtifactDeletionLogs")
+        .withIndex("by_run_cutoff_mode", (q) => q.eq("runId", run._id).eq("retentionCutoffAt", cutoff).eq("dryRun", dryRun))
+        .first();
+
+      if (!existingLog || shouldInsertDeletionLog(existingLog.deletedArtifacts, staleArtifacts)) {
+        await ctx.db.insert("missionArtifactDeletionLogs", {
+          ownerDid: args.ownerDid,
+          runId: run._id,
+          deletedCount: staleArtifacts.length,
+          dryRun,
+          retentionCutoffAt: cutoff,
+          actorDid: args.actorDid,
+          trigger: "operator",
+          deletedArtifacts: staleArtifacts,
+          createdAt: now,
+        });
+      }
 
       runsTouched += 1;
       deletedArtifacts += staleArtifacts.length;
-
-      await ctx.db.insert("missionArtifactDeletionLogs", {
-        ownerDid: args.ownerDid,
-        runId: run._id,
-        deletedCount: staleArtifacts.length,
-        dryRun,
-        retentionCutoffAt: cutoff,
-        actorDid: args.actorDid,
-        trigger: "operator",
-        deletedArtifacts: staleArtifacts,
-        createdAt: now,
-      });
 
       if (!dryRun) {
         await ctx.db.patch(run._id, {
