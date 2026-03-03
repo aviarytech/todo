@@ -1,7 +1,7 @@
 {
   "sprintDate": "2026-02-23",
   "block": "5/5",
-  "updatedAt": "2026-03-03T07:30:00Z",
+  "updatedAt": "2026-03-03T08:05:00Z",
   "pooAppAgentApiTracking": {
     "attempted": true,
     "status": "blocked",
@@ -50,13 +50,22 @@
       "artifacts": [
         "https://github.com/aviarytech/todo/pull/153"
       ]
+    },
+    {
+      "id": "MC-P1-AC3-PRESENCE-WIRE",
+      "title": "Wire list-level presence indicator + heartbeat and unskip AC3 feature gate",
+      "status": "done",
+      "artifacts": [
+        "src/pages/ListView.tsx",
+        "e2e/mission-control-phase1.spec.ts"
+      ]
     }
   ],
   "validation": {
     "playwrightSpecRun": "partial",
-    "command": "npm run test:e2e -- e2e/mission-control-phase1.spec.ts -g \"baseline harness boots app shell|AC1 assignee round-trip\"",
+    "command": "npm run test:e2e -- e2e/mission-control-phase1.spec.ts -g \"AC3 presence freshness\"",
     "result": {
-      "passed": 1,
+      "passed": 0,
       "skipped": 1,
       "failed": 0
     },
@@ -67,12 +76,13 @@
     "notes": [
       "Added quick Assign action in list item UI wired to items.updateItem(assigneeDid=userDid).",
       "Removed AC1 feature-availability dynamic skip; AC1 now asserts Assign control visibility.",
-      "Remaining AC1 skip is environment readiness gate (authenticated app shell availability)."
+      "Remaining AC1 skip is environment readiness gate (authenticated app shell availability).",
+      "AC3 feature dynamic skip removed; scenario still environment-gated on authenticated app-shell readiness."
     ]
   },
   "next": [
-    "Wire activity panel trigger/button to remove AC2/AC5b dynamic skips",
-    "Wire explicit list-level presence indicator to remove AC3 dynamic skip",
-    "Run production-sized perf profile: MISSION_CONTROL_FIXTURE_PATH=e2e/fixtures/mission-control.production.json npm run test:e2e -- e2e/mission-control-phase1.spec.ts"
+    "Acquire stable authenticated e2e backend session so AC3 can execute instead of setup-skip",
+    "Run full mission-control-phase1 spec on production-sized fixture to capture AC5 metrics without skips",
+    "Close MC-P1-TRACKING-AUTH blocker once agent API credentials/session are provisioned"
   ]
 }

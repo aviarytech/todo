@@ -79,6 +79,9 @@ export function ListView() {
 
   const listId = id as Id<"lists">;
   const list = useQuery(api.lists.getList, { listId });
+  const listPresence = useQuery(api.presence.getListPresence, { listId });
+  const heartbeatPresence = useMutation(api.presence.heartbeat);
+  const markPresenceOffline = useMutation(api.presence.markOffline);
   const listLoadStartedAtRef = useRef(performance.now());
   const hasRecordedRenderLatencyRef = useRef(false);
 
@@ -121,6 +124,27 @@ export function ListView() {
       });
     };
   }, [listId]);
+
+  useEffect(() => {
+    if (!did) return;
+
+    void heartbeatPresence({ listId, userDid: did, legacyDid, status: "active" });
+
+    const timer = window.setInterval(() => {
+      void heartbeatPresence({ listId, userDid: did, legacyDid, status: "active" });
+    }, 30_000);
+
+    return () => {
+      window.clearInterval(timer);
+      void markPresenceOffline({ listId, userDid: did, legacyDid });
+    };
+  }, [did, legacyDid, listId, heartbeatPresence, markPresenceOffline]);
+
+  const activePresenceCount = useMemo(() => {
+    if (!listPresence) return 1;
+    const count = listPresence.filter((row) => row.computedStatus === "active").length;
+    return Math.max(1, count);
+  }, [listPresence]);
 
   // Wrap checkItem to also record streak
   const checkItemWithStreak = useCallback(
@@ -699,6 +723,11 @@ export function ListView() {
                 </span>
               </>
             )}
+
+            <span className="text-gray-300 dark:text-gray-600">•</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-xs sm:text-sm">
+              👀 {activePresenceCount} viewing now
+            </span>
             </div>
           </div>
 

@@ -126,9 +126,6 @@ test.describe("Mission Control Phase 1 acceptance", () => {
     test.skip(!setup.ready, !setup.ready ? setup.reason : "");
     await createList(pageA, "MC Presence List");
 
-    const hasPresenceUi = (await pageA.getByText(/online|active now|viewing/i).count()) > 0;
-    test.skip(!hasPresenceUi, "Presence indicators are not yet wired in e2e environment.");
-
     await pageB.goto(pageA.url());
     await pageB.close();
 
