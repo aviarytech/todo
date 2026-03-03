@@ -30,6 +30,17 @@
             "unit": "%"
           },
           {
+            "metric": "mutation_latency_ms",
+            "view": [
+              "p50",
+              "p95"
+            ],
+            "unit": "ms",
+            "groupBy": [
+              "mutationName"
+            ]
+          },
+          {
             "metric": "active_presence_sessions",
             "view": [
               "current"
@@ -145,6 +156,15 @@
           },
           {
             "metric": "client_error_total",
+            "view": [
+              "rate_5m"
+            ],
+            "groupBy": [
+              "route"
+            ]
+          },
+          {
+            "metric": "route_view_total",
             "view": [
               "rate_5m"
             ],

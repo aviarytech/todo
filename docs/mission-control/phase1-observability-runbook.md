@@ -18,6 +18,9 @@
 - Instrumented mutations:
   - `convex/items.ts`: `items.addItem`, `items.updateItem`, `items.checkItem`
   - `convex/lists.ts`: `lists.createList`
+  - `convex/missionControl.ts`: assignment activity emits `activity_event_total{action="assigned"}`
+  - `convex/missionControlCore.ts`: launch controls emit `run_control_action_total{action,result}`
+  - `convex/agentTeam.ts`: run health query emits `agent_heartbeat_age_ms{agentSlug}` and `agent_stale_total`
 
 All baseline metrics emit as JSON logs with `[obs]` prefix. This is intentionally provider-neutral and immediately runnable.
 
@@ -50,5 +53,4 @@ All baseline metrics emit as JSON logs with `[obs]` prefix. This is intentionall
 ## Known gaps (next pass)
 - `subscription_latency_ms` not yet wired to Convex subscription timing hooks.
 - Data integrity detectors (`invalid_assignee_reference_total`, `duplicate_activity_event_total`, `out_of_order_activity_timestamps_total`) still need scheduled jobs.
-- Collaboration throughput currently requires Phase 1 activity table event emission (`activity_event_total`) for full fidelity.
 - Alert acknowledgement + incident note enforcement depends on external paging provider setup.

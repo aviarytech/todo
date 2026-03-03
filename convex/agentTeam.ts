@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { emitServerMetric } from "./lib/observability";
 
 type AgentStatus = "idle" | "working" | "error";
 
@@ -172,6 +173,16 @@ export const getRunHealth = query({
       if (agent.status !== "working" || !agent.lastStatusAt) return false;
       return now - agent.lastStatusAt >= criticalThresholdMs;
     });
+
+    for (const agent of active) {
+      const heartbeatAgeMs = agent.lastHeartbeatAt ? Math.max(0, now - agent.lastHeartbeatAt) : criticalThresholdMs;
+      emitServerMetric("agent_heartbeat_age_ms", "gauge", heartbeatAgeMs, {
+        agentSlug: agent.agentSlug,
+      });
+    }
+
+    const staleCount = staleAgents.filter((a) => a.isStale).length;
+    emitServerMetric("agent_stale_total", "gauge", staleCount);
 
     return {
       updatedAt: now,

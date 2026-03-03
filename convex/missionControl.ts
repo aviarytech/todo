@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { emitServerMetric } from "./lib/observability";
 
 const PRESENCE_TTL_MS = 90_000;
 
@@ -44,6 +45,11 @@ export const setItemAssignee = mutation({
       actorDid: args.actorDid,
       assigneeDid: args.assigneeDid,
       createdAt: Date.now(),
+    });
+
+    emitServerMetric("activity_event_total", "counter", 1, {
+      action: "assigned",
+      listId: item.listId,
     });
 
     return { ok: true };

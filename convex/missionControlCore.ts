@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { emitServerMetric } from "./lib/observability";
 
 async function hasListAccess(ctx: any, listId: Id<"lists">, userDid: string) {
   const list = await ctx.db.get(listId);
@@ -951,20 +952,35 @@ export const controlAgentLaunch = mutation({
       patch.archivedAt = undefined;
     }
 
-    await ctx.db.patch(profile._id, patch as any);
+    try {
+      await ctx.db.patch(profile._id, patch as any);
 
-    await ctx.db.insert("agentControlEvents", {
-      ownerDid: args.ownerDid,
-      actorDid: args.actorDid,
-      agentProfileId: profile._id,
-      agentSlug: args.agentSlug,
-      action: args.action,
-      targetAgentSlug: args.targetAgentSlug,
-      reason: args.reason,
-      createdAt: now,
-    });
+      await ctx.db.insert("agentControlEvents", {
+        ownerDid: args.ownerDid,
+        actorDid: args.actorDid,
+        agentProfileId: profile._id,
+        agentSlug: args.agentSlug,
+        action: args.action,
+        targetAgentSlug: args.targetAgentSlug,
+        reason: args.reason,
+        createdAt: now,
+      });
 
-    return { ok: true, agentId: profile._id, action: args.action as LaunchAction };
+      emitServerMetric("run_control_action_total", "counter", 1, {
+        action: args.action,
+        result: "ok",
+        agentSlug: args.agentSlug,
+      });
+
+      return { ok: true, agentId: profile._id, action: args.action as LaunchAction };
+    } catch (error) {
+      emitServerMetric("run_control_action_total", "counter", 1, {
+        action: args.action,
+        result: "failed",
+        agentSlug: args.agentSlug,
+      });
+      throw error;
+    }
   },
 });
 
