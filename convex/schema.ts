@@ -466,7 +466,8 @@ export default defineSchema({
     })),
     createdAt: v.number(),
   })
-    .index("by_owner_created", ["ownerDid", "createdAt"]),
+    .index("by_owner_created", ["ownerDid", "createdAt"])
+    .index("by_run_cutoff_mode", ["runId", "retentionCutoffAt", "dryRun"]),
 
   // Agent memory KV entries for long-lived runtime context
   agentMemory: defineTable({

@@ -50,6 +50,11 @@ Control endpoints require scope: `runs:control`.
 - `PUT /api/v1/runs/retention` (update policy, **JWT only**)
 - `POST /api/v1/runs/retention` (apply retention dry-run/live, **JWT only**)
 
+Behavior guarantees:
+- Retention day input is clamped to `1..365` and cutoff logic is strict (`createdAt < cutoff` is stale).
+- Deletion logs are idempotent per `(runId, retentionCutoffAt, dryRun)` + artifact fingerprint to avoid duplicate audit rows during retries.
+- Deletion log artifacts are schema-normalized before response serialization to harden API consumers.
+
 ### Readiness drill auth notes
 `scripts/mission-control-readiness-drill.mjs` now supports split-auth checks so launch gates can validate both key rotation and retention/audit integration:
 - `MISSION_CONTROL_API_KEY` for API-key scoped routes (dashboard/runs + run controls)

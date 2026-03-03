@@ -4,6 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import type { ActionCtx } from "./_generated/server";
 import { requireAuth, AuthError, unauthorizedResponseWithCors } from "./lib/auth";
 import { errorResponse, getCorsHeaders, jsonResponse } from "./lib/httpResponses";
+import { normalizeArtifactRefs } from "./lib/artifactRetention";
 
 const ALL_SCOPES = [
   "tasks:read",
@@ -293,7 +294,12 @@ export const runRetentionHandler = httpAction(async (ctx, request) => {
         ctx.runQuery((api as any).missionControlCore.listArtifactDeletionLogs, { ownerDid: userDid, limit: 25 }),
       ]);
 
-      return jsonResponse(request, { settings, deletionLogs: logs });
+      const deletionLogs = logs.map((log: any) => ({
+        ...log,
+        deletedArtifacts: normalizeArtifactRefs(log.deletedArtifacts),
+      }));
+
+      return jsonResponse(request, { settings, deletionLogs });
     }
 
     if (request.method === "PUT") {
