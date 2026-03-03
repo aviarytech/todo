@@ -4,12 +4,20 @@
   "routing": {
     "staging": {
       "channel": "slack://aviary-mission-control-dev",
-      "escalation": "none"
+      "escalation": "none",
+      "acknowledgement": {
+        "required": false,
+        "incidentNoteRequired": false
+      }
     },
     "production": {
       "channel": "slack://aviary-oncall-mission-control",
       "pager": "pagerduty://mission-control-primary",
-      "escalation": "15m"
+      "escalation": "15m",
+      "acknowledgement": {
+        "required": true,
+        "incidentNoteRequired": true
+      }
     }
   },
   "alerts": [

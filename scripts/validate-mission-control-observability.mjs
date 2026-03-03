@@ -120,6 +120,13 @@ for (const alert of metrics.alerts ?? []) {
 }
 pass("Metrics alert windows are normalized");
 
+const severityRank = {
+  low: 1,
+  medium: 2,
+  high: 3,
+  critical: 4,
+};
+
 for (const alert of routing.alerts ?? []) {
   if (!Array.isArray(alert.route?.staging) || alert.route.staging.length === 0) {
     fail(`Routing alert ${alert.name} missing staging route`);
@@ -132,8 +139,32 @@ for (const alert of routing.alerts ?? []) {
   if (inDashboard && String(inDashboard.severity) !== String(alert.severity)) {
     fail(`Severity mismatch for ${alert.name}: dashboard=${inDashboard.severity} routing=${alert.severity}`);
   }
+
+  const severity = String(alert.severity);
+  if ((severityRank[severity] ?? 0) >= severityRank.high) {
+    const productionHasPager = alert.route.production.some((target) => String(target).startsWith("pagerduty://"));
+    if (!productionHasPager) {
+      fail(`Routing alert ${alert.name} (${severity}) must include pager target in production`);
+    }
+  }
+
+  const stagingHasPager = alert.route.staging.some((target) => String(target).startsWith("pagerduty://"));
+  if (stagingHasPager) {
+    fail(`Routing alert ${alert.name} must not include pager target in staging`);
+  }
 }
 pass("Routing config includes staging and production targets for each alert");
+
+const stagingAck = routing.routing?.staging?.acknowledgement;
+const productionAck = routing.routing?.production?.acknowledgement;
+
+if (stagingAck?.required !== false || stagingAck?.incidentNoteRequired !== false) {
+  fail("Staging acknowledgement policy must keep acknowledgement + incident notes optional");
+}
+if (productionAck?.required !== true || productionAck?.incidentNoteRequired !== true) {
+  fail("Production acknowledgement policy must require acknowledgement + incident notes");
+}
+pass("Environment acknowledgement policies match Phase 1 requirements");
 
 if (process.exitCode && process.exitCode !== 0) {
   console.error("Mission Control observability validation failed.");
