@@ -27,6 +27,7 @@ import { didResourceHandler } from "./didResourcesHttp";
 import { assignItem as assignItemHttp, unassignItem as unassignItemHttp, getItemAssignees as getItemAssigneesHttp } from "./assigneesHttp";
 import { heartbeat as presenceHeartbeatHttp, listPresence as listPresenceHttp } from "./presenceHttp";
 import { getListActivity as getListActivityHttp } from "./activityHttp";
+import { stripeWebhook, createCheckout, createPortal, getSubscription } from "./billingHttp";
 const RATE_LIMITS = {
   initiate: { windowMs: 60000, maxAttempts: 5 },
   verify: { windowMs: 60000, maxAttempts: 5 },
@@ -392,6 +393,15 @@ http.route({ path: "/api/presence/list", method: "OPTIONS", handler: corsHandler
 // --- Activity endpoints ---
 http.route({ path: "/api/activity/list", method: "POST", handler: getListActivityHttp });
 http.route({ path: "/api/activity/list", method: "OPTIONS", handler: corsHandler });
+
+// --- Billing endpoints ---
+http.route({ path: "/api/stripe/webhook", method: "POST", handler: stripeWebhook });
+http.route({ path: "/api/billing/checkout", method: "POST", handler: createCheckout });
+http.route({ path: "/api/billing/checkout", method: "OPTIONS", handler: corsHandler });
+http.route({ path: "/api/billing/portal", method: "POST", handler: createPortal });
+http.route({ path: "/api/billing/portal", method: "OPTIONS", handler: corsHandler });
+http.route({ path: "/api/billing/subscription", method: "GET", handler: getSubscription });
+http.route({ path: "/api/billing/subscription", method: "OPTIONS", handler: corsHandler });
 
 // ============================================================================
 // DID Resolution & Resource endpoints (public, no auth)

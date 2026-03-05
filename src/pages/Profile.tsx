@@ -8,10 +8,12 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
+import { useBilling } from "../hooks/useBilling";
 
 export function Profile() {
   const { did, legacyDid, email, displayName, isLoading: userLoading } = useCurrentUser();
   const { haptic } = useSettings();
+  const { plan, subscription } = useBilling();
 
   // Fetch user's lists
   const lists = useQuery(
@@ -207,6 +209,41 @@ export function Profile() {
                 </li>
               </ul>
             </div>
+          </div>
+        </div>
+
+        {/* Subscription / Plan section */}
+        <div className="px-6 pb-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <span>💳</span> Plan
+          </h2>
+          <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-900 dark:text-gray-100 capitalize">{plan}</p>
+              {subscription?.currentPeriodEnd && plan !== "free" && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {subscription.cancelAtPeriodEnd ? "Cancels" : "Renews"}{" "}
+                  {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+            {plan === "free" ? (
+              <Link
+                to="/pricing"
+                onClick={() => haptic('light')}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-xl transition-colors"
+              >
+                Upgrade →
+              </Link>
+            ) : (
+              <Link
+                to="/pricing"
+                onClick={() => haptic('light')}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-xl transition-colors"
+              >
+                Manage
+              </Link>
+            )}
           </div>
         </div>
 

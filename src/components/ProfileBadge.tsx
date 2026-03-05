@@ -7,13 +7,22 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useSettings } from '../hooks/useSettings';
+import { useBilling } from '../hooks/useBilling';
+
+const PLAN_LABELS: Record<string, { label: string; className: string }> = {
+  pro: { label: "Pro", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
+  team: { label: "Team", className: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400" },
+};
 
 export function ProfileBadge() {
   const { logout } = useAuth();
   const { did } = useCurrentUser();
   const { haptic } = useSettings();
+  const { plan } = useBilling();
 
   if (!did) return null;
+
+  const planBadge = PLAN_LABELS[plan] ?? null;
 
   // Get first 8 and last 4 chars of DID for display
   const shortDid = did.length > 16 
@@ -23,7 +32,7 @@ export function ProfileBadge() {
   return (
     <div className="flex items-center gap-2">
       {/* DID badge - now links to profile */}
-      <Link 
+      <Link
         to="/profile"
         onClick={() => haptic('light')}
         className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
@@ -33,7 +42,23 @@ export function ProfileBadge() {
         <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
           {shortDid}
         </span>
+        {planBadge && (
+          <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${planBadge.className}`}>
+            {planBadge.label}
+          </span>
+        )}
       </Link>
+
+      {/* Pricing link (only shown for free users) */}
+      {plan === "free" && (
+        <Link
+          to="/pricing"
+          onClick={() => haptic('light')}
+          className="hidden sm:flex items-center px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-full transition-colors border border-amber-200 dark:border-amber-800"
+        >
+          Upgrade
+        </Link>
+      )}
 
       {/* Logout button */}
       <button

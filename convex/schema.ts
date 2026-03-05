@@ -295,6 +295,29 @@ export default defineSchema({
     .index("by_item", ["itemId"])
     .index("by_user", ["userDid"]),
 
+  // Subscriptions table - Stripe billing for freemium model
+  subscriptions: defineTable({
+    userId: v.id("users"), // Reference to users table
+    stripeCustomerId: v.string(), // Stripe customer ID
+    stripeSubscriptionId: v.optional(v.string()), // Stripe subscription ID (null for free tier)
+    plan: v.union(v.literal("free"), v.literal("pro"), v.literal("team")),
+    status: v.union(
+      v.literal("active"),
+      v.literal("canceled"),
+      v.literal("past_due"),
+      v.literal("trialing"),
+      v.literal("incomplete")
+    ),
+    currentPeriodEnd: v.optional(v.number()), // Timestamp when current billing period ends
+    cancelAtPeriodEnd: v.optional(v.boolean()), // Whether subscription will cancel at end of period
+    teamSize: v.optional(v.number()), // For team plans: number of seats
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_stripe_customer", ["stripeCustomerId"])
+    .index("by_stripe_subscription", ["stripeSubscriptionId"]),
+
   // Bitcoin anchors table - list/item state anchored to Bitcoin signet (Phase 5 + 6)
   bitcoinAnchors: defineTable({
     // Reference to what is being anchored (list or item)

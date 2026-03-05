@@ -25,6 +25,7 @@ const SharedListResource = lazy(() => import('./components/SharedListResource').
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })))
 const Templates = lazy(() => import('./pages/Templates').then(m => ({ default: m.Templates })))
 const PriorityFocus = lazy(() => import('./pages/PriorityFocus').then(m => ({ default: m.PriorityFocus })))
+const Pricing = lazy(() => import('./pages/Pricing').then(m => ({ default: m.Pricing })))
 
 /**
  * Authenticated layout wrapper with header and navigation.
@@ -205,6 +206,9 @@ function App() {
 
           {/* Landing page for unauthenticated, redirect to app if logged in */}
           <Route path="/" element={isAuthenticated ? <Navigate to="/app" replace /> : <Landing />} />
+
+          {/* Pricing - accessible to all, but shows upgrade CTAs for authenticated users */}
+          <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
 
           {/* Protected routes - require authentication */}
           <Route path="/app" element={<ProtectedRoute><Home /></ProtectedRoute>} />
