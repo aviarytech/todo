@@ -25,8 +25,6 @@ const SharedListResource = lazy(() => import('./components/SharedListResource').
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })))
 const Templates = lazy(() => import('./pages/Templates').then(m => ({ default: m.Templates })))
 const PriorityFocus = lazy(() => import('./pages/PriorityFocus').then(m => ({ default: m.PriorityFocus })))
-const TeamDashboard = lazy(() => import('./pages/TeamDashboard').then(m => ({ default: m.TeamDashboard })))
-const Memory = lazy(() => import('./pages/Memory').then(m => ({ default: m.Memory })))
 
 /**
  * Authenticated layout wrapper with header and navigation.
@@ -213,8 +211,6 @@ function App() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
           <Route path="/priority" element={<ProtectedRoute><PriorityFocus /></ProtectedRoute>} />
-          <Route path="/team" element={<ProtectedRoute><TeamDashboard /></ProtectedRoute>} />
-          <Route path="/memory" element={<ProtectedRoute><Memory /></ProtectedRoute>} />
           <Route path="/list/:id" element={<ProtectedRoute><ListView /></ProtectedRoute>} />
 
           {/* Fallback - redirect to app (AuthGuard will handle login redirect if needed) */}

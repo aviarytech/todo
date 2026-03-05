@@ -27,29 +27,6 @@ import { didResourceHandler } from "./didResourcesHttp";
 import { assignItem as assignItemHttp, unassignItem as unassignItemHttp, getItemAssignees as getItemAssigneesHttp } from "./assigneesHttp";
 import { heartbeat as presenceHeartbeatHttp, listPresence as listPresenceHttp } from "./presenceHttp";
 import { getListActivity as getListActivityHttp } from "./activityHttp";
-// memoriesHttp handlers now consolidated into missionControlApi.memoryHandler
-import {
-  getUserLists as agentGetUserLists,
-  agentListHandler,
-  agentItemHandler,
-  teamHandler,
-  corsHandler as agentCorsHandler,
-} from "./agentApi";
-import {
-  v1AuthCors,
-  apiKeysHandler,
-  apiKeyByIdHandler,
-  agentsHandler,
-  tasksHandler,
-  activityHandler,
-  memoryHandler,
-  runsHandler,
-  runsDashboardHandler,
-  schedulesHandler,
-  runRetentionHandler,
-} from "./missionControlApi";
-
-// Rate limit configuration
 const RATE_LIMITS = {
   initiate: { windowMs: 60000, maxAttempts: 5 },
   verify: { windowMs: 60000, maxAttempts: 5 },
@@ -415,92 +392,6 @@ http.route({ path: "/api/presence/list", method: "OPTIONS", handler: corsHandler
 // --- Activity endpoints ---
 http.route({ path: "/api/activity/list", method: "POST", handler: getListActivityHttp });
 http.route({ path: "/api/activity/list", method: "OPTIONS", handler: corsHandler });
-
-// ============================================================================
-// Agent API endpoints (RESTful API for programmatic access)
-// All endpoints require JWT authentication via Authorization header.
-// ============================================================================
-
-// --- Agent List endpoints ---
-// GET /api/agent/lists - Get all lists for the authenticated user
-http.route({ path: "/api/agent/lists", method: "GET", handler: agentGetUserLists });
-http.route({ path: "/api/agent/lists", method: "OPTIONS", handler: agentCorsHandler });
-
-// Note: Convex httpRouter doesn't support path parameters like :id
-// So we use prefix matching and parse the ID in the handler
-
-// GET  /api/agent/lists/:id        - Get a specific list with items
-// GET  /api/agent/lists/:id/items  - Get items for a list  
-// POST /api/agent/lists/:id/items  - Add item to a list
-http.route({ pathPrefix: "/api/agent/lists/", method: "GET", handler: agentListHandler });
-http.route({ pathPrefix: "/api/agent/lists/", method: "POST", handler: agentListHandler });
-http.route({ pathPrefix: "/api/agent/lists/", method: "OPTIONS", handler: agentCorsHandler });
-
-// PATCH  /api/agent/items/:id - Update an item (check/uncheck/edit)
-// DELETE /api/agent/items/:id - Delete an item
-http.route({ pathPrefix: "/api/agent/items/", method: "PATCH", handler: agentItemHandler });
-http.route({ pathPrefix: "/api/agent/items/", method: "DELETE", handler: agentItemHandler });
-http.route({ pathPrefix: "/api/agent/items/", method: "OPTIONS", handler: agentCorsHandler });
-
-// GET  /api/agent/team         - Team dashboard cards + tree + summary
-// POST /api/agent/team/status  - Agent status heartbeat/update
-http.route({ path: "/api/agent/team", method: "GET", handler: teamHandler });
-http.route({ path: "/api/agent/team", method: "OPTIONS", handler: agentCorsHandler });
-http.route({ path: "/api/agent/team/status", method: "POST", handler: teamHandler });
-http.route({ path: "/api/agent/team/status", method: "OPTIONS", handler: agentCorsHandler });
-
-// ============================================================================
-// Mission Control REST v1 endpoints
-// Supports JWT auth + scoped API key auth (X-API-Key)
-// ============================================================================
-http.route({ path: "/api/v1/auth/keys", method: "GET", handler: apiKeysHandler });
-http.route({ path: "/api/v1/auth/keys", method: "POST", handler: apiKeysHandler });
-http.route({ path: "/api/v1/auth/keys", method: "OPTIONS", handler: v1AuthCors });
-http.route({ pathPrefix: "/api/v1/auth/keys/", method: "DELETE", handler: apiKeyByIdHandler });
-http.route({ pathPrefix: "/api/v1/auth/keys/", method: "POST", handler: apiKeyByIdHandler });
-http.route({ pathPrefix: "/api/v1/auth/keys/", method: "OPTIONS", handler: v1AuthCors });
-
-http.route({ path: "/api/v1/runs/retention", method: "GET", handler: runRetentionHandler });
-http.route({ path: "/api/v1/runs/retention", method: "PUT", handler: runRetentionHandler });
-http.route({ path: "/api/v1/runs/retention", method: "POST", handler: runRetentionHandler });
-http.route({ path: "/api/v1/runs/retention", method: "OPTIONS", handler: v1AuthCors });
-
-http.route({ path: "/api/v1/agents", method: "GET", handler: agentsHandler });
-http.route({ path: "/api/v1/agents", method: "POST", handler: agentsHandler });
-http.route({ path: "/api/v1/agents", method: "OPTIONS", handler: v1AuthCors });
-
-http.route({ path: "/api/v1/tasks", method: "GET", handler: tasksHandler });
-http.route({ pathPrefix: "/api/v1/tasks/", method: "GET", handler: tasksHandler });
-http.route({ path: "/api/v1/tasks", method: "OPTIONS", handler: v1AuthCors });
-http.route({ pathPrefix: "/api/v1/tasks/", method: "OPTIONS", handler: v1AuthCors });
-
-http.route({ path: "/api/v1/activity", method: "GET", handler: activityHandler });
-http.route({ path: "/api/v1/activity", method: "OPTIONS", handler: v1AuthCors });
-
-http.route({ path: "/api/v1/memory", method: "GET", handler: memoryHandler });
-http.route({ path: "/api/v1/memory", method: "POST", handler: memoryHandler });
-http.route({ pathPrefix: "/api/v1/memory/", method: "GET", handler: memoryHandler });
-http.route({ pathPrefix: "/api/v1/memory/", method: "POST", handler: memoryHandler });
-http.route({ pathPrefix: "/api/v1/memory/", method: "PATCH", handler: memoryHandler });
-http.route({ pathPrefix: "/api/v1/memory/", method: "DELETE", handler: memoryHandler });
-http.route({ path: "/api/v1/memory", method: "OPTIONS", handler: v1AuthCors });
-http.route({ pathPrefix: "/api/v1/memory/", method: "OPTIONS", handler: v1AuthCors });
-
-http.route({ path: "/api/v1/schedules", method: "GET", handler: schedulesHandler });
-http.route({ pathPrefix: "/api/v1/schedules/", method: "POST", handler: schedulesHandler });
-http.route({ path: "/api/v1/schedules", method: "OPTIONS", handler: v1AuthCors });
-http.route({ pathPrefix: "/api/v1/schedules/", method: "OPTIONS", handler: v1AuthCors });
-
-http.route({ path: "/api/v1/runs", method: "GET", handler: runsHandler });
-http.route({ path: "/api/v1/runs", method: "POST", handler: runsHandler });
-http.route({ pathPrefix: "/api/v1/runs/", method: "POST", handler: runsHandler });
-http.route({ pathPrefix: "/api/v1/runs/", method: "PATCH", handler: runsHandler });
-http.route({ pathPrefix: "/api/v1/runs/", method: "DELETE", handler: runsHandler });
-http.route({ path: "/api/v1/runs", method: "OPTIONS", handler: v1AuthCors });
-http.route({ pathPrefix: "/api/v1/runs/", method: "OPTIONS", handler: v1AuthCors });
-
-http.route({ path: "/api/v1/dashboard/runs", method: "GET", handler: runsDashboardHandler });
-http.route({ path: "/api/v1/dashboard/runs", method: "OPTIONS", handler: v1AuthCors });
 
 // ============================================================================
 // DID Resolution & Resource endpoints (public, no auth)
