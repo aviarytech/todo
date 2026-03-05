@@ -6,7 +6,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useMutation } from "convex/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -29,6 +29,7 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
   const [categoryId, setCategoryId] = useState<Id<"categories"> | undefined>(undefined);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [planLimitHit, setPlanLimitHit] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -65,7 +66,12 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
       navigate(`/list/${listId}`);
     } catch (err) {
       console.error("Failed to create list:", err);
-      setError("Failed to create list. Please try again.");
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("PLAN_LIMIT")) {
+        setPlanLimitHit(true);
+      } else {
+        setError("Failed to create list. Please try again.");
+      }
       haptic('error');
       setIsCreating(false);
     }
@@ -171,6 +177,23 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             {error}
+          </div>
+        )}
+
+        {planLimitHit && (
+          <div className="px-4 py-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-300 text-sm space-y-2">
+            <div className="flex items-center gap-2 font-semibold">
+              <span>🚀</span>
+              <span>You've reached the free plan limit of 5 lists</span>
+            </div>
+            <p className="text-amber-700 dark:text-amber-400">Upgrade to Pro for unlimited lists, collaborators, and more.</p>
+            <Link
+              to="/pricing"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-lg font-semibold text-sm transition-colors"
+            >
+              View pricing →
+            </Link>
           </div>
         )}
       </form>

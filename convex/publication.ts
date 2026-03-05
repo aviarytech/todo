@@ -218,6 +218,31 @@ export const bookmarkList = mutation({
 
     if (existing) return existing._id;
 
+    // Plan enforcement: check list owner's plan for collaborator limit
+    const list = await ctx.db.get(args.listId);
+    if (list) {
+      const owner = await ctx.db
+        .query("users")
+        .withIndex("by_did", (q) => q.eq("did", list.ownerDid))
+        .first();
+      if (owner) {
+        const sub = await ctx.db
+          .query("subscriptions")
+          .withIndex("by_user", (q) => q.eq("userId", owner._id))
+          .first();
+        const plan = sub && (sub.status === "active" || sub.status === "trialing") ? sub.plan : "free";
+        if (plan === "free") {
+          const collaborators = await ctx.db
+            .query("bookmarks")
+            .withIndex("by_list", (q) => q.eq("listId", args.listId))
+            .collect();
+          if (collaborators.length >= 3) {
+            throw new Error("PLAN_LIMIT: This list has reached the free plan limit of 3 collaborators. The list owner must upgrade at /pricing to add more collaborators.");
+          }
+        }
+      }
+    }
+
     return await ctx.db.insert("bookmarks", {
       userDid: args.userDid,
       listId: args.listId,

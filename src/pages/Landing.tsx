@@ -41,12 +41,20 @@ export function Landing() {
             <span className="text-2xl sm:text-3xl md:text-4xl flex-shrink-0">💩</span>
             <span className="font-black text-lg sm:text-xl md:text-2xl text-amber-900 truncate">Poo App</span>
           </div>
-          <Link
-            to={isAuthenticated ? '/' : '/login'}
-            className="px-4 sm:px-6 py-2 sm:py-2.5 bg-amber-900 text-amber-50 rounded-full font-semibold text-sm sm:text-base hover:bg-amber-800 active:bg-amber-950 transition-colors shadow-lg shadow-amber-900/20 whitespace-nowrap flex-shrink-0"
-          >
-            {isAuthenticated ? 'Open App' : 'Sign In'}
-          </Link>
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <Link
+              to="/pricing"
+              className="px-3 sm:px-5 py-2 sm:py-2.5 text-amber-900 font-semibold text-sm sm:text-base hover:text-amber-700 transition-colors whitespace-nowrap"
+            >
+              Pricing
+            </Link>
+            <Link
+              to={isAuthenticated ? '/' : '/login'}
+              className="px-4 sm:px-6 py-2 sm:py-2.5 bg-amber-900 text-amber-50 rounded-full font-semibold text-sm sm:text-base hover:bg-amber-800 active:bg-amber-950 transition-colors shadow-lg shadow-amber-900/20 whitespace-nowrap"
+            >
+              {isAuthenticated ? 'Open App' : 'Sign In'}
+            </Link>
+          </div>
         </nav>
       </header>
 

@@ -78,7 +78,8 @@ export default defineSchema({
     bookmarkedAt: v.number(),
   })
     .index("by_user", ["userDid"])
-    .index("by_user_list", ["userDid", "listId"]),
+    .index("by_user_list", ["userDid", "listId"])
+    .index("by_list", ["listId"]),
 
   // Lists table - each list is an Originals asset
   lists: defineTable({

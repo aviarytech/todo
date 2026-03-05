@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -83,6 +83,8 @@ export function SharedListResource() {
   );
 
   const [favouritePending, setFavouritePending] = useState(false);
+  const [bookmarkPlanLimit, setBookmarkPlanLimit] = useState(false);
+  const navigate = useNavigate();
 
   const fetchResource = useCallback(async () => {
     if (!userPath || !listId) return;
@@ -112,11 +114,17 @@ export function SharedListResource() {
     try {
       if (isBookmarked) {
         await unbookmarkMutation({ listId: convexListId, userDid: did });
+        setBookmarkPlanLimit(false);
       } else {
         await bookmarkMutation({ listId: convexListId, userDid: did });
       }
     } catch (err) {
-      console.error("Failed to toggle favourite:", err);
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("PLAN_LIMIT")) {
+        setBookmarkPlanLimit(true);
+      } else {
+        console.error("Failed to toggle favourite:", err);
+      }
     } finally {
       setFavouritePending(false);
     }
@@ -233,6 +241,23 @@ export function SharedListResource() {
             </div>
           )}
         </div>
+
+        {/* Plan limit hit when saving to favourites */}
+        {bookmarkPlanLimit && (
+          <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-sm space-y-2">
+            <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-300">
+              <span>🚀</span>
+              <span>This list has reached its collaborator limit</span>
+            </div>
+            <p className="text-amber-700 dark:text-amber-400">The list owner needs to upgrade to Pro to add more collaborators.</p>
+            <button
+              onClick={() => navigate("/pricing")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-lg font-semibold text-sm transition-colors"
+            >
+              View pricing →
+            </button>
+          </div>
+        )}
 
         {/* Not logged in — nudge to sign up */}
         {!did && (

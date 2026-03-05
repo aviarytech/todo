@@ -17,7 +17,7 @@ import type { Id } from "./_generated/dataModel";
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY not configured");
-  return new Stripe(key, { apiVersion: "2025-01-27.acacia" });
+  return new Stripe(key);
 }
 
 function planFromPriceId(priceId: string): "pro" | "team" {
@@ -83,6 +83,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const priceId = subscription.items.data[0]?.price.id ?? "";
         const plan = planFromPriceId(priceId);
+        const periodEnd = subscription.items.data[0]?.current_period_end ?? 0;
 
         await ctx.runMutation(internal.billing.upsertSubscription, {
           userId,
@@ -90,7 +91,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
           stripeSubscriptionId: subscriptionId,
           plan,
           status: mapStripeStatus(subscription.status),
-          currentPeriodEnd: subscription.current_period_end * 1000,
+          currentPeriodEnd: periodEnd * 1000,
           cancelAtPeriodEnd: subscription.cancel_at_period_end,
         });
 
@@ -111,6 +112,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
 
         const priceId = subscription.items.data[0]?.price.id ?? "";
         const plan = planFromPriceId(priceId);
+        const periodEnd = subscription.items.data[0]?.current_period_end ?? 0;
 
         await ctx.runMutation(internal.billing.upsertSubscription, {
           userId: sub.userId,
@@ -118,7 +120,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
           stripeSubscriptionId: subscription.id,
           plan,
           status: mapStripeStatus(subscription.status),
-          currentPeriodEnd: subscription.current_period_end * 1000,
+          currentPeriodEnd: periodEnd * 1000,
           cancelAtPeriodEnd: subscription.cancel_at_period_end,
         });
         break;

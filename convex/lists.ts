@@ -61,6 +61,28 @@ export const createList = mutation({
     createdAt: v.number(),
   },
   handler: async (ctx, args) => withMutationObservability("lists.createList", async () => {
+    // Plan enforcement: free tier allows up to 5 lists
+    const owner = await ctx.db
+      .query("users")
+      .withIndex("by_did", (q) => q.eq("did", args.ownerDid))
+      .first();
+    if (owner) {
+      const sub = await ctx.db
+        .query("subscriptions")
+        .withIndex("by_user", (q) => q.eq("userId", owner._id))
+        .first();
+      const plan = sub && (sub.status === "active" || sub.status === "trialing") ? sub.plan : "free";
+      if (plan === "free") {
+        const existingLists = await ctx.db
+          .query("lists")
+          .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
+          .collect();
+        if (existingLists.length >= 5) {
+          throw new Error("PLAN_LIMIT: You've reached the free plan limit of 5 lists. Upgrade at /pricing to create unlimited lists.");
+        }
+      }
+    }
+
     const listId = await ctx.db.insert("lists", {
       assetDid: args.assetDid,
       name: args.name,

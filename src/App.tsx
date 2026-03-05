@@ -207,8 +207,8 @@ function App() {
           {/* Landing page for unauthenticated, redirect to app if logged in */}
           <Route path="/" element={isAuthenticated ? <Navigate to="/app" replace /> : <Landing />} />
 
-          {/* Pricing - accessible to all, but shows upgrade CTAs for authenticated users */}
-          <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+          {/* Pricing - accessible to all, authenticated or not */}
+          <Route path="/pricing" element={<Pricing />} />
 
           {/* Protected routes - require authentication */}
           <Route path="/app" element={<ProtectedRoute><Home /></ProtectedRoute>} />
