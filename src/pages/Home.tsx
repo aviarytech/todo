@@ -27,6 +27,7 @@ import { NoListsEmptyState, NoSearchResultsEmptyState } from "../components/ui/E
 import { cacheAllLists, getAllCachedLists, type OfflineList } from "../lib/offline";
 import { useStreaks } from "../hooks/useStreaks";
 import { StreakBadge } from "../components/StreakBadge";
+import { OnboardingFlow, isOnboardingDone } from "../components/OnboardingFlow";
 
 export function Home() {
   const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
@@ -39,6 +40,7 @@ export function Home() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(isOnboardingDone);
   const [cachedLists, setCachedLists] = useState<OfflineList[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -405,6 +407,11 @@ export function Home() {
 
       {isCategoryManagerOpen && (
         <CategoryManager onClose={() => setIsCategoryManagerOpen(false)} />
+      )}
+
+      {/* Onboarding flow — shown to new users with no lists */}
+      {!onboardingDismissed && !isLoading && !hasLists && (
+        <OnboardingFlow onComplete={() => setOnboardingDismissed(true)} />
       )}
     </div>
   );
