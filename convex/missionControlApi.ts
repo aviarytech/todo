@@ -4,6 +4,8 @@ import type { Id } from "./_generated/dataModel";
 import type { ActionCtx } from "./_generated/server";
 import { requireAuth, AuthError, unauthorizedResponseWithCors } from "./lib/auth";
 import { errorResponse, getCorsHeaders, jsonResponse } from "./lib/httpResponses";
+import { emitServerMetric } from "./lib/observability";
+import { normalizeArtifactRefs } from "./lib/artifactRetention";
 
 const ALL_SCOPES = [
   "tasks:read",
@@ -101,6 +103,25 @@ function parseItemId(pathname: string): string | null {
 function parseRunId(pathname: string): string | null {
   const match = pathname.match(/\/api\/v1\/runs\/([a-z0-9]+)/);
   return match ? match[1] : null;
+}
+
+const RUN_CONTROL_ACTION_SUFFIXES = ["/monitor", "/pause", "/kill", "/escalate", "/reassign", "/transition", "/retry"] as const;
+
+type RunControlAction = "monitor" | "pause" | "kill" | "escalate" | "reassign" | "transition" | "retry";
+
+function runControlActionFromPath(pathname: string): RunControlAction | null {
+  for (const suffix of RUN_CONTROL_ACTION_SUFFIXES) {
+    if (pathname.endsWith(suffix)) return suffix.slice(1) as RunControlAction;
+  }
+  return null;
+}
+
+function emitRunControlMetric(action: RunControlAction, result: "success" | "failed", errorCode?: string) {
+  emitServerMetric("run_control_action_total", "counter", 1, {
+    action,
+    result,
+    ...(errorCode ? { errorCode } : {}),
+  });
 }
 
 function parseOptionalNumber(value: string | null): number | undefined {
@@ -235,9 +256,31 @@ export const apiKeyByIdHandler = httpAction(async (ctx, request) => {
       const oldKey = existing.find((k) => k._id === keyId);
       if (!oldKey) return errorResponse(request, "API key not found", 404);
       if (oldKey.revokedAt) return errorResponse(request, "Cannot rotate revoked API key", 400);
+      if (oldKey.rotatedToKeyId) return errorResponse(request, "API key rotation already in progress", 409);
 
+      const now = Date.now();
+      if (body.gracePeriodHours !== undefined && !Number.isFinite(body.gracePeriodHours)) {
+        return errorResponse(request, "gracePeriodHours must be a finite number", 400);
+      }
       const gracePeriodHours = Math.min(Math.max(Math.floor(body.gracePeriodHours ?? 24), 1), 168);
-      const graceEndsAt = Date.now() + gracePeriodHours * 60 * 60 * 1000;
+      const graceEndsAt = now + gracePeriodHours * 60 * 60 * 1000;
+
+      if (body.expiresAt !== undefined) {
+        if (!Number.isFinite(body.expiresAt)) {
+          return errorResponse(request, "expiresAt must be a unix epoch timestamp in milliseconds", 400);
+        }
+        if (body.expiresAt <= now) {
+          return errorResponse(request, "expiresAt must be in the future", 400);
+        }
+        if (body.expiresAt <= graceEndsAt) {
+          return errorResponse(request, "expiresAt must be after the old key grace window ends", 400);
+        }
+      }
+
+      const label = typeof body.label === "string" && body.label.trim().length
+        ? body.label.trim()
+        : `${oldKey.label} (rotated)`;
+
       const rawKey = `pa_${randomToken(8)}_${randomToken(24)}`;
       const keyPrefix = rawKey.slice(0, 12);
       const keyHash = await sha256Hex(rawKey);
@@ -246,7 +289,7 @@ export const apiKeyByIdHandler = httpAction(async (ctx, request) => {
         ownerDid: userDid,
         rotatedByDid: userDid,
         oldKeyId: keyId,
-        label: body.label ?? `${oldKey.label} (rotated)`,
+        label,
         keyPrefix,
         keyHash,
         scopes: oldKey.scopes,
@@ -279,7 +322,19 @@ export const apiKeyByIdHandler = httpAction(async (ctx, request) => {
     return errorResponse(request, "Method not allowed", 405);
   } catch (error) {
     if (error instanceof AuthError) return unauthorizedResponseWithCors(request, error.message);
-    return errorResponse(request, error instanceof Error ? error.message : "Failed", 500);
+    if (error instanceof Error) {
+      if (
+        error.message.includes("already in progress")
+        || error.message.includes("must be in the future")
+        || error.message.includes("must outlive")
+        || error.message.includes("Cannot rotate revoked API key")
+      ) {
+        const status = error.message.includes("already in progress") ? 409 : 400;
+        return errorResponse(request, error.message, status);
+      }
+      return errorResponse(request, error.message, 500);
+    }
+    return errorResponse(request, "Failed", 500);
   }
 });
 
@@ -293,7 +348,12 @@ export const runRetentionHandler = httpAction(async (ctx, request) => {
         ctx.runQuery((api as any).missionControlCore.listArtifactDeletionLogs, { ownerDid: userDid, limit: 25 }),
       ]);
 
-      return jsonResponse(request, { settings, deletionLogs: logs });
+      const deletionLogs = logs.map((log: any) => ({
+        ...log,
+        deletedArtifacts: normalizeArtifactRefs(log.deletedArtifacts),
+      }));
+
+      return jsonResponse(request, { settings, deletionLogs });
     }
 
     if (request.method === "PUT") {
@@ -658,7 +718,13 @@ export const runsHandler = httpAction(async (ctx, request) => {
     if (request.method === "POST") {
       const path = url.pathname;
       const runId = parseRunId(path);
+      const runControlAction = runControlActionFromPath(path);
       const isActionPath = path.includes("/heartbeat") || path.includes("/transition") || path.includes("/retry") || path.includes("/artifacts") || path.includes("/monitor") || path.includes("/pause") || path.includes("/kill") || path.includes("/escalate") || path.includes("/reassign");
+
+      const runControlError = (action: RunControlAction, message: string, status: number, errorCode: string) => {
+        emitRunControlMetric(action, "failed", errorCode);
+        return errorResponse(request, message, status);
+      };
 
       if (!isActionPath) {
         const missing = requireScopes(authCtx, ["runs:write"]);
@@ -694,20 +760,24 @@ export const runsHandler = httpAction(async (ctx, request) => {
 
       if (path.endsWith("/monitor")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("monitor", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json().catch(() => ({})) as { now?: number };
         const result = await ctx.runMutation((api as any).missionControlCore.monitorMissionRunHeartbeats, {
           ownerDid: authCtx.userDid,
           now: body.now,
         });
+        emitRunControlMetric("monitor", "success");
         return jsonResponse(request, result);
       }
 
-      if (!runId) return errorResponse(request, "runId is required", 400);
+      if (!runId) {
+        if (runControlAction) return runControlError(runControlAction, "runId is required", 400, "missing_run_id");
+        return errorResponse(request, "runId is required", 400);
+      }
 
       if (path.endsWith("/pause")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("pause", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json().catch(() => ({})) as { reason?: string };
         const result = await ctx.runMutation((api as any).missionControlCore.transitionMissionRun, {
           ownerDid: authCtx.userDid,
@@ -721,12 +791,13 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ref: `pause:${body.reason ?? "operator_requested"}`,
           label: "runtime_control",
         });
+        emitRunControlMetric("pause", "success");
         return jsonResponse(request, { ok: true, action: "pause", ...result });
       }
 
       if (path.endsWith("/kill")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("kill", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json().catch(() => ({})) as { reason?: string };
         const result = await ctx.runMutation((api as any).missionControlCore.transitionMissionRun, {
           ownerDid: authCtx.userDid,
@@ -741,12 +812,13 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ref: `kill:${body.reason ?? "operator_requested"}`,
           label: "runtime_control",
         });
+        emitRunControlMetric("kill", "success");
         return jsonResponse(request, { ok: true, action: "kill", ...result });
       }
 
       if (path.endsWith("/escalate")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("escalate", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json().catch(() => ({})) as { targetAgentSlug?: string; reason?: string };
         const now = Date.now();
         const result = await ctx.runMutation((api as any).missionControlCore.transitionMissionRun, {
@@ -770,19 +842,20 @@ export const runsHandler = httpAction(async (ctx, request) => {
             reason: body.reason,
           });
         }
+        emitRunControlMetric("escalate", "success");
         return jsonResponse(request, { ok: true, action: "escalate", ...result });
       }
 
       if (path.endsWith("/reassign")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("reassign", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json().catch(() => ({})) as { targetAgentSlug?: string; reason?: string };
-        if (!body.targetAgentSlug) return errorResponse(request, "targetAgentSlug is required", 400);
+        if (!body.targetAgentSlug) return runControlError("reassign", "targetAgentSlug is required", 400, "missing_target_agent");
         const run = await ctx.runQuery((api as any).missionControlCore.getMissionRunById, {
           ownerDid: authCtx.userDid,
           runId,
         }) as { agentSlug?: string } | null;
-        if (!run?.agentSlug) return errorResponse(request, "Run not found", 404);
+        if (!run?.agentSlug) return runControlError("reassign", "Run not found", 404, "run_not_found");
         await ctx.runMutation((api as any).missionControlCore.controlAgentLaunch, {
           ownerDid: authCtx.userDid,
           actorDid: authCtx.userDid,
@@ -798,6 +871,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
           ref: `reassign:${body.targetAgentSlug}:${body.reason ?? "operator_requested"}`,
           label: "runtime_control",
         });
+        emitRunControlMetric("reassign", "success");
         return jsonResponse(request, { ok: true, action: "reassign", runId, targetAgentSlug: body.targetAgentSlug });
       }
 
@@ -815,7 +889,7 @@ export const runsHandler = httpAction(async (ctx, request) => {
 
       if (path.endsWith("/transition")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("transition", `Missing required scope: ${missing}`, 403, "missing_scope");
         const body = await request.json() as {
           nextStatus: "starting" | "running" | "degraded" | "blocked" | "failed" | "finished";
           terminalReason?: "completed" | "killed" | "timeout" | "error" | "escalated";
@@ -828,16 +902,18 @@ export const runsHandler = httpAction(async (ctx, request) => {
           runId,
           ...body,
         });
+        emitRunControlMetric("transition", "success");
         return jsonResponse(request, result);
       }
 
       if (path.endsWith("/retry")) {
         const missing = requireScopes(authCtx, ["runs:control"]);
-        if (missing) return errorResponse(request, `Missing required scope: ${missing}`, 403);
+        if (missing) return runControlError("retry", `Missing required scope: ${missing}`, 403, "missing_scope");
         const result = await ctx.runMutation((api as any).missionControlCore.createRetryForMissionRun, {
           ownerDid: authCtx.userDid,
           runId,
         });
+        emitRunControlMetric("retry", "success");
         return jsonResponse(request, result);
       }
 
@@ -863,7 +939,14 @@ export const runsHandler = httpAction(async (ctx, request) => {
 
     return errorResponse(request, "Method not allowed", 405);
   } catch (error) {
-    if (error instanceof AuthError) return unauthorizedResponseWithCors(request, error.message);
+    const runControlAction = request.method === "POST"
+      ? runControlActionFromPath(new URL(request.url).pathname)
+      : null;
+    if (error instanceof AuthError) {
+      if (runControlAction) emitRunControlMetric(runControlAction, "failed", "auth_error");
+      return unauthorizedResponseWithCors(request, error.message);
+    }
+    if (runControlAction) emitRunControlMetric(runControlAction, "failed", "server_error");
     return errorResponse(request, error instanceof Error ? error.message : "Failed", 500);
   }
 });

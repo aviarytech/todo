@@ -110,7 +110,8 @@ export const getTeamTree = query({
       }
     }
 
-    const toNode = (agent: (typeof agents)[number]) => ({
+    type AgentNode = (typeof agents)[number] & { children: AgentNode[] };
+    const toNode = (agent: (typeof agents)[number]): AgentNode => ({
       ...agent,
       children: (childrenByParent.get(agent.agentSlug) ?? [])
         .sort((a, b) => b.updatedAt - a.updatedAt)

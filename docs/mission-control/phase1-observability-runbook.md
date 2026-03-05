@@ -18,6 +18,9 @@
 - Instrumented mutations:
   - `convex/items.ts`: `items.addItem`, `items.updateItem`, `items.checkItem`
   - `convex/lists.ts`: `lists.createList`
+  - `convex/missionControl.ts`: assignee + presence events emit `activity_event_total`, and presence session lifecycle emits `active_presence_sessions`.
+  - `convex/missionControlCore.ts`: dashboard query emits `agent_heartbeat_age_ms` and `agent_stale_total`.
+  - `convex/missionControlApi.ts`: run-control endpoints emit `run_control_action_total` on successful operations.
 
 All baseline metrics emit as JSON logs with `[obs]` prefix. This is intentionally provider-neutral and immediately runnable.
 
@@ -26,8 +29,12 @@ All baseline metrics emit as JSON logs with `[obs]` prefix. This is intentionall
 - Dashboard spec/config: `docs/mission-control/phase1-observability-dashboard-config.json`
 - Alert routing config: `docs/mission-control/phase1-observability-alert-routing.json`
 - Planning context: `docs/mission-control/phase1-observability-dashboard-plan.md`
-- Consistency validator (catalog ↔ dashboard ↔ alerts ↔ routing):
+- Consistency validator (catalog ↔ dashboard ↔ alerts ↔ routing ↔ provisioned endpoints):
   - `npm run mission-control:validate-observability`
+  - Enforces route parity between dashboard + routing files and fails if a route target is not declared in the routing endpoint catalog (`routing.staging/production channel|pager`).
+  - Enforces severity-to-routing policy for production: `low|medium → slack`, `high|critical → slack + pagerduty`.
+- Policy unit tests:
+  - `npm run mission-control:test-observability`
 
 ## Runnable path (today)
 1. Start app and Convex dev stack.
@@ -50,5 +57,5 @@ All baseline metrics emit as JSON logs with `[obs]` prefix. This is intentionall
 ## Known gaps (next pass)
 - `subscription_latency_ms` not yet wired to Convex subscription timing hooks.
 - Data integrity detectors (`invalid_assignee_reference_total`, `duplicate_activity_event_total`, `out_of_order_activity_timestamps_total`) still need scheduled jobs.
-- Collaboration throughput currently requires Phase 1 activity table event emission (`activity_event_total`) for full fidelity.
+- `run_control_action_total` now emits both `result=success` and `result=failed` for run-control endpoints (`monitor`, `pause`, `kill`, `escalate`, `reassign`, `transition`, `retry`) including rejected requests (e.g., missing scope/runId/targetAgentSlug) and server/auth failures.
 - Alert acknowledgement + incident note enforcement depends on external paging provider setup.

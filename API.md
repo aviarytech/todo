@@ -220,7 +220,7 @@ New endpoints for Agent Mission Control with scoped API keys.
 ### Memory
 - `GET /api/v1/memory?agentSlug=<slug>[&key=<key>]` (`memory:read`)
 - `POST /api/v1/memory` (`memory:write`)
-- `GET /api/v1/memory/sync?since=<ms>&limit=<n>` (`memory:read`) — pull Convex memory changes for OpenClaw
+- `GET /api/v1/memory/sync?since=<ms>&limit=<n>` (`memory:read`) — pull Convex memory changes for OpenClaw (results are ordered oldest→newest after `since`; response `cursor` equals newest returned `updatedAt` for lossless paging)
 - `POST /api/v1/memory/sync` (`memory:write`) — push OpenClaw memory entries into Convex with conflict policy (`lww` or `preserve_both`)
   - body: `{ "agentSlug": "platform", "key": "runbook", "value": "...", "listId": "...optional..." }`
 
@@ -238,6 +238,14 @@ New endpoints for Agent Mission Control with scoped API keys.
 - `GET /api/v1/runs/retention` (JWT only) — retention config + recent deletion logs
 - `PUT /api/v1/runs/retention` (JWT only) — set artifact retention days (default 30)
 - `POST /api/v1/runs/retention` (JWT only) — run retention job (`dryRun` defaults to `true`)
+  - retention clamp: `1..365` days, stale rule: `artifact.createdAt < cutoff`
+  - audit logs are idempotent on `(runId, retentionCutoffAt, dryRun, deletedArtifacts fingerprint)`
+
+### Launch-gate drill auth split
+For `npm run mission-control:readiness-drill`:
+- `MISSION_CONTROL_BASE_URL` — Convex site base URL
+- `MISSION_CONTROL_API_KEY` — used for API-key routes (dashboard/run controls)
+- `MISSION_CONTROL_JWT` — used for JWT-only routes (API key rotation inventory + retention/audit endpoints)
 
 ### Run Dashboard
 - `GET /api/v1/dashboard/runs?[windowMs=86400000]` (`dashboard:read`)

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { validateSeverityRoutePolicy } from "./mission-control-alert-severity-policy.mjs";
+import { validateEscalationChannelCoverage } from "./lib/mission-control-alert-routing-coverage.mjs";
 
 function readJson(path) {
   return JSON.parse(readFileSync(resolve(process.cwd(), path), "utf8"));
@@ -17,6 +19,17 @@ function fail(message) {
 
 function pass(message) {
   console.log(`✅ ${message}`);
+}
+
+function normalizeMetricRef(metricRef) {
+  return String(metricRef)
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function normalizeRouteList(routeList) {
+  return [...new Set((routeList ?? []).map((value) => String(value).trim()).filter(Boolean))].sort();
 }
 
 const metricsPath = "docs/mission-control/phase1-observability-metrics.json";
@@ -50,11 +63,6 @@ if (uniqueNames.size !== metricNames.length) {
 } else {
   pass(`Metric catalog has ${metricNames.length} unique metrics`);
 }
-
-const normalizeMetricRef = (metricRef) => String(metricRef)
-  .split("/")
-  .map((part) => part.trim())
-  .filter(Boolean);
 
 const chartMetrics = dashboard.dashboard.panels
   .flatMap((panel) => panel.charts ?? [])
@@ -120,6 +128,31 @@ for (const alert of metrics.alerts ?? []) {
 }
 pass("Metrics alert windows are normalized");
 
+const endpointCandidates = [
+  routing.routing?.staging?.channel,
+  routing.routing?.staging?.pager,
+  routing.routing?.production?.channel,
+  routing.routing?.production?.pager,
+]
+  .map((value) => String(value ?? "").trim())
+  .filter(Boolean);
+const endpointCatalog = new Set(endpointCandidates);
+
+if (!endpointCatalog.size) {
+  fail("Routing endpoint catalog is empty (routing.staging/production channel|pager)");
+}
+
+const allowedSchemes = new Set(["slack", "pagerduty"]);
+for (const endpoint of endpointCatalog) {
+  const [scheme] = endpoint.split("://");
+  if (!allowedSchemes.has(scheme)) {
+    fail(`Unsupported routing endpoint scheme: ${endpoint}`);
+  }
+}
+if (endpointCatalog.size > 0) {
+  pass(`Routing endpoint catalog validated (${endpointCatalog.size} endpoints)`);
+}
+
 for (const alert of routing.alerts ?? []) {
   if (!Array.isArray(alert.route?.staging) || alert.route.staging.length === 0) {
     fail(`Routing alert ${alert.name} missing staging route`);
@@ -132,8 +165,49 @@ for (const alert of routing.alerts ?? []) {
   if (inDashboard && String(inDashboard.severity) !== String(alert.severity)) {
     fail(`Severity mismatch for ${alert.name}: dashboard=${inDashboard.severity} routing=${alert.severity}`);
   }
+
+  const routingStaging = normalizeRouteList(alert.route?.staging);
+  const routingProduction = normalizeRouteList(alert.route?.production);
+
+  for (const target of [...routingStaging, ...routingProduction]) {
+    if (!endpointCatalog.has(target)) {
+      fail(`Routing alert ${alert.name} references unprovisioned target: ${target}`);
+    }
+  }
+
+  if (inDashboard) {
+    const dashboardStaging = normalizeRouteList(inDashboard.route?.staging);
+    const dashboardProduction = normalizeRouteList(inDashboard.route?.production);
+
+    if (JSON.stringify(dashboardStaging) !== JSON.stringify(routingStaging)) {
+      fail(`Staging route mismatch for ${alert.name}: dashboard=${dashboardStaging.join("|")} routing=${routingStaging.join("|")}`);
+    }
+    if (JSON.stringify(dashboardProduction) !== JSON.stringify(routingProduction)) {
+      fail(`Production route mismatch for ${alert.name}: dashboard=${dashboardProduction.join("|")} routing=${routingProduction.join("|")}`);
+    }
+
+    const policyErrors = validateSeverityRoutePolicy({
+      name: alert.name,
+      severity: alert.severity,
+      productionRoutes: routingProduction,
+    });
+    for (const error of policyErrors) {
+      fail(error);
+    }
+  }
 }
 pass("Routing config includes staging and production targets for each alert");
+pass("Alert routes match between dashboard and routing config");
+pass("Severity-based production routing policy is satisfied");
+
+const escalationCoverageErrors = validateEscalationChannelCoverage(routing);
+if (escalationCoverageErrors.length > 0) {
+  for (const error of escalationCoverageErrors) {
+    fail(error);
+  }
+} else {
+  pass("High/critical alerts are routed to both Slack and PagerDuty");
+}
 
 if (process.exitCode && process.exitCode !== 0) {
   console.error("Mission Control observability validation failed.");

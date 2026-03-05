@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { emitServerMetric } from "./lib/observability";
+import { clampRetentionDays, computeRetentionCutoff, normalizeArtifactRefs, selectStaleArtifacts, shouldInsertDeletionLog } from "./lib/artifactRetention";
 
 async function hasListAccess(ctx: any, listId: Id<"lists">, userDid: string) {
   const list = await ctx.db.get(listId);
@@ -149,6 +151,18 @@ export const createRotatedApiKey = mutation({
     const oldKey = await ctx.db.get(args.oldKeyId);
     if (!oldKey || oldKey.ownerDid !== args.ownerDid) throw new Error("API key not found");
     if (oldKey.revokedAt) throw new Error("Cannot rotate revoked API key");
+    if (oldKey.rotatedToKeyId) throw new Error("API key rotation already in progress");
+    if (!Number.isFinite(args.graceEndsAt) || args.graceEndsAt <= now) {
+      throw new Error("Rotation grace window must end in the future");
+    }
+    if (args.expiresAt !== undefined) {
+      if (!Number.isFinite(args.expiresAt) || args.expiresAt <= now) {
+        throw new Error("Rotated API key expiry must be in the future");
+      }
+      if (args.expiresAt <= args.graceEndsAt) {
+        throw new Error("Rotated API key must outlive the old key grace window");
+      }
+    }
 
     const newKeyId = await ctx.db.insert("apiKeys", {
       ownerDid: args.ownerDid,
@@ -189,18 +203,21 @@ export const finalizeApiKeyRotation = mutation({
     if (!oldKey.rotatedToKeyId) throw new Error("API key is not in rotation");
 
     const now = Date.now();
-    await ctx.db.patch(oldKey._id, { revokedAt: now });
+    const revokedAt = oldKey.revokedAt ?? now;
+    if (!oldKey.revokedAt) {
+      await ctx.db.patch(oldKey._id, { revokedAt });
+    }
 
     const event = await ctx.db
       .query("apiKeyRotationEvents")
       .withIndex("by_old_key", (q) => q.eq("oldKeyId", oldKey._id))
       .first();
 
-    if (event) {
-      await ctx.db.patch(event._id, { oldKeyRevokedAt: now, updatedAt: now });
+    if (event && !event.oldKeyRevokedAt) {
+      await ctx.db.patch(event._id, { oldKeyRevokedAt: revokedAt, updatedAt: now });
     }
 
-    return { ok: true, revokedAt: now };
+    return { ok: true, revokedAt, alreadyRevoked: Boolean(oldKey.revokedAt) };
   },
 });
 
@@ -234,7 +251,7 @@ export const upsertMissionControlSettings = mutation({
   args: { ownerDid: v.string(), updatedByDid: v.string(), artifactRetentionDays: v.number() },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const artifactRetentionDays = Math.min(Math.max(Math.floor(args.artifactRetentionDays), 1), 365);
+    const artifactRetentionDays = clampRetentionDays(args.artifactRetentionDays, DEFAULT_ARTIFACT_RETENTION_DAYS);
     const existing = await ctx.db
       .query("missionControlSettings")
       .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
@@ -271,8 +288,9 @@ export const applyArtifactRetention = mutation({
       .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
       .first();
 
-    const retentionDays = Math.min(Math.max(Math.floor(args.retentionDays ?? settings?.artifactRetentionDays ?? DEFAULT_ARTIFACT_RETENTION_DAYS), 1), 365);
-    const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+    const retentionDays = clampRetentionDays(args.retentionDays, settings?.artifactRetentionDays ?? DEFAULT_ARTIFACT_RETENTION_DAYS);
+    const now = Date.now();
+    const cutoff = computeRetentionCutoff(now, retentionDays);
     const dryRun = args.dryRun ?? true;
     const maxRuns = Math.min(Math.max(args.maxRuns ?? 250, 1), 1000);
 
@@ -284,27 +302,33 @@ export const applyArtifactRetention = mutation({
 
     let runsTouched = 0;
     let deletedArtifacts = 0;
-    const now = Date.now();
 
     for (const run of runs) {
-      const artifacts = run.artifactRefs ?? [];
-      const staleArtifacts = artifacts.filter((a) => a.createdAt < cutoff);
+      const artifacts = normalizeArtifactRefs(run.artifactRefs ?? []);
+      const staleArtifacts = selectStaleArtifacts(artifacts, cutoff);
       if (!staleArtifacts.length) continue;
+
+      const existingLog = await ctx.db
+        .query("missionArtifactDeletionLogs")
+        .withIndex("by_run_cutoff_mode", (q) => q.eq("runId", run._id).eq("retentionCutoffAt", cutoff).eq("dryRun", dryRun))
+        .first();
+
+      if (!existingLog || shouldInsertDeletionLog(existingLog.deletedArtifacts, staleArtifacts)) {
+        await ctx.db.insert("missionArtifactDeletionLogs", {
+          ownerDid: args.ownerDid,
+          runId: run._id,
+          deletedCount: staleArtifacts.length,
+          dryRun,
+          retentionCutoffAt: cutoff,
+          actorDid: args.actorDid,
+          trigger: "operator",
+          deletedArtifacts: staleArtifacts,
+          createdAt: now,
+        });
+      }
 
       runsTouched += 1;
       deletedArtifacts += staleArtifacts.length;
-
-      await ctx.db.insert("missionArtifactDeletionLogs", {
-        ownerDid: args.ownerDid,
-        runId: run._id,
-        deletedCount: staleArtifacts.length,
-        dryRun,
-        retentionCutoffAt: cutoff,
-        actorDid: args.actorDid,
-        trigger: "operator",
-        deletedArtifacts: staleArtifacts,
-        createdAt: now,
-      });
 
       if (!dryRun) {
         await ctx.db.patch(run._id, {
@@ -860,6 +884,21 @@ export const getMissionRunsDashboard = query({
 
     const activeRuns = runs.filter((r) => !isTerminal(r.status as RunStatus));
     const degradedRuns = activeRuns.filter((r) => r.status === "degraded");
+
+    let staleRuns = 0;
+    for (const run of activeRuns) {
+      const heartbeatAgeMs = Math.max(0, now - (run.lastHeartbeatAt ?? run.startedAt));
+      emitServerMetric("agent_heartbeat_age_ms", "gauge", heartbeatAgeMs, {
+        agentSlug: run.agentSlug,
+      });
+
+      const intervalMs = run.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_DEFAULT_MS;
+      const degradedThreshold = run.heartbeatDegradedThreshold ?? HEARTBEAT_DEGRADED_DEFAULT_MISSES;
+      if (heartbeatAgeMs >= intervalMs * degradedThreshold) {
+        staleRuns += 1;
+      }
+    }
+    emitServerMetric("agent_stale_total", "gauge", staleRuns);
 
     return {
       windowMs,

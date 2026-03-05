@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { dedupeActivePresenceSessions } from "./lib/presenceSessions";
+import { emitServerMetric } from "./lib/observability";
 
 const PRESENCE_TTL_MS = 90_000;
 
@@ -18,6 +20,16 @@ async function requireListAccess(ctx: any, listId: Id<"lists">, userDid: string)
   if (publication?.status === "active") return list;
 
   throw new Error("Not authorized for this list");
+}
+
+async function emitActivePresenceSessionsGauge(ctx: any, listId: Id<"lists">, now: number) {
+  const sessions = await ctx.db
+    .query("presenceSessions")
+    .withIndex("by_list", (q: any) => q.eq("listId", listId))
+    .collect();
+
+  const activeCount = sessions.filter((session: any) => session.expiresAt > now).length;
+  emitServerMetric("active_presence_sessions", "gauge", activeCount);
 }
 
 export const setItemAssignee = mutation({
@@ -62,6 +74,15 @@ export const recordPresenceHeartbeat = mutation({
     const now = Date.now();
     const expiresAt = now + PRESENCE_TTL_MS;
 
+    const expired = await ctx.db
+      .query("presenceSessions")
+      .withIndex("by_list_expires", (q) => q.eq("listId", args.listId).lt("expiresAt", now))
+      .collect();
+
+    for (const session of expired) {
+      await ctx.db.delete(session._id);
+    }
+
     const existing = await ctx.db
       .query("presenceSessions")
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
@@ -81,6 +102,8 @@ export const recordPresenceHeartbeat = mutation({
         expiresAt,
       });
     }
+
+    await emitActivePresenceSessionsGauge(ctx, args.listId, now);
 
     return { ok: true, expiresAt };
   },
@@ -110,6 +133,8 @@ export const clearPresenceSession = mutation({
 
     await ctx.db.delete(existing._id);
 
+    await emitActivePresenceSessionsGauge(ctx, args.listId, Date.now());
+
     return { ok: true };
   },
 });
@@ -130,7 +155,7 @@ export const getActivePresence = query({
       .withIndex("by_list", (q) => q.eq("listId", args.listId))
       .collect();
 
-    return sessions.filter((s) => s.expiresAt > now);
+    return dedupeActivePresenceSessions(sessions, now);
   },
 });
 

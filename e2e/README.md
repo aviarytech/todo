@@ -22,4 +22,37 @@ E2E_AUTH_DID="did:webvh:e2e:mission-control" \
 npm run test:e2e -- e2e/mission-control-phase1.spec.ts
 ```
 
-When these vars are present, tests seed `lisa-auth-state` + `lisa-jwt-token` in localStorage and skip OTP bootstrap.
+When these vars are present, tests seed `lisa-auth-state` + `lisa-jwt-token` in localStorage using your real backend JWT and skip OTP bootstrap.
+
+If these vars are absent, the fixture falls back to a fake local token (fine for local/dev auth, but cloud environments that validate JWTs will redirect to OTP and AC tests will skip with an explicit reason).
+
+`mission-control-phase1.spec.ts` now always runs **AC0 auth readiness probe** in CI: it captures deterministic auth diagnostics artifacts (`auth-diagnostics-*.json`, `auth-gate-*.png`, `auth-gate-*.html`) when the app is OTP-gated so failures/skips are actionable without reproducing locally.
+
+## Mission Control AC5 perf fixture
+
+Set `MISSION_CONTROL_FIXTURE_PATH` to a JSON file for AC5 perf gate tuning (example: `e2e/fixtures/mission-control.production.json`).
+
+Supported fields:
+- `listOpenRuns`
+- `listOpenP95Ms`
+- `activityOpenRuns`
+- `activityOpenP95Ms`
+- `itemsPerList`
+- `seededListCount` (optional, defaults to `listOpenRuns`)
+
+The loader validates shape/ranges and fails fast for runaway seed plans (`seededListCount * itemsPerList > 3000`) so production-sized fixture jobs error clearly instead of hanging/flaking.
+
+You can also override any AC5 gate values directly in CI without changing fixture files:
+
+- `MISSION_CONTROL_PERF_LIST_OPEN_RUNS`
+- `MISSION_CONTROL_PERF_LIST_OPEN_P95_MS`
+- `MISSION_CONTROL_PERF_ACTIVITY_OPEN_RUNS`
+- `MISSION_CONTROL_PERF_ACTIVITY_OPEN_P95_MS`
+- `MISSION_CONTROL_PERF_ITEMS_PER_LIST`
+- `MISSION_CONTROL_PERF_SEEDED_LIST_COUNT`
+
+AC5 tests now emit newline-delimited JSON perf gate artifacts by default at:
+
+- `test-results/mission-control-perf-gates.ndjson`
+
+Set `MISSION_CONTROL_PERF_REPORT_PATH` to customize this output path in CI artifact collection.

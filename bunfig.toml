@@ -1,0 +1,4 @@
+[test]
+# Exclude Playwright e2e tests from bun test (run with npm run test:e2e instead)
+root = "."
+ignore = ["./e2e/"]
