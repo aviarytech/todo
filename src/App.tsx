@@ -10,6 +10,7 @@ import { ToastContainer } from './components/notifications/Toast'
 import { Settings } from './components/Settings'
 import { AppLockGuard } from './components/AppLockGuard'
 import { ReferralRedeemer } from './components/ReferralRedeemer'
+import { NativePushRegistrar } from './components/NativePushRegistrar'
 import { useSwipeBack } from './hooks/useSwipeBack'
 import { initDeepLinks } from './lib/deeplinks'
 import { initPushNotifications } from './lib/pushNotifications'
@@ -29,6 +30,7 @@ const PriorityFocus = lazy(() => import('./pages/PriorityFocus').then(m => ({ de
 const Pricing = lazy(() => import('./pages/Pricing').then(m => ({ default: m.Pricing })))
 const InviteLanding = lazy(() => import('./pages/InviteLanding').then(m => ({ default: m.InviteLanding })))
 const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })))
+const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })))
 const Compare = lazy(() => import('./pages/Compare').then(m => ({ default: m.Compare })))
 
 /**
@@ -114,6 +116,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
       {/* Silently redeem any pending referral code after login */}
       <ReferralRedeemer />
+      <NativePushRegistrar />
     </div>
   )
 }
@@ -218,6 +221,7 @@ function App() {
           {/* Pricing - accessible to all, authenticated or not */}
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/compare/:competitor" element={<Compare />} />
 
           {/* Protected routes - require authentication */}

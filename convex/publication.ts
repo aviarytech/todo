@@ -250,12 +250,19 @@ export const bookmarkList = mutation({
       bookmarkedAt: Date.now(),
     });
 
-    // Notify the list owner: a new collaborator joined
     if (list && list.ownerDid !== args.userDid) {
+      // Notify the list owner: a new collaborator joined
       await ctx.scheduler.runAfter(0, internal.notificationActions.sendPushNotificationInternal, {
         userDid: list.ownerDid,
         title: list.name,
         body: "A new collaborator joined your list",
+        data: { listId: args.listId },
+      });
+      // Notify the joiner: the list was shared with them (delivers to their other devices)
+      await ctx.scheduler.runAfter(0, internal.notificationActions.sendPushNotificationInternal, {
+        userDid: args.userDid,
+        title: list.name,
+        body: "Added to your lists",
         data: { listId: args.listId },
       });
     }
