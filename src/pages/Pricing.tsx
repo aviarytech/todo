@@ -7,8 +7,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useBilling } from "../hooks/useBilling";
 import { useAuth } from "../hooks/useAuth";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 
 const CONVEX_URL = import.meta.env.VITE_CONVEX_URL as string;
 
@@ -22,16 +20,11 @@ type BillingInterval = "monthly" | "yearly";
 export function Pricing() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { subOrgId } = useCurrentUser();
+  useCurrentUser();
   const { plan, subscription, isLoading } = useBilling();
   const [interval, setInterval] = useState<BillingInterval>("monthly");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const convexUser = useQuery(
-    api.auth.getUserByTurnkeyId,
-    isAuthenticated && subOrgId ? { turnkeySubOrgId: subOrgId } : "skip"
-  );
 
   async function startCheckout(priceId: string) {
     if (!isAuthenticated) {
