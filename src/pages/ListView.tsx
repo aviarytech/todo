@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useCallback, useRef, lazy, Suspense, useEffect, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
@@ -49,12 +49,15 @@ type ItemViewMode = "alphabetical" | "categorized";
 export function ListView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
   const { haptic } = useSettings();
   const { scheduleItemsNotifications, isEnabled: notificationsEnabled } = useNotifications({ userDid: did });
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(
+    () => !!(location.state as { openShare?: boolean } | null)?.openShare
+  );
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);

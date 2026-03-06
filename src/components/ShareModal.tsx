@@ -3,15 +3,17 @@
  * Publishing = sharing. Once published, anyone with the link can edit.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
 import { buildListResourceDid, buildListResourceUrl } from "../lib/webvh";
+import { shareList, canShare } from "../lib/share";
 import { Panel } from "./ui/Panel";
 import { ListProvenanceInfo } from "./ProvenanceInfo";
+import { trackListShared, trackInviteSent } from "../lib/analytics";
 
 interface ShareModalProps {
   list: Doc<"lists">;
@@ -31,6 +33,12 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nativeShareAvailable, setNativeShareAvailable] = useState(false);
+  const [showDid, setShowDid] = useState(false);
+
+  useEffect(() => {
+    canShare().then(setNativeShareAvailable);
+  }, []);
 
   const isPublished = publicationStatus?.status === "active";
   const publicUrl = isPublished && did
@@ -61,6 +69,7 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
         publisherDid: did,
       });
 
+      trackListShared('webvh');
       haptic('success');
     } catch (err) {
       console.error("[ShareModal] Failed to publish:", err);
@@ -87,12 +96,25 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
     if (!publicUrl) return;
     try {
       await navigator.clipboard.writeText(publicUrl);
+      trackInviteSent('copy');
       haptic('success');
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
       haptic('error');
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (!publicUrl) return;
+    try {
+      await shareList(list.name, publicUrl);
+      trackInviteSent('native_share');
+      haptic('success');
+    } catch (err) {
+      // User cancelled or share failed — not an error worth surfacing
+      console.error("Native share cancelled or failed:", err);
     }
   };
 
@@ -176,22 +198,46 @@ export function ShareModal({ list, onClose }: ShareModalProps) {
                   className={`px-4 py-3 rounded-xl font-medium transition-all ${
                     isCopied
                       ? "bg-green-500 text-white"
-                      : "bg-amber-500 hover:bg-amber-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
                   }`}
                 >
-                  {isCopied ? "✓" : "Copy"}
+                  {isCopied ? "Copied!" : "Copy"}
                 </button>
               </div>
             </div>
 
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                <span className="font-medium">DID:</span>{" "}
-                <span className="font-mono text-xs break-all">
-                  {resourceDid}
-                </span>
-              </p>
-            </div>
+            {nativeShareAvailable && (
+              <button
+                onClick={handleNativeShare}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Send to a friend
+              </button>
+            )}
+
+            <button
+              onClick={() => setShowDid(v => !v)}
+              className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              <svg className={`w-3 h-3 transition-transform ${showDid ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              Technical details
+            </button>
+
+            {showDid && (
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="font-medium">DID:</span>{" "}
+                  <span className="font-mono text-xs break-all">
+                    {resourceDid}
+                  </span>
+                </p>
+              </div>
+            )}
           </>
         ) : (
           <>

@@ -5,7 +5,7 @@
  */
 
 import { useState, type FormEvent } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -14,6 +14,7 @@ import { useSettings } from "../hooks/useSettings";
 import { createListAsset } from "../lib/originals";
 import { CategorySelector } from "./lists/CategorySelector";
 import { Panel } from "./ui/Panel";
+import { trackListCreated, trackFirstListCreated, trackFeatureGateHit, trackInviteSent } from "../lib/analytics";
 
 interface CreateListModalProps {
   onClose: () => void;
@@ -24,12 +25,14 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
   const navigate = useNavigate();
   const { haptic } = useSettings();
   const createList = useMutation(api.lists.createList);
+  const existingLists = useQuery(api.lists.getUserLists, did ? { userDid: did } : "skip");
 
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState<Id<"categories"> | undefined>(undefined);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [planLimitHit, setPlanLimitHit] = useState(false);
+  const [createdListId, setCreatedListId] = useState<Id<"lists"> | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -63,12 +66,17 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
       });
 
       haptic('success');
-      navigate(`/list/${listId}`);
+      const newCount = (existingLists?.length ?? 0) + 1;
+      trackListCreated(newCount);
+      if (newCount === 1) trackFirstListCreated();
+      setCreatedListId(listId);
+      setIsCreating(false);
     } catch (err) {
       console.error("Failed to create list:", err);
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("PLAN_LIMIT")) {
         setPlanLimitHit(true);
+        trackFeatureGateHit("list_limit", "free");
       } else {
         setError("Failed to create list. Please try again.");
       }
@@ -77,23 +85,34 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
     }
   };
 
+  const handleGoToList = () => {
+    if (createdListId) navigate(`/list/${createdListId}`);
+  };
+
+  const handleShareList = () => {
+    if (!createdListId) return;
+    trackInviteSent('native_share');
+    navigate(`/list/${createdListId}`, { state: { openShare: true } });
+  };
+
   const header = (
     <>
       <div className="flex items-center gap-3">
-        <span className="text-2xl leading-none">✨</span>
+        <span className="text-2xl leading-none">{createdListId ? "🎉" : "✨"}</span>
         <div>
           <h2 id="create-list-dialog-title" className="text-lg font-bold text-gray-900 dark:text-gray-100">
-            Create New List
+            {createdListId ? "List created!" : "Create New List"}
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Give your list a name
+            {createdListId ? name : "Give your list a name"}
           </p>
         </div>
       </div>
       <button
         onClick={() => {
           haptic('light');
-          onClose();
+          if (createdListId) handleGoToList();
+          else onClose();
         }}
         className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         aria-label="Close"
@@ -105,7 +124,24 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
     </>
   );
 
-  const footer = (
+  const footer = createdListId ? (
+    <div className="px-5 py-4 flex gap-3">
+      <button
+        type="button"
+        onClick={() => { haptic('light'); handleGoToList(); }}
+        className="flex-1 px-4 py-3 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+      >
+        Go to list
+      </button>
+      <button
+        type="button"
+        onClick={() => { haptic('medium'); handleShareList(); }}
+        className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 transition-all"
+      >
+        Share list
+      </button>
+    </div>
+  ) : (
     <div className="px-5 py-4 flex gap-3">
       <button
         type="button"
@@ -142,12 +178,27 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
   return (
     <Panel
       isOpen={true}
-      onClose={onClose}
+      onClose={createdListId ? handleGoToList : onClose}
       header={header}
       footer={footer}
       ariaLabelledBy="create-list-dialog-title"
     >
-      {/* Form */}
+      {createdListId ? (
+        <div className="p-5 space-y-4">
+          <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
+            <div className="flex items-center gap-2 text-green-800 dark:text-green-400 font-medium mb-1">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>"{name}" is ready</span>
+            </div>
+            <p className="text-sm text-green-700 dark:text-green-500">
+              Invite a collaborator to join the list and get things done together.
+            </p>
+          </div>
+        </div>
+      ) : (
+      /* Form */
       <form id="create-list-form" onSubmit={handleSubmit} className="p-5 space-y-4">
         <div>
           <label htmlFor="listName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -197,6 +248,7 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
           </div>
         )}
       </form>
+      )}
     </Panel>
   );
 }
