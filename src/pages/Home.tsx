@@ -6,8 +6,8 @@
  * Includes search, sorting, pull-to-refresh, and improved empty states.
  */
 
-import { useState, useMemo, useEffect } from "react";
-import { useQuery } from "convex/react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useQuery, useMutation } from "convex/react";
 import { useSearchParams, Link } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
@@ -27,7 +27,9 @@ import { NoListsEmptyState, NoSearchResultsEmptyState } from "../components/ui/E
 import { cacheAllLists, getAllCachedLists, type OfflineList } from "../lib/offline";
 import { useStreaks } from "../hooks/useStreaks";
 import { StreakBadge } from "../components/StreakBadge";
-import { OnboardingFlow, isOnboardingDone } from "../components/OnboardingFlow";
+import { OnboardingFlow, isOnboardingDone, InviteNudge, isInviteNudgeDone, markInviteNudgeDone } from "../components/OnboardingFlow";
+import { createListAsset } from "../lib/originals";
+import { trackFirstListCreated } from "../lib/analytics";
 
 export function Home() {
   const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
@@ -37,12 +39,23 @@ export function Home() {
   const { listSort, haptic } = useSettings();
   const [searchParams] = useSearchParams();
   
+  const createList = useMutation(api.lists.createList);
+  const addItem = useMutation(api.items.addItem);
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(isOnboardingDone);
   const [cachedLists, setCachedLists] = useState<OfflineList[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // 2-step onboarding state
+  const demoCreatingRef = useRef(false);
+  const [demoStarted, setDemoStarted] = useState(
+    () => !!localStorage.getItem("pooapp:onboarding_demo_created")
+  );
+  const [inviteNudge, setInviteNudge] = useState<{ listId: Id<"lists">; listName: string } | null>(null);
+  const [inviteNudgeDone, setInviteNudgeDone] = useState(isInviteNudgeDone);
 
   // Check for action param (e.g., from PWA shortcut)
   useEffect(() => {
@@ -79,6 +92,59 @@ export function Home() {
       getAllCachedLists().then(setCachedLists);
     }
   }, [isOnline, serverLists]);
+
+  // Step 1: auto-create "Getting Started 💩" demo list for new users
+  useEffect(() => {
+    if (demoStarted || demoCreatingRef.current) return;
+    if (!did || serverLists === undefined) return;
+
+    if (serverLists.length > 0) {
+      // Existing user — mark done without creating demo
+      localStorage.setItem("pooapp:onboarding_demo_created", "done");
+      setDemoStarted(true);
+      return;
+    }
+
+    // New user with no lists — create demo immediately
+    demoCreatingRef.current = true;
+    localStorage.setItem("pooapp:onboarding_demo_created", "pending");
+    setDemoStarted(true); // suppress old 4-step OnboardingFlow
+
+    const createDemo = async () => {
+      try {
+        const listAsset = await createListAsset("Getting Started 💩", did);
+        const listId = await createList({
+          assetDid: listAsset.assetDid,
+          name: "Getting Started 💩",
+          ownerDid: did,
+          createdAt: Date.now(),
+        });
+        const demoItems = [
+          "Add your first item 💩",
+          "Share this list with someone 🤝",
+          "Check off a task ✅",
+        ];
+        for (const name of demoItems) {
+          await addItem({
+            listId,
+            name,
+            createdByDid: did,
+            legacyDid: legacyDid ?? undefined,
+            createdAt: Date.now(),
+          });
+        }
+        trackFirstListCreated();
+        localStorage.setItem("pooapp:onboarding_demo_created", "done");
+      } catch {
+        // If creation fails, clear so it can retry next session
+        localStorage.removeItem("pooapp:onboarding_demo_created");
+        setDemoStarted(false);
+        demoCreatingRef.current = false;
+      }
+    };
+
+    createDemo();
+  }, [did, legacyDid, serverLists, demoStarted, createList, addItem]);
 
   // Use server data when available, cache when offline
   const lists = (serverLists ?? (!isOnline ? cachedLists : undefined)) as
@@ -191,6 +257,18 @@ export function Home() {
   const handleCreateBlank = () => {
     setIsTemplatePickerOpen(false);
     setIsCreateModalOpen(true);
+  };
+
+  const handleListCreated = (listId: Id<"lists">, listName: string) => {
+    if (!inviteNudgeDone) {
+      setInviteNudge({ listId, listName });
+    }
+  };
+
+  const handleDismissInviteNudge = () => {
+    markInviteNudgeDone();
+    setInviteNudgeDone(true);
+    setInviteNudge(null);
   };
 
   if (!did && !userLoading) {
@@ -402,16 +480,28 @@ export function Home() {
       )}
 
       {isCreateModalOpen && (
-        <CreateListModal onClose={() => setIsCreateModalOpen(false)} />
+        <CreateListModal
+          onClose={() => setIsCreateModalOpen(false)}
+          onListCreated={handleListCreated}
+        />
       )}
 
       {isCategoryManagerOpen && (
         <CategoryManager onClose={() => setIsCategoryManagerOpen(false)} />
       )}
 
-      {/* Onboarding flow — shown to new users with no lists */}
-      {!onboardingDismissed && !isLoading && !hasLists && (
+      {/* Legacy 4-step onboarding — suppressed when new 2-step onboarding is active */}
+      {!onboardingDismissed && !isLoading && !hasLists && !demoStarted && (
         <OnboardingFlow onComplete={() => setOnboardingDismissed(true)} />
+      )}
+
+      {/* Step 2: invite nudge — shown after user creates their first real list */}
+      {inviteNudge && (
+        <InviteNudge
+          listId={inviteNudge.listId}
+          listName={inviteNudge.listName}
+          onDismiss={handleDismissInviteNudge}
+        />
       )}
     </div>
   );

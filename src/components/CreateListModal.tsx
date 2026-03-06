@@ -19,9 +19,10 @@ import { ReferralInviteCurrentUser } from "./ReferralInvite";
 
 interface CreateListModalProps {
   onClose: () => void;
+  onListCreated?: (listId: Id<"lists">, listName: string) => void;
 }
 
-export function CreateListModal({ onClose }: CreateListModalProps) {
+export function CreateListModal({ onClose, onListCreated }: CreateListModalProps) {
   const { did } = useCurrentUser();
   const navigate = useNavigate();
   const { haptic } = useSettings();
@@ -72,6 +73,7 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
       if (newCount === 1) trackFirstListCreated();
       setCreatedListId(listId);
       setIsCreating(false);
+      onListCreated?.(listId, trimmedName);
     } catch (err) {
       console.error("Failed to create list:", err);
       const msg = err instanceof Error ? err.message : "";

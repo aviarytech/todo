@@ -14,15 +14,21 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
 import { createListAsset } from "../lib/originals";
 import { buildListResourceDid, buildListResourceUrl } from "../lib/webvh";
+import { trackInviteSent } from "../lib/analytics";
 
 const ONBOARDING_KEY = "poo_onboarding_v1";
+const DEMO_CREATED_KEY = "pooapp:onboarding_demo_created";
 
 export function markOnboardingDone() {
   localStorage.setItem(ONBOARDING_KEY, "done");
 }
 
 export function isOnboardingDone(): boolean {
-  return localStorage.getItem(ONBOARDING_KEY) === "done";
+  // Old 4-step flow is done, OR new 2-step flow has taken over
+  return (
+    localStorage.getItem(ONBOARDING_KEY) === "done" ||
+    !!localStorage.getItem(DEMO_CREATED_KEY)
+  );
 }
 
 interface OnboardingFlowProps {
@@ -402,6 +408,85 @@ function AddItemsStep({
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// InviteNudge — step 2 of the 2-step onboarding
+// Shown after the user creates their first real list.
+// ---------------------------------------------------------------------------
+
+const INVITE_NUDGE_DONE_KEY = "pooapp:onboarding_invite_nudge_done";
+
+export function isInviteNudgeDone(): boolean {
+  return localStorage.getItem(INVITE_NUDGE_DONE_KEY) === "done";
+}
+
+export function markInviteNudgeDone() {
+  localStorage.setItem(INVITE_NUDGE_DONE_KEY, "done");
+}
+
+export function InviteNudge({
+  listId,
+  listName,
+  onDismiss,
+}: {
+  listId: Id<"lists">;
+  listName: string;
+  onDismiss: () => void;
+}) {
+  const navigate = useNavigate();
+  const { haptic } = useSettings();
+
+  const handleInvite = () => {
+    trackInviteSent("copy");
+    haptic("medium");
+    onDismiss();
+    navigate(`/list/${listId}`, { state: { openShare: true } });
+  };
+
+  const handleDismiss = () => {
+    haptic("light");
+    onDismiss();
+  };
+
+  return createPortal(
+    <div className="fixed inset-x-0 bottom-0 z-[150] p-4 safe-area-inset-bottom animate-slide-up">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-amber-200 dark:border-amber-800 p-5">
+        <div className="flex items-start gap-3">
+          <span className="text-3xl leading-none mt-0.5">🤝</span>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-1">
+              Invite someone to collaborate
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Share{" "}
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                "{listName}"
+              </span>{" "}
+              with a friend or teammate. Real-time sync, no account needed.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleInvite}
+                className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold text-sm shadow-lg shadow-amber-500/25 hover:from-amber-400 hover:to-orange-400 transition-all"
+              >
+                Invite someone →
+              </button>
+              <button
+                onClick={handleDismiss}
+                className="px-4 py-2.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm font-medium transition-colors"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 function ShareStep({
   listName,
