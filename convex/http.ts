@@ -403,6 +403,7 @@ http.route({ path: "/api/billing/portal", method: "OPTIONS", handler: corsHandle
 http.route({ path: "/api/billing/subscription", method: "GET", handler: getSubscription });
 http.route({ path: "/api/billing/subscription", method: "OPTIONS", handler: corsHandler });
 
+
 // ============================================================================
 // DID Resolution & Resource endpoints (public, no auth)
 // Serves /{userPath}/did.jsonl and /{userPath}/resources/list-{id}
