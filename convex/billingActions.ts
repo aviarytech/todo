@@ -1,10 +1,10 @@
+"use node";
 /**
  * Billing actions that require Node.js (Stripe SDK uses crypto, http, etc.)
  *
- * "use node" is required because stripe@20 uses Node.js built-in APIs
+ * "use node" must be the first statement — stripe@20 uses Node.js built-in APIs
  * (crypto, events, child_process) that are not available in Convex's V8 isolate.
  */
-"use node";
 
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";

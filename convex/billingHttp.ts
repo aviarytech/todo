@@ -1,3 +1,4 @@
+"use node";
 /**
  * HTTP action handlers for Stripe billing.
  *
@@ -6,9 +7,8 @@
  * POST /api/billing/portal  — Create Stripe Customer Portal session (requires auth)
  * GET  /api/billing/subscription — Get current user subscription (requires auth)
  *
- * "use node" is required because stripe@20 uses Node.js built-in APIs.
+ * "use node" must be the first statement — stripe@20 uses Node.js built-in APIs.
  */
-"use node";
 
 import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
