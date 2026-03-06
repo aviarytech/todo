@@ -5,7 +5,10 @@
  * POST /api/billing/checkout — Create Stripe Checkout session (requires auth)
  * POST /api/billing/portal  — Create Stripe Customer Portal session (requires auth)
  * GET  /api/billing/subscription — Get current user subscription (requires auth)
+ *
+ * "use node" is required because stripe@20 uses Node.js built-in APIs.
  */
+"use node";
 
 import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
@@ -178,7 +181,7 @@ export const createCheckout = httpAction(async (ctx, request) => {
       return errorResponse(request, "priceId, successUrl, cancelUrl required", 400);
     }
 
-    const url: string = await ctx.runAction(internal.billing.createCheckoutSession, {
+    const url: string = await ctx.runAction(internal.billingActions.createCheckoutSession, {
       userId: user._id,
       email: user.email ?? "",
       priceId,
@@ -207,7 +210,7 @@ export const createPortal = httpAction(async (ctx, request) => {
 
     const body = await request.json() as { returnUrl: string };
 
-    const url: string = await ctx.runAction(internal.billing.createPortalSession, {
+    const url: string = await ctx.runAction(internal.billingActions.createPortalSession, {
       userId: user._id,
       returnUrl: body.returnUrl,
     });
