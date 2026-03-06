@@ -20,8 +20,35 @@ export function Landing() {
     trackLandingViewed();
   }, []);
 
+  // The global CSS locks body/root overflow for the native app layout.
+  // Override it here so the landing page scrolls normally.
+  useEffect(() => {
+    const body = document.body;
+    const root = document.getElementById('root');
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyHeight = body.style.height;
+    const prevRootOverflow = root?.style.overflow ?? '';
+    const prevRootHeight = root?.style.height ?? '';
+
+    body.style.overflow = 'auto';
+    body.style.height = 'auto';
+    if (root) {
+      root.style.overflow = 'visible';
+      root.style.height = 'auto';
+    }
+
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      body.style.height = prevBodyHeight;
+      if (root) {
+        root.style.overflow = prevRootOverflow;
+        root.style.height = prevRootHeight;
+      }
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-amber-100 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-amber-100">
       {/* Floating poop emojis background - reduced on mobile for performance */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-10">
         {[...Array(12)].map((_, i) => (
