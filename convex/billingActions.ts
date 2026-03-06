@@ -86,3 +86,126 @@ export const createPortalSession = internalAction({
     return session.url;
   },
 });
+
+function planFromPriceId(priceId: string): "pro" | "team" {
+  if (priceId === process.env.STRIPE_TEAM_PRICE_ID) return "team";
+  return "pro";
+}
+
+function mapStripeStatus(
+  status: Stripe.Subscription.Status
+): "active" | "canceled" | "past_due" | "trialing" | "incomplete" {
+  switch (status) {
+    case "canceled": return "canceled";
+    case "past_due": return "past_due";
+    case "trialing": return "trialing";
+    case "incomplete":
+    case "incomplete_expired": return "incomplete";
+    default: return "active";
+  }
+}
+
+/**
+ * Process a Stripe webhook event. Called from the HTTP action with the raw
+ * request body and signature so that Stripe SDK verification + API calls
+ * happen inside a Node.js action.
+ */
+export const processWebhook = internalAction({
+  args: {
+    body: v.string(),
+    signature: v.string(),
+  },
+  handler: async (ctx, { body, signature }) => {
+    const stripe = getStripe();
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) throw new Error("Webhook secret not configured");
+
+    const event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+
+    console.log(`[stripeWebhook] Processing: ${event.type}`);
+
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.mode !== "subscription") break;
+
+        const userId = session.metadata?.userId as Id<"users"> | undefined;
+        if (!userId) {
+          console.error("[stripeWebhook] No userId in checkout session metadata");
+          break;
+        }
+
+        const subscriptionId = session.subscription as string;
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const priceId = subscription.items.data[0]?.price.id ?? "";
+        const plan = planFromPriceId(priceId);
+        const periodEnd = subscription.items.data[0]?.current_period_end ?? 0;
+
+        await ctx.runMutation(internal.billing.upsertSubscription, {
+          userId,
+          stripeCustomerId: session.customer as string,
+          stripeSubscriptionId: subscriptionId,
+          plan,
+          status: mapStripeStatus(subscription.status),
+          currentPeriodEnd: periodEnd * 1000,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        });
+
+        console.log(`[stripeWebhook] Upgraded ${userId} → ${plan}`);
+        break;
+      }
+
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const sub = await ctx.runQuery(internal.billing.querySubscriptionByStripeSubId, {
+          stripeSubscriptionId: subscription.id,
+        });
+
+        if (!sub) {
+          console.warn(`[stripeWebhook] No local record for subscription ${subscription.id}`);
+          break;
+        }
+
+        const priceId = subscription.items.data[0]?.price.id ?? "";
+        const plan = planFromPriceId(priceId);
+        const periodEnd = subscription.items.data[0]?.current_period_end ?? 0;
+
+        await ctx.runMutation(internal.billing.upsertSubscription, {
+          userId: sub.userId,
+          stripeCustomerId: sub.stripeCustomerId,
+          stripeSubscriptionId: subscription.id,
+          plan,
+          status: mapStripeStatus(subscription.status),
+          currentPeriodEnd: periodEnd * 1000,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        });
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const sub = await ctx.runQuery(internal.billing.querySubscriptionByStripeSubId, {
+          stripeSubscriptionId: subscription.id,
+        });
+
+        if (!sub) break;
+
+        await ctx.runMutation(internal.billing.upsertSubscription, {
+          userId: sub.userId,
+          stripeCustomerId: sub.stripeCustomerId,
+          stripeSubscriptionId: subscription.id,
+          plan: "free",
+          status: "canceled",
+          currentPeriodEnd: undefined,
+          cancelAtPeriodEnd: false,
+        });
+
+        console.log(`[stripeWebhook] Downgraded ${sub.userId} → free (subscription deleted)`);
+        break;
+      }
+
+      default:
+        console.log(`[stripeWebhook] Unhandled event: ${event.type}`);
+    }
+  },
+});
