@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { withMutationObservability } from "./lib/observability";
 import { canUserEditList } from "./lib/permissions";
 
@@ -206,6 +207,15 @@ export const addItem = mutation({
     // Store the VC proof on the item
     await ctx.db.patch(itemId, { vcProofs: [authorshipVC] });
 
+    // Notify other list members (fire-and-forget via scheduler)
+    await ctx.scheduler.runAfter(0, internal.notificationActions.sendListNotificationInternal, {
+      listId: args.listId,
+      excludeDid: args.createdByDid,
+      title: list.name,
+      body: `"${args.name}" was added`,
+      data: { listId: args.listId },
+    });
+
     return itemId;
   }),
 });
@@ -356,6 +366,16 @@ export const checkItem = mutation({
       checkedAt: args.checkedAt,
       updatedAt: now,
       vcProofs: updatedProofs,
+    });
+
+    // Notify other list members about the completion
+    const list = await ctx.db.get(item.listId);
+    await ctx.scheduler.runAfter(0, internal.notificationActions.sendListNotificationInternal, {
+      listId: item.listId,
+      excludeDid: args.checkedByDid,
+      title: list?.name ?? "Your list",
+      body: `"${item.name}" was completed`,
+      data: { listId: item.listId },
     });
 
     // If item has recurrence, create a new unchecked copy with next due date

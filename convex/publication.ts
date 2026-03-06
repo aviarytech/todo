@@ -7,6 +7,7 @@
 
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 /**
  * Record a publication for a list.
@@ -243,11 +244,23 @@ export const bookmarkList = mutation({
       }
     }
 
-    return await ctx.db.insert("bookmarks", {
+    const bookmarkId = await ctx.db.insert("bookmarks", {
       userDid: args.userDid,
       listId: args.listId,
       bookmarkedAt: Date.now(),
     });
+
+    // Notify the list owner: a new collaborator joined
+    if (list && list.ownerDid !== args.userDid) {
+      await ctx.scheduler.runAfter(0, internal.notificationActions.sendPushNotificationInternal, {
+        userDid: list.ownerDid,
+        title: list.name,
+        body: "A new collaborator joined your list",
+        data: { listId: args.listId },
+      });
+    }
+
+    return bookmarkId;
   },
 });
 

@@ -5,7 +5,7 @@
  */
 
 import { v } from "convex/values";
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 // ─── Send push notification (action) ────────────────────────────────
@@ -73,6 +73,62 @@ export const sendListNotification = action({
       platform: filtered[i].platform,
       status: r.status,
     }));
+  },
+});
+
+// ─── Internal variants (for scheduling from mutations) ──────────────
+
+export const sendPushNotificationInternal = internalAction({
+  args: {
+    userDid: v.string(),
+    title: v.string(),
+    body: v.string(),
+    data: v.optional(v.any()),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    const tokens: Array<{ token: string; platform: string; webPushKeys?: { p256dh: string; auth: string } }> = await ctx.runQuery(internal.notifications.getTokensForUser, {
+      userDid: args.userDid,
+    });
+
+    await Promise.allSettled(
+      tokens.map((tok) => {
+        if (tok.platform === "ios") {
+          return sendAPNs(args.title, args.body, args.data, tok.token);
+        } else {
+          return sendWebPush(args.title, args.body, args.data, tok.token, tok.webPushKeys!);
+        }
+      })
+    );
+  },
+});
+
+export const sendListNotificationInternal = internalAction({
+  args: {
+    listId: v.id("lists"),
+    excludeDid: v.optional(v.string()),
+    title: v.string(),
+    body: v.string(),
+    data: v.optional(v.any()),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    type TokenRecord = { userDid: string; token: string; platform: string; webPushKeys?: { p256dh: string; auth: string } };
+    const tokens: TokenRecord[] = await ctx.runQuery(internal.notifications.getTokensForList, {
+      listId: args.listId,
+    });
+
+    const filtered = args.excludeDid
+      ? tokens.filter((t) => t.userDid !== args.excludeDid)
+      : tokens;
+
+    await Promise.allSettled(
+      filtered.map((tok) => {
+        if (tok.platform === "ios") {
+          return sendAPNs(args.title, args.body, args.data, tok.token);
+        } else {
+          return sendWebPush(args.title, args.body, args.data, tok.token, tok.webPushKeys!);
+        }
+      })
+    );
   },
 });
 
