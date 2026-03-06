@@ -77,7 +77,9 @@ export const createList = mutation({
           .query("lists")
           .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
           .collect();
-        if (existingLists.length >= 5) {
+        const bonusLists = owner.bonusLists ?? 0;
+        const maxLists = 5 + bonusLists;
+        if (existingLists.length >= maxLists) {
           throw new Error("PLAN_LIMIT: You've reached the free plan limit of 5 lists. Upgrade at /pricing to create unlimited lists.");
         }
       }

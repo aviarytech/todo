@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { useSettings } from '../hooks/useSettings';
 import { useNotifications } from '../hooks/useNotifications';
 import { useAuth } from '../hooks/useAuth';
+import { ReferralInviteCurrentUser } from './ReferralInvite';
 import { supportsHaptics } from '../lib/haptics';
 import { supportsPushNotifications } from '../lib/notifications';
 import { biometrics } from '../lib/biometrics';
@@ -273,6 +274,16 @@ export function Settings({ onClose }: SettingsProps) {
             )}
           </section>
         )}
+
+        {/* Invite Friends Section */}
+        <section>
+          <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+            Invite Friends
+          </h3>
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+            <ReferralInviteCurrentUser />
+          </div>
+        </section>
 
         {/* Account Section */}
         <section>

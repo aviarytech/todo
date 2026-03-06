@@ -9,6 +9,7 @@ import { OfflineIndicator } from './components/offline/OfflineIndicator'
 import { ToastContainer } from './components/notifications/Toast'
 import { Settings } from './components/Settings'
 import { AppLockGuard } from './components/AppLockGuard'
+import { ReferralRedeemer } from './components/ReferralRedeemer'
 import { useSwipeBack } from './hooks/useSwipeBack'
 import { initDeepLinks } from './lib/deeplinks'
 import { initPushNotifications } from './lib/pushNotifications'
@@ -26,6 +27,9 @@ const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Pro
 const Templates = lazy(() => import('./pages/Templates').then(m => ({ default: m.Templates })))
 const PriorityFocus = lazy(() => import('./pages/PriorityFocus').then(m => ({ default: m.PriorityFocus })))
 const Pricing = lazy(() => import('./pages/Pricing').then(m => ({ default: m.Pricing })))
+const InviteLanding = lazy(() => import('./pages/InviteLanding').then(m => ({ default: m.InviteLanding })))
+const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })))
+const Compare = lazy(() => import('./pages/Compare').then(m => ({ default: m.Compare })))
 
 /**
  * Authenticated layout wrapper with header and navigation.
@@ -107,6 +111,9 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
       {/* Settings modal */}
       {isSettingsOpen && <Settings onClose={() => setIsSettingsOpen(false)} />}
+
+      {/* Silently redeem any pending referral code after login */}
+      <ReferralRedeemer />
     </div>
   )
 }
@@ -199,6 +206,7 @@ function App() {
       <Suspense fallback={<PageLoadingFallback />}>
         <Routes>
           {/* Public routes - accessible without authentication */}
+          <Route path="/invite/:code" element={<InviteLanding />} />
           <Route path="/login" element={isAuthenticated ? <Navigate to="/app" replace /> : <Login />} />
           <Route path="/join/:listId/:token" element={<JoinList />} />
           <Route path="/public/:did" element={<PublicList />} />
@@ -209,6 +217,8 @@ function App() {
 
           {/* Pricing - accessible to all, authenticated or not */}
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/compare/:competitor" element={<Compare />} />
 
           {/* Protected routes - require authentication */}
           <Route path="/app" element={<ProtectedRoute><Home /></ProtectedRoute>} />

@@ -55,6 +55,8 @@ export default defineSchema({
     legacyIdentity: v.optional(v.boolean()), // true if still using localStorage
     // Migration support (Phase 1.6)
     legacyDid: v.optional(v.string()), // Original localStorage DID before Turnkey migration
+    // Referral bonus: extra lists earned by inviting friends
+    bonusLists: v.optional(v.number()),
   })
     .index("by_did", ["did"])
     .index("by_turnkey_id", ["turnkeySubOrgId"])
@@ -318,6 +320,25 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_stripe_customer", ["stripeCustomerId"])
     .index("by_stripe_subscription", ["stripeSubscriptionId"]),
+
+  // Referral codes table - unique invite code per user
+  referralCodes: defineTable({
+    userId: v.id("users"),
+    code: v.string(), // Unique alphanumeric invite code
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_code", ["code"]),
+
+  // Referrals table - tracks successful invite→signup conversions
+  referrals: defineTable({
+    referralCodeId: v.id("referralCodes"),
+    referrerId: v.id("users"), // User who sent the invite
+    refereeId: v.id("users"),  // User who signed up via the link
+    createdAt: v.number(),
+  })
+    .index("by_referrer", ["referrerId"])
+    .index("by_referee", ["refereeId"]),
 
   // Bitcoin anchors table - list/item state anchored to Bitcoin signet (Phase 5 + 6)
   bitcoinAnchors: defineTable({

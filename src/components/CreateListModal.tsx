@@ -15,6 +15,7 @@ import { createListAsset } from "../lib/originals";
 import { CategorySelector } from "./lists/CategorySelector";
 import { Panel } from "./ui/Panel";
 import { trackListCreated, trackFirstListCreated, trackFeatureGateHit, trackInviteSent } from "../lib/analytics";
+import { ReferralInviteCurrentUser } from "./ReferralInvite";
 
 interface CreateListModalProps {
   onClose: () => void;
@@ -232,12 +233,23 @@ export function CreateListModal({ onClose }: CreateListModalProps) {
         )}
 
         {planLimitHit && (
-          <div className="px-4 py-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-300 text-sm space-y-2">
+          <div className="px-4 py-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-300 text-sm space-y-4">
             <div className="flex items-center gap-2 font-semibold">
               <span>🚀</span>
               <span>You've reached the free plan limit of 5 lists</span>
             </div>
-            <p className="text-amber-700 dark:text-amber-400">Upgrade to Pro for unlimited lists, collaborators, and more.</p>
+
+            {/* Referral CTA */}
+            <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-amber-200 dark:border-amber-700">
+              <ReferralInviteCurrentUser compact />
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-500">
+              <span className="flex-1 border-t border-amber-200 dark:border-amber-700" />
+              <span>or upgrade for unlimited</span>
+              <span className="flex-1 border-t border-amber-200 dark:border-amber-700" />
+            </div>
+
             <Link
               to="/pricing"
               onClick={onClose}
