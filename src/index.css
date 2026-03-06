@@ -69,6 +69,17 @@ body {
   overflow: hidden;
 }
 
+/* Landing page overrides — allow normal document scroll */
+body.landing-page {
+  height: auto;
+  overflow: auto;
+}
+
+body.landing-page #root {
+  height: auto;
+  overflow: visible;
+}
+
 /* Prevent iOS Safari input zoom — inputs must be >= 16px */
 @supports (-webkit-touch-callout: none) {
   input, select, textarea {
