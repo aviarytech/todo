@@ -9,7 +9,7 @@ import { useBilling } from "../hooks/useBilling";
 import { useAuth } from "../hooks/useAuth";
 import { trackUpgradePageViewed, trackUpgradeClicked } from "../lib/analytics";
 
-const CONVEX_URL = import.meta.env.VITE_CONVEX_URL as string;
+const CONVEX_SITE_URL = import.meta.env.VITE_CONVEX_HTTP_URL as string;
 
 // Price IDs injected at build time from env
 const PRO_MONTHLY_PRICE_ID = import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID as string | undefined;
@@ -45,7 +45,7 @@ export function Pricing() {
     setError(null);
     try {
       const origin = window.location.origin;
-      const res = await fetch(`${CONVEX_URL}/api/billing/checkout`, {
+      const res = await fetch(`${CONVEX_SITE_URL}/api/billing/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -70,7 +70,7 @@ export function Pricing() {
     setError(null);
     try {
       const origin = window.location.origin;
-      const res = await fetch(`${CONVEX_URL}/api/billing/portal`, {
+      const res = await fetch(`${CONVEX_SITE_URL}/api/billing/portal`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
