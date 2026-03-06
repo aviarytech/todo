@@ -10,6 +10,7 @@ import { registerServiceWorker } from './lib/sw-registration'
 import { initDarkMode } from './lib/storage'
 import { initNativePlatform, initKeyboardHandling } from './lib/native'
 import { initNetworkMonitoring } from './lib/network'
+import { initAnalytics } from './lib/analytics'
 import './index.css'
 import App from './App.tsx'
 
@@ -24,6 +25,9 @@ initKeyboardHandling();
 
 // Initialize network monitoring for offline support
 initNetworkMonitoring();
+
+// Initialize analytics (no-op if VITE_POSTHOG_KEY is not set)
+initAnalytics();
 
 // Register service worker for offline support (web only - disabled in native apps)
 if (!Capacitor.isNativePlatform()) {

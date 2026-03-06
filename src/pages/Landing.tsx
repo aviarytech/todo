@@ -8,11 +8,17 @@
  * - Desktop: > 1024px (lg)
  */
 
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { trackLandingViewed } from '../lib/analytics';
 
 export function Landing() {
   const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    trackLandingViewed();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-amber-100 overflow-hidden">

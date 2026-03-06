@@ -28,6 +28,7 @@ import {
 } from "react";
 import { createUserWebVHDid } from "../lib/webvh";
 import { storageAdapter } from "../lib/storageAdapter";
+import { identifyUser, resetAnalytics } from "../lib/analytics";
 
 /**
  * Get the Convex HTTP endpoint base URL from the Convex URL.
@@ -359,6 +360,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(authUser);
         setOtpFlowState({ sessionId: null, email: null, legacyDid: null });
 
+        // Identify user in analytics
+        identifyUser(authUser.turnkeySubOrgId, { email_domain: authUser.email.split('@')[1] });
+
         console.log("[useAuth] Authentication complete, DID:", userDid);
       } catch (err) {
         console.error("[useAuth] Failed to verify OTP:", err);
@@ -389,7 +393,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Continue with local cleanup even if server call fails
     }
 
-    // Clear local state
+    // Clear local state and analytics identity
+    resetAnalytics();
     setUser(null);
     setToken(null);
     setOtpFlowState({ sessionId: null, email: null, legacyDid: null });

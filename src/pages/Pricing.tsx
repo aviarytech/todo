@@ -2,11 +2,12 @@
  * Pricing page — Free vs Pro vs Team comparison with upgrade flow.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useBilling } from "../hooks/useBilling";
 import { useAuth } from "../hooks/useAuth";
+import { trackUpgradePageViewed, trackUpgradeClicked } from "../lib/analytics";
 
 const CONVEX_URL = import.meta.env.VITE_CONVEX_URL as string;
 
@@ -26,7 +27,11 @@ export function Pricing() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function startCheckout(priceId: string) {
+  useEffect(() => {
+    trackUpgradePageViewed(document.referrer ? "referrer" : "direct");
+  }, []);
+
+  async function startCheckout(priceId: string, planName: string) {
     if (!isAuthenticated) {
       navigate("/login");
       return;
@@ -35,6 +40,7 @@ export function Pricing() {
       setError("Billing not configured yet. Check back soon.");
       return;
     }
+    trackUpgradeClicked(planName, "pricing_page");
     setLoading(priceId);
     setError(null);
     try {
@@ -193,7 +199,7 @@ export function Pricing() {
               </span>
             ) : (
               <button
-                onClick={() => proPriceId && startCheckout(proPriceId)}
+                onClick={() => proPriceId && startCheckout(proPriceId, "pro")}
                 disabled={!proPriceId || loading === proPriceId}
                 className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium transition-colors disabled:opacity-60"
               >
@@ -233,7 +239,7 @@ export function Pricing() {
               </button>
             ) : (
               <button
-                onClick={() => TEAM_PRICE_ID && startCheckout(TEAM_PRICE_ID)}
+                onClick={() => TEAM_PRICE_ID && startCheckout(TEAM_PRICE_ID, "team")}
                 disabled={!TEAM_PRICE_ID || loading === TEAM_PRICE_ID}
                 className="w-full py-2.5 rounded-xl bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white text-sm font-medium transition-colors disabled:opacity-60"
               >

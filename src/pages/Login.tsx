@@ -12,6 +12,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { OtpInput } from "../components/auth/OtpInput";
+import { trackSignupStarted, trackSignupCompleted } from "../lib/analytics";
 
 type LoginStep = "email" | "otp";
 
@@ -58,6 +59,7 @@ export function Login({ embedded = false }: LoginProps) {
     try {
       setIsSendingCode(true);
       await startOtp(trimmedEmail);
+      trackSignupStarted(trimmedEmail);
       setStep("otp");
     } catch (err) {
       console.error("Failed to send OTP:", err);
@@ -72,6 +74,7 @@ export function Login({ embedded = false }: LoginProps) {
 
     try {
       await verifyOtp(code);
+      trackSignupCompleted("free");
       // On successful verification, useAuth will update isAuthenticated
       // If not embedded, redirect to app; if embedded, parent handles navigation
       if (!embedded) {
