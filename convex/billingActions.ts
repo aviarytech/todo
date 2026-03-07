@@ -36,6 +36,26 @@ export const createCheckoutSession = internalAction({
     const existingSub = await ctx.runQuery(internal.billing.querySubscriptionByUserId, { userId });
     let customerId: string;
 
+    // If the user already has an active subscription, upgrade it in-place rather
+    // than creating a new Checkout session — that would stack subscriptions.
+    if (
+      existingSub?.stripeSubscriptionId &&
+      (existingSub.status === "active" || existingSub.status === "trialing")
+    ) {
+      const subscription = await stripe.subscriptions.retrieve(existingSub.stripeSubscriptionId);
+      const itemId = subscription.items.data[0]?.id;
+      if (!itemId) throw new Error("No subscription item found on existing subscription");
+
+      await stripe.subscriptions.update(existingSub.stripeSubscriptionId, {
+        items: [{ id: itemId, price: priceId }],
+        proration_behavior: "create_prorations",
+      });
+
+      // customer.subscription.updated webhook will sync the DB.
+      // Return successUrl directly — no Stripe Checkout redirect needed.
+      return successUrl;
+    }
+
     if (existingSub) {
       customerId = existingSub.stripeCustomerId;
     } else {
