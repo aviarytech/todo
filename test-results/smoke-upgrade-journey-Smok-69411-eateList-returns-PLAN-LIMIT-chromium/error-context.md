@@ -1,0 +1,43 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - link "Skip to main content" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "💩 Poo App" [ref=e7] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e8]: 💩
+        - generic [ref=e9]: Poo App
+      - generic [ref=e10]:
+        - button "Settings" [ref=e11]:
+          - img [ref=e12]
+        - button "Switch to dark mode" [ref=e15]:
+          - img [ref=e16]
+        - generic [ref=e18]:
+          - link "did:webv...test" [ref=e19] [cursor=pointer]:
+            - /url: /profile
+            - generic [ref=e21]: did:webv...test
+          - link "Upgrade" [ref=e22] [cursor=pointer]:
+            - /url: /pricing
+          - button "Sign out" [ref=e23]:
+            - img [ref=e24]
+  - main [ref=e26]:
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - heading "Your Lists" [level=1] [ref=e32]
+        - generic [ref=e33]:
+          - link "🎯 Focus" [ref=e34] [cursor=pointer]:
+            - /url: /priority
+            - generic [ref=e35]: 🎯
+            - generic [ref=e36]: Focus
+          - button "📁 Categories" [ref=e37]:
+            - generic [ref=e38]: 📁
+            - generic [ref=e39]: Categories
+          - button "➕ New list" [ref=e40]:
+            - generic [ref=e41]: ➕
+            - generic [ref=e42]: New list
+      - button "Create new list" [ref=e80]:
+        - img [ref=e81]
+```

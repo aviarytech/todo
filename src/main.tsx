@@ -11,8 +11,12 @@ import { initDarkMode } from './lib/storage'
 import { initNativePlatform, initKeyboardHandling } from './lib/native'
 import { initNetworkMonitoring } from './lib/network'
 import { initAnalytics } from './lib/analytics'
+import { initSentry } from './lib/sentry'
 import './index.css'
 import App from './App.tsx'
+
+// Initialize Sentry before anything else (no-op if VITE_SENTRY_DSN is not set)
+initSentry();
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string)
 

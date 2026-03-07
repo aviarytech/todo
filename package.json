@@ -37,6 +37,8 @@
     "@capacitor/status-bar": "^8.0.0",
     "@originals/auth": "^1.8.2",
     "@originals/sdk": "^1.8.2",
+    "@sentry/react": "^10.42.0",
+    "@sentry/vite-plugin": "^5.1.1",
     "@turnkey/core": "^1.11.0",
     "capacitor-native-biometric": "^4.2.2",
     "convex": "^1.31.6",

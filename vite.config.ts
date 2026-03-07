@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import { resolve } from 'path'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 function buildServiceWorker() {
   return {
@@ -55,12 +56,24 @@ export default defineConfig({
       },
     }),
     buildServiceWorker(),
+    // Upload source maps to Sentry on production builds (no-op if env vars not set)
+    sentryVitePlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      // Only upload source maps when SENTRY_AUTH_TOKEN is present
+      disable: !process.env.SENTRY_AUTH_TOKEN,
+      sourcemaps: {
+        filesToDeleteAfterUpload: ['dist/**/*.map'],
+      },
+    }),
   ],
   optimizeDeps: {
     // Force pre-bundling of problematic dependencies
     include: ['@originals/sdk'],
   },
   build: {
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {

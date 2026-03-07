@@ -1,0 +1,102 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - link "Skip to main content" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "💩 Poo App" [ref=e7] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e8]: 💩
+        - generic [ref=e9]: Poo App
+      - generic [ref=e10]:
+        - button "Settings" [ref=e11]:
+          - img [ref=e12]
+        - button "Switch to dark mode" [ref=e15]:
+          - img [ref=e16]
+        - generic [ref=e18]:
+          - link "did:webv...test" [ref=e19] [cursor=pointer]:
+            - /url: /profile
+            - generic [ref=e21]: did:webv...test
+          - link "Upgrade" [ref=e22] [cursor=pointer]:
+            - /url: /pricing
+          - button "Sign out" [ref=e23]:
+            - img [ref=e24]
+  - main [ref=e26]:
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - generic [ref=e30]:
+          - heading "Your Lists" [level=1] [ref=e32]
+          - paragraph [ref=e33]: 5 lists
+        - generic [ref=e34]:
+          - link "🎯 Focus" [ref=e35] [cursor=pointer]:
+            - /url: /priority
+            - generic [ref=e36]: 🎯
+            - generic [ref=e37]: Focus
+          - button "📁 Categories" [ref=e38]:
+            - generic [ref=e39]: 📁
+            - generic [ref=e40]: Categories
+          - button "➕ New list" [ref=e41]:
+            - generic [ref=e42]: ➕
+            - generic [ref=e43]: New list
+      - generic [ref=e44]:
+        - search [ref=e45]:
+          - generic [ref=e46]: Search lists
+          - img [ref=e48]
+          - searchbox "Search lists" [ref=e50]
+          - generic [ref=e52]: ⌘K
+        - button "Newest First" [ref=e54]:
+          - img [ref=e55]
+          - generic [ref=e57]: Newest First
+          - img [ref=e58]
+      - generic [ref=e62]:
+        - button "Uncategorized 5" [expanded] [ref=e63]:
+          - generic [ref=e64]:
+            - img [ref=e66]
+            - heading "Uncategorized" [level=3] [ref=e68]
+            - generic [ref=e69]: "5"
+        - generic [ref=e71]:
+          - 'link "Open list: Test List 5" [ref=e73] [cursor=pointer]':
+            - /url: /list/lists:mocklist4
+            - generic [ref=e74]:
+              - generic [ref=e75]: 📊
+              - generic [ref=e76]:
+                - heading "Test List 5" [level=3] [ref=e78]
+                - paragraph [ref=e79]: 1h ago
+              - img [ref=e80]
+          - 'link "Open list: Test List 4" [ref=e83] [cursor=pointer]':
+            - /url: /list/lists:mocklist3
+            - generic [ref=e84]:
+              - generic [ref=e85]: 🎯
+              - generic [ref=e86]:
+                - heading "Test List 4" [level=3] [ref=e88]
+                - paragraph [ref=e89]: 2h ago
+              - img [ref=e90]
+          - 'link "Open list: Test List 3" [ref=e93] [cursor=pointer]':
+            - /url: /list/lists:mocklist2
+            - generic [ref=e94]:
+              - generic [ref=e95]: 📌
+              - generic [ref=e96]:
+                - heading "Test List 3" [level=3] [ref=e98]
+                - paragraph [ref=e99]: 3h ago
+              - img [ref=e100]
+          - 'link "Open list: Test List 2" [ref=e103] [cursor=pointer]':
+            - /url: /list/lists:mocklist1
+            - generic [ref=e104]:
+              - generic [ref=e105]: ✅
+              - generic [ref=e106]:
+                - heading "Test List 2" [level=3] [ref=e108]
+                - paragraph [ref=e109]: 4h ago
+              - img [ref=e110]
+          - 'link "Open list: Test List 1" [ref=e113] [cursor=pointer]':
+            - /url: /list/lists:mocklist0
+            - generic [ref=e114]:
+              - generic [ref=e115]: 📝
+              - generic [ref=e116]:
+                - heading "Test List 1" [level=3] [ref=e118]
+                - paragraph [ref=e119]: 5h ago
+              - img [ref=e120]
+      - button "Create new list" [ref=e122]:
+        - img [ref=e123]
+```
