@@ -32,6 +32,22 @@ export interface ListAsset {
  * @returns Promise<ListAsset> The created list asset
  */
 export async function createListAsset(name: string, creatorDid: string): Promise<ListAsset> {
+  // In E2E test environments, skip the SDK crypto call and return a deterministic stub.
+  // @aviarytech/did-peer uses Node.js crypto APIs that can hang in Playwright's Chromium
+  // sandbox. Playwright sets window.__E2E_MOCK_ORIGINALS via addInitScript before page load,
+  // or the build can set VITE_E2E_MOCK_ORIGINALS=true via the webServer env option.
+  if (
+    import.meta.env.VITE_E2E_MOCK_ORIGINALS === "true" ||
+    (typeof window !== "undefined" && (window as Record<string, unknown>).__E2E_MOCK_ORIGINALS)
+  ) {
+    return {
+      assetDid: `did:peer:4ze2e-${name.replace(/\s+/g, "-").toLowerCase()}-${Date.now()}`,
+      name,
+      createdBy: creatorDid,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
   const didManager = new DIDManager(config);
 
   // Create a did:peer for the list asset (no embedded resources for v1 simplicity)
