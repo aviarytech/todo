@@ -29,8 +29,8 @@ initNetworkMonitoring();
 // Initialize analytics (no-op if VITE_POSTHOG_KEY is not set)
 initAnalytics();
 
-// Register service worker for offline support (web only - disabled in native apps)
-if (!Capacitor.isNativePlatform()) {
+// Register service worker for offline support (web only, production only)
+if (!Capacitor.isNativePlatform() && import.meta.env.PROD) {
   registerServiceWorker({
     onUpdate: () => {
       console.log('App update available. Refresh to get the latest version.');

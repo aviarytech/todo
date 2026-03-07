@@ -6,6 +6,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 /**
  * Register or update a user after Turnkey authentication.
@@ -85,7 +86,7 @@ export const upsertUser = mutation({
 
     // Create new user (DID will be set client-side via /api/user/updateDID)
     const displayName = args.displayName ?? args.email.split("@")[0];
-    return await ctx.db.insert("users", {
+    const newUserId = await ctx.db.insert("users", {
       turnkeySubOrgId: args.turnkeySubOrgId,
       email: args.email,
       did: args.did, // undefined on first create — client upgrades to did:webvh
@@ -93,6 +94,14 @@ export const upsertUser = mutation({
       createdAt: Date.now(),
       lastLoginAt: Date.now(),
     });
+
+    // Send welcome email on signup (fire-and-forget, silently skips if no RESEND_API_KEY)
+    await ctx.scheduler.runAfter(0, internal.feedback.sendWelcomeEmail, {
+      email: args.email,
+      displayName,
+    });
+
+    return newUserId;
   },
 });
 

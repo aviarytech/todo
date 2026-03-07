@@ -330,6 +330,20 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_code", ["code"]),
 
+  // Feedback table - in-app user feedback collection
+  feedback: defineTable({
+    userId: v.id("users"),
+    source: v.union(v.literal("in_app"), v.literal("email_reply"), v.literal("ph"), v.literal("hn"), v.literal("twitter"), v.literal("other")),
+    category: v.union(v.literal("bug"), v.literal("feature"), v.literal("praise"), v.literal("confusion"), v.literal("churn_risk")),
+    body: v.string(),
+    status: v.union(v.literal("new"), v.literal("acknowledged"), v.literal("acted_on"), v.literal("wont_fix")),
+    respondedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_source", ["source"]),
+
   // Referrals table - tracks successful invite→signup conversions
   referrals: defineTable({
     referralCodeId: v.id("referralCodes"),
@@ -375,4 +389,10 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_txid", ["txid"])
     .index("by_list_created", ["listId", "createdAt"]),
+
+  waitlist: defineTable({
+    email: v.string(),
+    source: v.optional(v.string()), // e.g. "landing_page"
+    createdAt: v.number(),
+  }).index("by_email", ["email"]),
 });

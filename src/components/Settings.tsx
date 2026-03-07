@@ -13,6 +13,9 @@ import { supportsHaptics } from '../lib/haptics';
 import { supportsPushNotifications } from '../lib/notifications';
 import { biometrics } from '../lib/biometrics';
 import { Panel } from './ui/Panel';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { useToast } from '../hooks/useToast';
 
 interface SettingsProps {
   onClose: () => void;
@@ -21,6 +24,7 @@ interface SettingsProps {
 export function Settings({ onClose }: SettingsProps) {
   const { darkMode, toggleDarkMode, hapticsEnabled, setHapticsEnabled, biometricLockEnabled, setBiometricLockEnabled, haptic } = useSettings();
   const { user } = useAuth();
+  const { addToast } = useToast();
   const {
     permission: notificationPermission,
     isEnabled: notificationsEnabled,
@@ -31,10 +35,34 @@ export function Settings({ onClose }: SettingsProps) {
   } = useNotifications({ userDid: user?.did ?? null });
 
   const [biometricsAvailable, setBiometricsAvailable] = useState(false);
-  
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackBody, setFeedbackBody] = useState('');
+  const [feedbackCategory, setFeedbackCategory] = useState<'bug' | 'feature' | 'praise' | 'confusion' | 'churn_risk'>('feature');
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+
+  const convexUser = useQuery(
+    api.auth.getUserByTurnkeyId,
+    user?.turnkeySubOrgId ? { turnkeySubOrgId: user.turnkeySubOrgId } : 'skip'
+  );
+  const submitFeedback = useMutation(api.feedback.submit);
+
   useEffect(() => {
     biometrics.isAvailable().then(setBiometricsAvailable);
   }, []);
+
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackBody.trim() || !convexUser?._id) return;
+    setFeedbackSubmitting(true);
+    try {
+      await submitFeedback({ userId: convexUser._id, body: feedbackBody.trim(), category: feedbackCategory });
+      addToast("Thanks, we'll read this today.", 'info');
+      setFeedbackBody('');
+      setFeedbackCategory('feature');
+      setFeedbackOpen(false);
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
 
   const handleToggle = (current: boolean, setter: (v: boolean) => void) => {
     haptic('light');
@@ -70,6 +98,59 @@ export function Settings({ onClose }: SettingsProps) {
   );
 
   return (
+    <>
+    {feedbackOpen && (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setFeedbackOpen(false)}>
+        <div
+          className="w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-6 space-y-4"
+          onClick={e => e.stopPropagation()}
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Send Feedback</h3>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+            <select
+              value={feedbackCategory}
+              onChange={e => setFeedbackCategory(e.target.value as typeof feedbackCategory)}
+              className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg border-0 focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="bug">Bug Report</option>
+              <option value="feature">Feature Request</option>
+              <option value="praise">Praise</option>
+              <option value="confusion">Confusion / UX issue</option>
+              <option value="churn_risk">Thinking of leaving</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Your feedback</label>
+            <textarea
+              value={feedbackBody}
+              onChange={e => setFeedbackBody(e.target.value)}
+              placeholder="Tell us anything..."
+              rows={4}
+              className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg border-0 focus:ring-2 focus:ring-amber-500 resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setFeedbackOpen(false)}
+              className="flex-1 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleFeedbackSubmit}
+              disabled={!feedbackBody.trim() || feedbackSubmitting}
+              className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {feedbackSubmitting ? 'Sending…' : 'Submit'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <Panel
       isOpen={true}
       onClose={onClose}
@@ -314,6 +395,28 @@ export function Settings({ onClose }: SettingsProps) {
           </Link>
         </section>
 
+        {/* Feedback Section */}
+        <section>
+          <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+            Feedback
+          </h3>
+          <button
+            onClick={() => { haptic('light'); setFeedbackOpen(true); }}
+            className="flex items-center justify-between w-full py-3 px-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl leading-none">💬</span>
+              <div className="text-left">
+                <p className="font-medium text-gray-900 dark:text-gray-100">Send Feedback</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">We read every message</p>
+              </div>
+            </div>
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </section>
+
         {/* About Section */}
         <section>
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
@@ -335,5 +438,6 @@ export function Settings({ onClose }: SettingsProps) {
         </section>
       </div>
     </Panel>
+    </>
   );
 }

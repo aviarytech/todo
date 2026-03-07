@@ -280,6 +280,8 @@ export function Compare() {
           <a href="/pricing" className="hover:text-amber-900 transition-colors">Pricing</a>
           {' · '}
           <a href="/privacy" className="hover:text-amber-900 transition-colors">Privacy</a>
+          {' · '}
+          <a href="/terms" className="hover:text-amber-900 transition-colors">Terms</a>
         </p>
       </footer>
     </div>

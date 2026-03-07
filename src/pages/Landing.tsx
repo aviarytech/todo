@@ -8,8 +8,10 @@
  * - Desktop: > 1024px (lg)
  */
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { useAuth } from '../hooks/useAuth';
 import { trackLandingViewed } from '../lib/analytics';
 
@@ -203,6 +205,9 @@ export function Landing() {
           </div>
         </section>
 
+        {/* Waitlist */}
+        <WaitlistSection />
+
         {/* Why trust us */}
         <section className="mt-20 sm:mt-24 md:mt-32">
           <h2 className="text-2xl sm:text-3xl font-bold text-amber-900 text-center mb-10 sm:mb-14 px-4">
@@ -297,6 +302,8 @@ export function Landing() {
           <div className="flex items-center gap-4">
             <Link to="/pricing" className="hover:text-amber-800 transition-colors">Pricing</Link>
             <Link to="/login" className="hover:text-amber-800 transition-colors">Sign In</Link>
+            <Link to="/privacy" className="hover:text-amber-800 transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-amber-800 transition-colors">Terms</Link>
           </div>
           <p>Powered by Originals Protocol — Your data, cryptographically yours.</p>
         </div>
@@ -322,6 +329,73 @@ export function Landing() {
         }
       `}</style>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Waitlist section
+// ---------------------------------------------------------------------------
+
+function WaitlistSection() {
+  const joinWaitlist = useMutation(api.waitlist.joinWaitlist);
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'duplicate' | 'error'>('idle');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setState('loading');
+    try {
+      const result = await joinWaitlist({ email, source: 'landing_page' });
+      setState(result.alreadyJoined ? 'duplicate' : 'done');
+    } catch {
+      setState('error');
+    }
+  }
+
+  return (
+    <section className="mt-20 sm:mt-24 md:mt-32">
+      <div className="bg-gradient-to-r from-amber-900 to-orange-800 rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center shadow-2xl shadow-amber-900/30">
+        <div className="text-4xl sm:text-5xl mb-4">📱</div>
+        <h2 className="text-2xl sm:text-3xl font-bold text-amber-50 mb-2">
+          iOS app launching soon
+        </h2>
+        <p className="text-amber-300/80 mb-8 max-w-md mx-auto text-sm sm:text-base">
+          Join the waitlist — be first to know when it hits the App Store.
+        </p>
+
+        {state === 'done' ? (
+          <div className="inline-flex items-center gap-2 bg-green-500/20 border border-green-400/40 text-green-300 rounded-xl px-6 py-3 font-semibold">
+            <span className="text-green-400">✓</span> You're on the list!
+          </div>
+        ) : state === 'duplicate' ? (
+          <div className="inline-flex items-center gap-2 bg-amber-500/20 border border-amber-400/40 text-amber-300 rounded-xl px-6 py-3 font-semibold">
+            Already signed up — we'll be in touch!
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-amber-50 placeholder-amber-300/50 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm sm:text-base"
+            />
+            <button
+              type="submit"
+              disabled={state === 'loading'}
+              className="px-6 py-3 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-amber-900 font-bold rounded-xl transition-colors shadow-lg shadow-amber-400/20 disabled:opacity-60 whitespace-nowrap text-sm sm:text-base"
+            >
+              {state === 'loading' ? 'Joining…' : 'Join the waitlist'}
+            </button>
+          </form>
+        )}
+
+        {state === 'error' && (
+          <p className="mt-3 text-red-400 text-sm">Something went wrong — please try again.</p>
+        )}
+      </div>
+    </section>
   );
 }
 

@@ -1,6 +1,6 @@
 {
-  "name": "PooApp",
-  "short_name": "PooApp",
+  "name": "Poo App",
+  "short_name": "Poo",
   "description": "Organize your life while you poop. The world's most productive todo app.",
   "start_url": "/",
   "display": "standalone",

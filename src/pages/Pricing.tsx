@@ -20,7 +20,7 @@ type BillingInterval = "monthly" | "yearly";
 
 export function Pricing() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, token } = useAuth();
   useCurrentUser();
   const { plan, subscription, isLoading } = useBilling();
   const [interval, setInterval] = useState<BillingInterval>("monthly");
@@ -28,7 +28,9 @@ export function Pricing() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    document.body.classList.add("scrollable-page");
     trackUpgradePageViewed(document.referrer ? "referrer" : "direct");
+    return () => document.body.classList.remove("scrollable-page");
   }, []);
 
   async function startCheckout(priceId: string, planName: string) {
@@ -47,8 +49,10 @@ export function Pricing() {
       const origin = window.location.origin;
       const res = await fetch(`${CONVEX_SITE_URL}/api/billing/checkout`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           priceId,
           successUrl: `${origin}/app?billing=success`,
@@ -72,8 +76,10 @@ export function Pricing() {
       const origin = window.location.origin;
       const res = await fetch(`${CONVEX_SITE_URL}/api/billing/portal`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ returnUrl: `${origin}/pricing` }),
       });
       const data = await res.json();
@@ -91,7 +97,7 @@ export function Pricing() {
   const proPriceId = interval === "yearly" ? PRO_YEARLY_PRICE_ID : PRO_MONTHLY_PRICE_ID;
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4">
+    <div className="max-w-5xl mx-auto pt-16 pb-8 px-4">
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-3">

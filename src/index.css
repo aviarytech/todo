@@ -69,15 +69,18 @@ body {
   overflow: hidden;
 }
 
-/* Landing page overrides — allow normal document scroll */
-body.landing-page {
-  height: auto;
-  overflow: auto;
+/* Full-page overrides — allow normal document scroll on public pages */
+body.landing-page,
+body.scrollable-page {
+  height: auto !important;
+  overflow: auto !important;
+  overscroll-behavior: auto;
 }
 
-body.landing-page #root {
-  height: auto;
-  overflow: visible;
+body.landing-page #root,
+body.scrollable-page #root {
+  height: auto !important;
+  overflow: visible !important;
 }
 
 /* Prevent iOS Safari input zoom — inputs must be >= 16px */
