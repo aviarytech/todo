@@ -38,7 +38,7 @@ export async function createListAsset(name: string, creatorDid: string): Promise
   // or the build can set VITE_E2E_MOCK_ORIGINALS=true via the webServer env option.
   if (
     import.meta.env.VITE_E2E_MOCK_ORIGINALS === "true" ||
-    (typeof window !== "undefined" && (window as Record<string, unknown>).__E2E_MOCK_ORIGINALS)
+    (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).__E2E_MOCK_ORIGINALS)
   ) {
     return {
       assetDid: `did:peer:4ze2e-${name.replace(/\s+/g, "-").toLowerCase()}-${Date.now()}`,
