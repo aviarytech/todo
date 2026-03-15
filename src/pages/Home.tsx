@@ -30,9 +30,12 @@ import { StreakBadge } from "../components/StreakBadge";
 import { OnboardingFlow, isOnboardingDone, InviteNudge, isInviteNudgeDone, markInviteNudgeDone } from "../components/OnboardingFlow";
 import { createListAsset } from "../lib/originals";
 import { trackFirstListCreated } from "../lib/analytics";
+import { useBilling } from "../hooks/useBilling";
+import { ReferralInviteCurrentUser } from "../components/ReferralInvite";
 
 export function Home() {
   const { did, legacyDid, isLoading: userLoading } = useCurrentUser();
+  const { isPro } = useBilling();
   const { streak } = useStreaks(did ?? undefined);
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { isOnline } = useOffline();
@@ -348,6 +351,13 @@ export function Home() {
         <div className="mb-5 px-4 py-3 bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 rounded-2xl text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2.5 animate-slide-up">
           <span>📡</span>
           <span>Offline — showing cached lists</span>
+        </div>
+      )}
+
+      {/* Referral CTA — shown to free users who have lists */}
+      {!isLoading && hasLists && !isPro && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-2xl animate-slide-up">
+          <ReferralInviteCurrentUser compact />
         </div>
       )}
 

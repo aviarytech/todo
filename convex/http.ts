@@ -405,6 +405,19 @@ http.route({ path: "/api/billing/subscription", method: "OPTIONS", handler: cors
 
 
 // ============================================================================
+// Health check endpoint (public, no auth)
+// Returns 200 OK with JSON body for Railway health checks and uptime monitoring.
+// ============================================================================
+const healthCheck = httpAction(async (_ctx, _request) => {
+  return new Response(JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+});
+
+http.route({ path: "/health", method: "GET", handler: healthCheck });
+
+// ============================================================================
 // DID Resolution & Resource endpoints (public, no auth)
 // Serves /{userPath}/did.jsonl and /{userPath}/resources/list-{id}
 // These MUST come after all /api/ routes to avoid conflicts.

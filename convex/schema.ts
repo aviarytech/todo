@@ -55,8 +55,10 @@ export default defineSchema({
     legacyIdentity: v.optional(v.boolean()), // true if still using localStorage
     // Migration support (Phase 1.6)
     legacyDid: v.optional(v.string()), // Original localStorage DID before Turnkey migration
-    // Referral bonus: extra lists earned by inviting friends
+    // Referral bonus: extra lists earned by inviting friends (legacy)
     bonusLists: v.optional(v.number()),
+    // Referral Pro: timestamp (ms) when referral-based Pro expires
+    referralProUntil: v.optional(v.number()),
   })
     .index("by_did", ["did"])
     .index("by_turnkey_id", ["turnkeySubOrgId"])
@@ -350,6 +352,8 @@ export default defineSchema({
     referrerId: v.id("users"), // User who sent the invite
     refereeId: v.id("users"),  // User who signed up via the link
     createdAt: v.number(),
+    // Timestamp when 30-day Pro was awarded to both parties (null = not yet awarded)
+    proGrantedAt: v.optional(v.number()),
   })
     .index("by_referrer", ["referrerId"])
     .index("by_referee", ["refereeId"]),

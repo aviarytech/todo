@@ -39,13 +39,19 @@ export function useNotifications({ userDid }: UseNotificationsOptions) {
   const [permission, setPermission] = useState<NotificationPermission>(() =>
     getNotificationPermission()
   );
-  const [isEnabled, setIsEnabled] = useState(() => getNotificationsEnabled());
-  const [reminderMinutes, setReminderMinutesState] = useState(() => getReminderMinutes());
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [reminderMinutes, setReminderMinutesState] = useState(60);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Track scheduled notifications
   const scheduledNotifications = useRef<Map<string, ScheduledNotification>>(new Map());
+
+  // Load persisted notification settings from async storage on mount.
+  useEffect(() => {
+    getNotificationsEnabled().then(setIsEnabled);
+    getReminderMinutes().then(setReminderMinutesState);
+  }, []);
 
   // Convex mutations for subscription management
   const saveSubscription = useMutation(api.notifications.saveSubscription);

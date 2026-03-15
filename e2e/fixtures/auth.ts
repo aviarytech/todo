@@ -34,5 +34,9 @@ export async function seedAuthSession(page: Page, user?: Partial<SeededAuthUser>
   await page.addInitScript(({ state, jwt }) => {
     localStorage.setItem("lisa-auth-state", JSON.stringify(state));
     localStorage.setItem("lisa-jwt-token", jwt);
+    // Suppress the OnboardingFlow overlay (shown to new users with no lists).
+    localStorage.setItem("poo_onboarding_v1", "done");
+    // Signal originals.ts to use the E2E stub instead of making real DID SDK calls.
+    (window as unknown as Record<string, unknown>).__E2E_MOCK_ORIGINALS = true;
   }, { state: authState, jwt: token });
 }

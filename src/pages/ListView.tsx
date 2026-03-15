@@ -715,7 +715,7 @@ export function ListView() {
                 setViewMode("list");
                 if (itemViewMode !== "alphabetical") {
                   setLocalItemViewMode("alphabetical");
-                  updateItemViewModeMutation({ listId, itemViewMode: "alphabetical" });
+                  updateItemViewModeMutation({ listId, itemViewMode: "alphabetical", userDid: did, legacyDid: legacyDid ?? undefined });
                 }
               }}
               className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-full transition-all active:scale-95 ${
@@ -736,7 +736,7 @@ export function ListView() {
                 setViewMode("list");
                 if (itemViewMode !== "categorized") {
                   setLocalItemViewMode("categorized");
-                  updateItemViewModeMutation({ listId, itemViewMode: "categorized" });
+                  updateItemViewModeMutation({ listId, itemViewMode: "categorized", userDid: did, legacyDid: legacyDid ?? undefined });
                 }
               }}
               className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-full transition-all active:scale-95 ${
@@ -961,7 +961,7 @@ export function ListView() {
                         autoFocus
                         onKeyDown={e => {
                           if (e.key === "Enter" && newAisleName.trim()) {
-                            addCustomAisleMutation({ listId, name: newAisleName.trim(), emoji: newAisleEmoji || "🏷️" });
+                            addCustomAisleMutation({ listId, name: newAisleName.trim(), emoji: newAisleEmoji || "🏷️", userDid: did, legacyDid: legacyDid ?? undefined });
                             setNewAisleName("");
                             setNewAisleEmoji("🏷️");
                             setShowAddAisle(false);
@@ -974,7 +974,7 @@ export function ListView() {
                       <button
                         onClick={() => {
                           if (newAisleName.trim()) {
-                            addCustomAisleMutation({ listId, name: newAisleName.trim(), emoji: newAisleEmoji || "🏷️" });
+                            addCustomAisleMutation({ listId, name: newAisleName.trim(), emoji: newAisleEmoji || "🏷️", userDid: did, legacyDid: legacyDid ?? undefined });
                             setNewAisleName("");
                             setNewAisleEmoji("🏷️");
                             setShowAddAisle(false);

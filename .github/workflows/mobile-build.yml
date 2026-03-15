@@ -1,10 +1,12 @@
 name: Mobile Build CI
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
+  release:
+    types: [published]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,6 +28,8 @@ jobs:
         run: npm ci
 
       - name: Generate Convex types
+        # continue-on-error so PRs without CONVEX_DEPLOY_KEY fall back to committed generated types
+        continue-on-error: true
         run: npx convex codegen
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
@@ -33,7 +37,8 @@ jobs:
       - name: Build web app
         run: npm run build
         env:
-          VITE_CONVEX_URL: ${{ secrets.VITE_CONVEX_URL }}
+          # Release builds use real URL; PR/push builds use placeholder (native code compile check only)
+          VITE_CONVEX_URL: ${{ secrets.VITE_CONVEX_URL || 'https://placeholder.convex.cloud' }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -82,6 +87,41 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: bundle exec fastlane beta
+
+  ios-build-check:
+    name: iOS Build Check
+    runs-on: macos-latest
+    needs: web-build
+    if: github.event_name != 'release'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist/
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Capacitor sync
+        run: npx cap sync ios
+
+      - name: Build iOS (simulator, no signing)
+        run: |
+          xcodebuild \
+            -scheme App \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            -derivedDataPath /tmp/poo-ios-build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+        working-directory: ios/App
 
   android-build:
     name: Build Android

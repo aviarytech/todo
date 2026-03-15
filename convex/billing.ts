@@ -42,6 +42,7 @@ export const getUserSubscription = query({
 
 /**
  * Get effective plan — defaults to "free" if no active subscription.
+ * Also grants "pro" when a referral Pro credit is active (referralProUntil > now).
  */
 export const getUserPlan = query({
   args: { userId: v.id("users") },
@@ -50,7 +51,12 @@ export const getUserPlan = query({
       .query("subscriptions")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
-    if (!sub || sub.status === "canceled" || sub.status === "past_due") return "free";
+    if (!sub || sub.status === "canceled" || sub.status === "past_due") {
+      // Check referral Pro credit
+      const user = await ctx.db.get(userId);
+      if (user?.referralProUntil && user.referralProUntil > Date.now()) return "pro";
+      return "free";
+    }
     return sub.plan as Plan;
   },
 });

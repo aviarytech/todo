@@ -6,7 +6,7 @@
  * Uses a sliding window approach with Convex database storage (serverless-compatible).
  */
 
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 // Rate limit configuration
@@ -159,9 +159,9 @@ export const checkStatus = query({
 });
 
 /**
- * Clear all rate limits (for development/testing only).
+ * Clear all rate limits (internal use only - never expose to clients).
  */
-export const clearAll = mutation({
+export const clearAll = internalMutation({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {

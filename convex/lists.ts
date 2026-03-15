@@ -61,22 +61,35 @@ export const createList = mutation({
     createdAt: v.number(),
   },
   handler: async (ctx, args) => withMutationObservability("lists.createList", async () => {
+    // Input validation
+    if (args.name.trim().length === 0) throw new Error("List name cannot be empty");
+    if (args.name.length > 200) throw new Error("List name cannot exceed 200 characters");
+
     // Plan enforcement: free tier allows up to 5 lists
     const owner = await ctx.db
       .query("users")
       .withIndex("by_did", (q) => q.eq("did", args.ownerDid))
       .first();
+
+    let isFirstList = false;
+
     if (owner) {
       const sub = await ctx.db
         .query("subscriptions")
         .withIndex("by_user", (q) => q.eq("userId", owner._id))
         .first();
-      const plan = sub && (sub.status === "active" || sub.status === "trialing") ? sub.plan : "free";
+      const hasPaidSub = sub && (sub.status === "active" || sub.status === "trialing");
+      const hasReferralPro = !hasPaidSub && owner.referralProUntil != null && owner.referralProUntil > Date.now();
+      const plan = hasPaidSub ? sub.plan : (hasReferralPro ? "pro" : "free");
+
+      const existingLists = await ctx.db
+        .query("lists")
+        .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
+        .collect();
+
+      isFirstList = existingLists.length === 0;
+
       if (plan === "free") {
-        const existingLists = await ctx.db
-          .query("lists")
-          .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
-          .collect();
         const bonusLists = owner.bonusLists ?? 0;
         const maxLists = 5 + bonusLists;
         if (existingLists.length >= maxLists) {
@@ -102,6 +115,20 @@ export const createList = mutation({
     );
 
     await ctx.db.patch(listId, { vcProof });
+
+    // Award 30-day referral Pro to both referee and referrer on first list creation
+    if (owner && isFirstList) {
+      const referral = await ctx.db
+        .query("referrals")
+        .withIndex("by_referee", (q) => q.eq("refereeId", owner._id))
+        .first();
+      if (referral && !referral.proGrantedAt) {
+        const proUntil = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+        await ctx.db.patch(owner._id, { referralProUntil: proUntil });
+        await ctx.db.patch(referral.referrerId, { referralProUntil: proUntil });
+        await ctx.db.patch(referral._id, { proGrantedAt: Date.now() });
+      }
+    }
 
     return listId;
   }),
@@ -286,16 +313,25 @@ export const deleteList = mutation({
 
 /**
  * Add a custom grocery aisle to a list.
+ * Only the list owner can add custom aisles.
  */
 export const addCustomAisle = mutation({
   args: {
     listId: v.id("lists"),
     name: v.string(),
     emoji: v.string(),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const list = await ctx.db.get(args.listId);
     if (!list) throw new Error("List not found");
+
+    const dids = [args.userDid];
+    if (args.legacyDid) dids.push(args.legacyDid);
+    if (!dids.includes(list.ownerDid)) {
+      throw new Error("Only the list owner can add custom aisles");
+    }
 
     const existing = list.customAisles ?? [];
     const id = `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -311,15 +347,24 @@ export const addCustomAisle = mutation({
 
 /**
  * Update the item view mode for a list.
+ * Only the list owner can change view mode.
  */
 export const updateItemViewMode = mutation({
   args: {
     listId: v.id("lists"),
     itemViewMode: v.union(v.literal("alphabetical"), v.literal("categorized")),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const list = await ctx.db.get(args.listId);
     if (!list) throw new Error("List not found");
+
+    const dids = [args.userDid];
+    if (args.legacyDid) dids.push(args.legacyDid);
+    if (!dids.includes(list.ownerDid)) {
+      throw new Error("Only the list owner can change view mode");
+    }
 
     await ctx.db.patch(args.listId, { itemViewMode: args.itemViewMode });
   },
@@ -327,15 +372,24 @@ export const updateItemViewMode = mutation({
 
 /**
  * Remove a custom grocery aisle from a list.
+ * Only the list owner can remove custom aisles.
  */
 export const removeCustomAisle = mutation({
   args: {
     listId: v.id("lists"),
     aisleId: v.string(),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const list = await ctx.db.get(args.listId);
     if (!list) throw new Error("List not found");
+
+    const dids = [args.userDid];
+    if (args.legacyDid) dids.push(args.legacyDid);
+    if (!dids.includes(list.ownerDid)) {
+      throw new Error("Only the list owner can remove custom aisles");
+    }
 
     const existing = list.customAisles ?? [];
     await ctx.db.patch(args.listId, {

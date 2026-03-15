@@ -11,6 +11,7 @@ import { Settings } from './components/Settings'
 import { AppLockGuard } from './components/AppLockGuard'
 import { ReferralRedeemer } from './components/ReferralRedeemer'
 import { NativePushRegistrar } from './components/NativePushRegistrar'
+import { CookieConsent } from './components/CookieConsent'
 import { useSwipeBack } from './hooks/useSwipeBack'
 import { initDeepLinks } from './lib/deeplinks'
 import { initPushNotifications } from './lib/pushNotifications'
@@ -236,6 +237,7 @@ function App() {
         </Routes>
       </Suspense>
       <ToastContainer />
+      <CookieConsent />
     </AppLockGuard>
   )
 }

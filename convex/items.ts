@@ -138,6 +138,12 @@ export const addItem = mutation({
     parentId: v.optional(v.id("items")), // For sub-items
   },
   handler: async (ctx, args) => withMutationObservability("items.addItem", async () => {
+    // Input validation
+    if (args.name.trim().length === 0) throw new Error("Item name cannot be empty");
+    if (args.name.length > 500) throw new Error("Item name cannot exceed 500 characters");
+    if (args.description && args.description.length > 2000) throw new Error("Description cannot exceed 2000 characters");
+    if (args.url && args.url.length > 2000) throw new Error("URL cannot exceed 2000 characters");
+
     // Verify the list exists
     const list = await ctx.db.get(args.listId);
     if (!list) {

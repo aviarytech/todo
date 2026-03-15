@@ -32,6 +32,12 @@ export function ReferralInvite({ userId, compact = false }: ReferralInviteProps)
     ? `${window.location.origin}/invite/${activeCode}`
     : null;
 
+  const referralProUntil = stats?.referralProUntil ?? null;
+  const proActive = referralProUntil != null && referralProUntil > Date.now();
+  const proExpiryDate = proActive
+    ? new Date(referralProUntil!).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    : null;
+
   const handleGetLink = async () => {
     if (activeCode) return;
     setGeneratingCode(true);
@@ -67,7 +73,7 @@ export function ReferralInvite({ userId, compact = false }: ReferralInviteProps)
     if (navigator.share) {
       await navigator.share({
         title: "Join me on Poo App",
-        text: "I use Poo App to manage my lists. Sign up with my link and we both get an extra list!",
+        text: "I use Poo App to manage my lists. Sign up with my link and we both get 1 month Pro free!",
         url: referralUrl,
       });
     } else {
@@ -79,7 +85,7 @@ export function ReferralInvite({ userId, compact = false }: ReferralInviteProps)
     return (
       <div className="space-y-2">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Invite a friend → both of you unlock <strong>+1 free list</strong>.
+          Invite a friend → both of you get <strong>1 month Pro free</strong>.
         </p>
         {referralUrl ? (
           <div className="flex gap-2">
@@ -110,14 +116,22 @@ export function ReferralInvite({ userId, compact = false }: ReferralInviteProps)
 
   return (
     <div className="space-y-3">
+      {proActive && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <span className="text-base">🌟</span>
+          <p className="text-xs text-amber-800 dark:text-amber-300">
+            <strong>Pro active via referral</strong> — expires {proExpiryDate}
+          </p>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <span className="text-xl">🎁</span>
         <div>
           <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-            Invite friends, unlock more lists
+            Invite a friend, get 1 month Pro free
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            You get +1 list for every friend who joins.
+            Both you and your friend unlock 30 days of Pro — free.
             {(stats?.totalReferrals ?? 0) > 0 && (
               <span className="ml-1 text-amber-600 dark:text-amber-400 font-medium">
                 {stats!.totalReferrals} friend{stats!.totalReferrals === 1 ? "" : "s"} joined so far!

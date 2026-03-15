@@ -123,6 +123,34 @@ export function Landing() {
           </div>
         </div>
 
+        {/* Product Screenshots */}
+        <section className="mt-16 sm:mt-20 md:mt-24">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 text-center mb-3 px-4">
+            The app, for real
+          </h2>
+          <p className="text-center text-amber-800/60 mb-8 sm:mb-12 text-sm sm:text-base">
+            No mockups. This is what Poo App actually looks like.
+          </p>
+          <div className="flex flex-col md:flex-row gap-4 sm:gap-6 items-center justify-center">
+            <div className="w-full max-w-xs sm:max-w-sm rounded-2xl overflow-hidden shadow-2xl shadow-amber-300/40 border border-amber-100">
+              <img
+                src="/screenshots/mobile.png"
+                alt="Poo App on mobile — lists view"
+                className="w-full h-auto block"
+                loading="lazy"
+              />
+            </div>
+            <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl shadow-amber-300/40 border border-amber-100">
+              <img
+                src="/screenshots/home.png"
+                alt="Poo App home — your lists at a glance"
+                className="w-full h-auto block"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </section>
+
         {/* Product Demo */}
         <section className="mt-16 sm:mt-20 md:mt-28">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 text-center mb-3 px-4">

@@ -1,11 +1,15 @@
 /**
  * Local storage utilities for app settings.
- * 
- * NOTE: These functions currently use localStorage directly (synchronous).
- * For native platform support, use storageAdapter.ts instead, which provides
- * an async interface that works with both Capacitor Preferences (native) and
- * localStorage (web). These functions will be migrated to async in a future update.
+ *
+ * All functions use the async storageAdapter, which uses Capacitor Preferences
+ * on native platforms and localStorage on web. This ensures native offline
+ * support works correctly.
+ *
+ * Exception: initDarkMode() stays synchronous — it must run before first render
+ * to prevent a flash of unstyled content on web.
  */
+
+import { storageAdapter } from './storageAdapter';
 
 const STORAGE_KEYS = {
   DARK_MODE: 'pooapp:darkMode',
@@ -20,26 +24,31 @@ const STORAGE_KEYS = {
 export type SortOption = 'name-asc' | 'name-desc' | 'newest' | 'oldest';
 
 /**
- * Get dark mode preference.
- * 
- * TODO: Migrate to async storageAdapter for native support
+ * Initialize dark mode from storage synchronously.
+ * Must be called before first render to avoid FOUC.
+ * Reads localStorage directly — storageAdapter is async and would yield too late.
  */
-export function getDarkMode(): boolean {
-  if (typeof window === 'undefined') return false;
+export function initDarkMode(): void {
+  if (typeof window === 'undefined') return;
   const stored = localStorage.getItem(STORAGE_KEYS.DARK_MODE);
+  const isDark =
+    stored !== null
+      ? stored === 'true'
+      : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (isDark) {
+    document.documentElement.classList.add('dark');
+  }
+}
+
+export async function getDarkMode(): Promise<boolean> {
+  const stored = await storageAdapter.get(STORAGE_KEYS.DARK_MODE);
   if (stored !== null) return stored === 'true';
-  // Default to system preference
+  if (typeof window === 'undefined') return false;
   return window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
-/**
- * Set dark mode preference.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function setDarkMode(enabled: boolean): void {
-  localStorage.setItem(STORAGE_KEYS.DARK_MODE, String(enabled));
-  // Update document class for Tailwind dark mode
+export async function setDarkMode(enabled: boolean): Promise<void> {
+  await storageAdapter.set(STORAGE_KEYS.DARK_MODE, String(enabled));
   if (enabled) {
     document.documentElement.classList.add('dark');
   } else {
@@ -47,125 +56,56 @@ export function setDarkMode(enabled: boolean): void {
   }
 }
 
-/**
- * Initialize dark mode from storage.
- */
-export function initDarkMode(): void {
-  if (getDarkMode()) {
-    document.documentElement.classList.add('dark');
-  }
+export async function getListSort(): Promise<SortOption> {
+  const stored = await storageAdapter.get(STORAGE_KEYS.LIST_SORT);
+  return (stored as SortOption) || 'newest';
 }
 
-/**
- * Get list sort preference.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function getListSort(): SortOption {
-  if (typeof window === 'undefined') return 'newest';
-  return (localStorage.getItem(STORAGE_KEYS.LIST_SORT) as SortOption) || 'newest';
+export async function setListSort(sort: SortOption): Promise<void> {
+  await storageAdapter.set(STORAGE_KEYS.LIST_SORT, sort);
 }
 
-/**
- * Set list sort preference.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function setListSort(sort: SortOption): void {
-  localStorage.setItem(STORAGE_KEYS.LIST_SORT, sort);
-}
-
-/**
- * Get haptics enabled preference.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function getHapticsEnabled(): boolean {
-  if (typeof window === 'undefined') return true;
-  const stored = localStorage.getItem(STORAGE_KEYS.HAPTICS_ENABLED);
+export async function getHapticsEnabled(): Promise<boolean> {
+  const stored = await storageAdapter.get(STORAGE_KEYS.HAPTICS_ENABLED);
   return stored !== 'false'; // Default to enabled
 }
 
-/**
- * Set haptics enabled preference.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function setHapticsEnabled(enabled: boolean): void {
-  localStorage.setItem(STORAGE_KEYS.HAPTICS_ENABLED, String(enabled));
+export async function setHapticsEnabled(enabled: boolean): Promise<void> {
+  await storageAdapter.set(STORAGE_KEYS.HAPTICS_ENABLED, String(enabled));
 }
 
-/**
- * Check if onboarding has been completed.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function isOnboardingComplete(): boolean {
-  if (typeof window === 'undefined') return true;
-  return localStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE) === 'true';
-}
-
-/**
- * Mark onboarding as complete.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function completeOnboarding(): void {
-  localStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
-}
-
-/**
- * Get notifications enabled preference.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function getNotificationsEnabled(): boolean {
-  if (typeof window === 'undefined') return false;
-  const stored = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS_ENABLED);
+export async function isOnboardingComplete(): Promise<boolean> {
+  const stored = await storageAdapter.get(STORAGE_KEYS.ONBOARDING_COMPLETE);
   return stored === 'true';
 }
 
-/**
- * Set notifications enabled preference.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function setNotificationsEnabled(enabled: boolean): void {
-  localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS_ENABLED, String(enabled));
+export async function completeOnboarding(): Promise<void> {
+  await storageAdapter.set(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
 }
 
-/**
- * Get reminder time in minutes before due date.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function getReminderMinutes(): number {
-  if (typeof window === 'undefined') return 60;
-  const stored = localStorage.getItem(STORAGE_KEYS.REMINDER_MINUTES);
+export async function getNotificationsEnabled(): Promise<boolean> {
+  const stored = await storageAdapter.get(STORAGE_KEYS.NOTIFICATIONS_ENABLED);
+  return stored === 'true';
+}
+
+export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
+  await storageAdapter.set(STORAGE_KEYS.NOTIFICATIONS_ENABLED, String(enabled));
+}
+
+export async function getReminderMinutes(): Promise<number> {
+  const stored = await storageAdapter.get(STORAGE_KEYS.REMINDER_MINUTES);
   return stored ? parseInt(stored, 10) : 60;
 }
 
-/**
- * Set reminder time in minutes before due date.
- * 
- * TODO: Migrate to async storageAdapter for native support
- */
-export function setReminderMinutes(minutes: number): void {
-  localStorage.setItem(STORAGE_KEYS.REMINDER_MINUTES, String(minutes));
+export async function setReminderMinutes(minutes: number): Promise<void> {
+  await storageAdapter.set(STORAGE_KEYS.REMINDER_MINUTES, String(minutes));
 }
 
-/**
- * Get biometric lock enabled preference.
- */
-export function getBiometricLockEnabled(): boolean {
-  if (typeof window === 'undefined') return false;
-  const stored = localStorage.getItem(STORAGE_KEYS.BIOMETRIC_LOCK_ENABLED);
+export async function getBiometricLockEnabled(): Promise<boolean> {
+  const stored = await storageAdapter.get(STORAGE_KEYS.BIOMETRIC_LOCK_ENABLED);
   return stored === 'true';
 }
 
-/**
- * Set biometric lock enabled preference.
- */
-export function setBiometricLockEnabled(enabled: boolean): void {
-  localStorage.setItem(STORAGE_KEYS.BIOMETRIC_LOCK_ENABLED, String(enabled));
+export async function setBiometricLockEnabled(enabled: boolean): Promise<void> {
+  await storageAdapter.set(STORAGE_KEYS.BIOMETRIC_LOCK_ENABLED, String(enabled));
 }

@@ -32,10 +32,23 @@ interface SettingsContextValue {
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [darkMode, setDarkModeState] = useState(() => getDarkMode());
-  const [listSort, setListSortState] = useState<SortOption>(() => getListSort());
-  const [hapticsEnabled, setHapticsEnabledState] = useState(() => getHapticsEnabled());
-  const [biometricLockEnabled, setBiometricLockEnabledState] = useState(() => getBiometricLockEnabled());
+  // Initialize with sensible defaults; async load happens in useEffect below.
+  const [darkMode, setDarkModeState] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : false
+  );
+  const [listSort, setListSortState] = useState<SortOption>('newest');
+  const [hapticsEnabled, setHapticsEnabledState] = useState(true);
+  const [biometricLockEnabled, setBiometricLockEnabledState] = useState(false);
+
+  // Load persisted settings from async storage on mount.
+  useEffect(() => {
+    getDarkMode().then(setDarkModeState);
+    getListSort().then(setListSortState);
+    getHapticsEnabled().then(setHapticsEnabledState);
+    getBiometricLockEnabled().then(setBiometricLockEnabledState);
+  }, []);
 
   // Listen for system dark mode changes
   useEffect(() => {

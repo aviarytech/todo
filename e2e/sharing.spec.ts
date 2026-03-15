@@ -1,70 +1,89 @@
+/**
+ * Sharing flow tests.
+ *
+ * All tests use seedAuthSession() + mockConvexWebSocket() — the old
+ * getByLabel("Your name") / "Get Started" identity-modal pattern has been
+ * replaced by Turnkey email-OTP auth.
+ *
+ * The Share modal now uses a did:webvh publication model:
+ *   - Unpublished list → shows "🔗 Share List" + "Publish to Share" button
+ *   - Published list   → shows "🌐 Shared List" + copy link + "Stop sharing"
+ *
+ * The mock returns publicationStatus = null (not published), so tests
+ * cover the pre-publish state.
+ */
+
 import { test, expect } from "@playwright/test";
+import { seedAuthSession } from "./fixtures/auth";
+import { mockConvexWebSocket, MOCK_LIST_ID } from "./fixtures/convex";
+
+/** Navigate to the mock list page and wait for it to load. */
+async function gotoListPage(page: import("@playwright/test").Page) {
+  await mockConvexWebSocket(page, { existingListCount: 1 });
+  await seedAuthSession(page);
+  await page.goto(`/list/${MOCK_LIST_ID}`);
+  await expect(page.getByText("Test List 1")).toBeVisible({ timeout: 10000 });
+}
 
 test.describe("Sharing flow", () => {
-  test.beforeEach(async ({ page }) => {
-    // Setup: Create identity and a list
-    await page.goto("/");
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
-
-    // Create identity
-    await page.getByLabel("Your name").fill("Share Tester");
-    await page.getByRole("button", { name: "Get Started" }).click();
-    await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({ timeout: 10000 });
-
-    // Create a list
-    await page.getByRole("button", { name: "New List" }).click();
-    await page.getByLabel("List name").fill("Shared List");
-    await page.getByRole("button", { name: "Create List" }).click();
-    await expect(page.getByRole("heading", { name: "Shared List" })).toBeVisible({ timeout: 10000 });
-  });
-
   test("shows share button for list owner", async ({ page }) => {
+    await gotoListPage(page);
+
     await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
   });
 
-  test("opens share modal and generates invite link", async ({ page }) => {
+  test("opens share modal", async ({ page }) => {
+    await gotoListPage(page);
+
     await page.getByRole("button", { name: "Share" }).click();
 
-    // Modal should open
-    await expect(page.getByRole("heading", { name: /Share "Shared List"/ })).toBeVisible();
-
-    // Wait for invite link to be generated
-    await expect(page.getByLabel("Invite link")).toBeVisible({ timeout: 5000 });
+    // Modal header for unpublished list
+    await expect(
+      page.getByRole("heading", { name: "🔗 Share List" }),
+    ).toBeVisible({ timeout: 5000 });
   });
 
-  test("can copy invite link", async ({ page }) => {
+  test("share modal shows publish button when list is not published", async ({
+    page,
+  }) => {
+    await gotoListPage(page);
+
     await page.getByRole("button", { name: "Share" }).click();
+    await expect(
+      page.getByRole("heading", { name: "🔗 Share List" }),
+    ).toBeVisible({ timeout: 5000 });
 
-    // Wait for invite link
-    await expect(page.getByLabel("Invite link")).toBeVisible({ timeout: 5000 });
-
-    // Click copy button
-    await page.getByRole("button", { name: "Copy" }).click();
-
-    // Should show "Copied!" feedback
-    await expect(page.getByRole("button", { name: "Copied!" })).toBeVisible();
+    // Not yet published — "Publish to Share" CTA is shown
+    await expect(
+      page.getByRole("button", { name: "Publish to Share" }),
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test("can close share modal", async ({ page }) => {
-    await page.getByRole("button", { name: "Share" }).click();
-    await expect(page.getByRole("heading", { name: /Share "Shared List"/ })).toBeVisible();
+    await gotoListPage(page);
 
-    // Close modal
+    await page.getByRole("button", { name: "Share" }).click();
+    await expect(
+      page.getByRole("heading", { name: "🔗 Share List" }),
+    ).toBeVisible({ timeout: 5000 });
+
     await page.getByRole("button", { name: "Done" }).click();
 
-    // Modal should close
-    await expect(page.getByRole("heading", { name: /Share "Shared List"/ })).not.toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "🔗 Share List" }),
+    ).not.toBeVisible();
   });
 });
 
 test.describe("Join flow", () => {
-  test("shows error for invalid invite link", async ({ page }) => {
-    // Navigate to an invalid invite link
+  test("invalid join link shows invite-links-deprecated message", async ({
+    page,
+  }) => {
     await page.goto("/join/invalid-list-id/invalid-token");
 
-    // Should show error or redirect (depending on implementation)
-    // Since identity doesn't exist, it will prompt for identity first
-    await expect(page.getByRole("heading", { name: "Welcome to Poo App" })).toBeVisible();
+    // Invite links are no longer supported — the page explains the new sharing model
+    await expect(
+      page.getByRole("heading", { name: "Invite Links No Longer Supported" }),
+    ).toBeVisible();
   });
 });

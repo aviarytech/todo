@@ -22,176 +22,13 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { seedAuthSession, buildFakeJwt } from "./fixtures/auth";
+import { mockConvexWebSocket } from "./fixtures/convex";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-/**
- * Base64 encoding of 8 zero bytes (little-endian u64 = 0).
- * Used as the `ts` field in Convex Transition version objects.
- *
- * Derivation: Long.fromNumber(0).toBytesLE() = [0,0,0,0,0,0,0,0]
- *             btoa(String.fromCharCode(...)) = "AAAAAAAAAAA="
- */
-const TS_ZERO = "AAAAAAAAAAA=";
-
-/**
- * Matches the Convex sync WebSocket URL: ws[s]://{host}/api/{version}/sync
- * Works for both cloud (convex.cloud) and local dev (127.0.0.1:321x).
- */
-const CONVEX_WS_URL = /\/api\/[^/]+\/sync$/;
-
 const MOCK_STRIPE_CHECKOUT_URL = "https://checkout.stripe.com/pay/cs_test_e2e_mock_session";
-
-// ---------------------------------------------------------------------------
-// Convex WebSocket mock
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal Convex sync-protocol WebSocket mock.
- *
- * Handles:
- *   - Connect / Authenticate  → no response needed (app doesn't use Convex auth)
- *   - ModifyQuerySet          → returns deterministic query results
- *   - Mutation                → succeeds or fails with PLAN_LIMIT based on options
- *
- * Protocol notes (Convex 1.31.x):
- *   - Client sends ModifyQuerySet with {baseVersion, newVersion, modifications:[{type:"Add",...}]}
- *   - Server responds with Transition{startVersion:{querySet:baseVersion, ts, identity},
- *                                     endVersion:{querySet:newVersion, ts, identity}, modifications}
- *   - Client sends Mutation{requestId, udfPath, args}
- *   - Server responds with MutationResponse{requestId, success, result|logLines}
- */
-async function mockConvexWebSocket(
-  page: Page,
-  {
-    existingListCount = 0,
-    failCreateList = false,
-  }: {
-    /** Number of lists the mock "already has" for the authenticated user */
-    existingListCount?: number;
-    /** When true, the next createList mutation returns a PLAN_LIMIT error */
-    failCreateList?: boolean;
-  } = {},
-): Promise<void> {
-  await page.routeWebSocket(CONVEX_WS_URL, (ws) => {
-    ws.onMessage((rawMessage) => {
-      try {
-        const text =
-          typeof rawMessage === "string"
-            ? rawMessage
-            : Buffer.from(rawMessage as ArrayBuffer).toString("utf8");
-        const msg = JSON.parse(text);
-
-        switch (msg.type) {
-          case "Connect":
-          case "Authenticate":
-            // The app does not use Convex server-side auth — nothing to do.
-            break;
-
-          case "ModifyQuerySet": {
-            const { baseVersion, newVersion, modifications = [] } = msg as {
-              baseVersion: number;
-              newVersion: number;
-              modifications: Array<{
-                type: string;
-                queryId: number;
-                udfPath?: string;
-                args?: unknown[];
-              }>;
-            };
-
-            const responseModifications = modifications
-              .filter((m) => m.type === "Add")
-              .map((add) => {
-                const path = add.udfPath ?? "";
-                let value: unknown = null;
-
-                if (path.includes("getUserLists")) {
-                  value =
-                    existingListCount > 0
-                      ? Array.from({ length: existingListCount }, (_, i) => ({
-                          _id: `lists:mocklist${i}`,
-                          _creationTime: Date.now() - (existingListCount - i) * 3600_000,
-                          name: `Test List ${i + 1}`,
-                          ownerDid: "did:webvh:e2e:test",
-                          assetDid: `did:example:asset${i}`,
-                          createdAt: Date.now() - (existingListCount - i) * 3600_000,
-                        }))
-                      : [];
-                } else if (path.includes("getUserByTurnkeyId")) {
-                  value = {
-                    _id: "users:mockuser1",
-                    _creationTime: Date.now(),
-                    turnkeySubOrgId: "e2e-suborg-001",
-                    email: "e2e@test.com",
-                    did: "did:webvh:e2e:test",
-                    displayName: "E2E User",
-                    legacyDid: null,
-                  };
-                } else if (path.includes("getUserSubscription")) {
-                  value = null; // free plan, no active subscription
-                } else if (path.includes("getUserCategories")) {
-                  value = []; // no categories
-                }
-                // All other queries (notifications, etc.) return null — handled gracefully by hooks.
-
-                return {
-                  type: "QueryUpdated",
-                  queryId: add.queryId,
-                  value,
-                  logLines: [],
-                };
-              });
-
-            ws.send(
-              JSON.stringify({
-                type: "Transition",
-                startVersion: { querySet: baseVersion, ts: TS_ZERO, identity: 0 },
-                endVersion: { querySet: newVersion, ts: TS_ZERO, identity: 0 },
-                modifications: responseModifications,
-              }),
-            );
-            break;
-          }
-
-          case "Mutation": {
-            const path = String((msg as { udfPath?: string }).udfPath ?? "");
-            const requestId = (msg as { requestId: number }).requestId;
-
-            if (failCreateList && path.includes("createList")) {
-              ws.send(
-                JSON.stringify({
-                  type: "MutationResponse",
-                  requestId,
-                  success: false,
-                  // Must include "PLAN_LIMIT" — checked in CreateListModal.handleSubmit
-                  result: "PLAN_LIMIT: Free plan allows a maximum of 5 lists",
-                  logLines: [],
-                }),
-              );
-            } else {
-              ws.send(
-                JSON.stringify({
-                  type: "MutationResponse",
-                  requestId,
-                  success: true,
-                  result: "lists:mocknew1",
-                  ts: TS_ZERO,
-                  logLines: [],
-                }),
-              );
-            }
-            break;
-          }
-        }
-      } catch {
-        // Silently ignore unparseable frames (e.g. pings).
-      }
-    });
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Auth HTTP mock helpers
@@ -237,12 +74,12 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     // Landing page shows product name and tagline
     await expect(page.getByText("Poo App").first()).toBeVisible();
     // Pricing link is present in the nav
-    await expect(page.getByRole("link", { name: "Pricing" })).toBeVisible();
+    await expect(page.getByRole("navigation").getByRole("link", { name: "Pricing" })).toBeVisible();
   });
 
   test("2. pricing link in nav navigates to pricing page", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: "Pricing" }).click();
+    await page.getByRole("navigation").getByRole("link", { name: "Pricing" }).click();
     await expect(page).toHaveURL("/pricing");
     await expect(
       page.getByRole("heading", { name: "Simple, honest pricing" }),
@@ -344,7 +181,7 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     ).toBeVisible({ timeout: 10000 });
     // FAB / new list button is visible
     await expect(
-      page.getByRole("button", { name: /New List/i }),
+      page.getByRole("button", { name: "➕ New list" }),
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -355,7 +192,10 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     await seedAuthSession(page);
     await page.goto("/app");
 
-    await page.getByRole("button", { name: /New List/i }).click({ timeout: 10000 });
+    await page.getByRole("button", { name: "➕ New list" }).click({ timeout: 10000 });
+    // Template picker opens first — select "Blank List" to get the create modal
+    await expect(page.getByRole("heading", { name: "Choose a Template" })).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: "Blank List" }).click();
     await expect(
       page.getByRole("heading", { name: "Create New List" }),
     ).toBeVisible({ timeout: 5000 });
@@ -374,13 +214,15 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     await page.goto("/app");
 
     // Wait for home page to finish loading
-    await page.getByRole("button", { name: /New List/i }).waitFor({
+    await page.getByRole("button", { name: "➕ New list" }).waitFor({
       state: "visible",
       timeout: 10000,
     });
 
-    // Open create list modal
-    await page.getByRole("button", { name: /New List/i }).click();
+    // Open create list modal via template picker
+    await page.getByRole("button", { name: "➕ New list" }).click();
+    await expect(page.getByRole("heading", { name: "Choose a Template" })).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: "Blank List" }).click();
     await page.getByLabel("List name").waitFor({ state: "visible", timeout: 5000 });
 
     // Submit the form — mutation returns PLAN_LIMIT
@@ -404,11 +246,13 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     await seedAuthSession(page);
     await page.goto("/app");
 
-    await page.getByRole("button", { name: /New List/i }).waitFor({
+    await page.getByRole("button", { name: "➕ New list" }).waitFor({
       state: "visible",
       timeout: 10000,
     });
-    await page.getByRole("button", { name: /New List/i }).click();
+    await page.getByRole("button", { name: "➕ New list" }).click();
+    await expect(page.getByRole("heading", { name: "Choose a Template" })).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: "Blank List" }).click();
     await page.getByLabel("List name").waitFor({ state: "visible", timeout: 5000 });
     await page.getByLabel("List name").fill("6th List");
     await page.getByRole("button", { name: "Create List" }).click();

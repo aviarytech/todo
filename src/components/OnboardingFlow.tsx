@@ -542,10 +542,12 @@ function ShareStep({
               type="text"
               value={shareUrl}
               readOnly
-              className="flex-1 px-4 py-3 bg-white/80 text-amber-900 border-2 border-amber-200 rounded-xl text-xs font-mono focus:outline-none"
+              aria-label="Invite link"
+              className="flex-1 px-4 py-3 bg-white/80 text-amber-900 border-2 border-amber-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
             <button
               onClick={onCopy}
+              aria-label={isCopied ? "Link copied" : "Copy invite link"}
               className={`px-4 py-3 rounded-xl font-semibold text-sm transition-all ${
                 isCopied
                   ? "bg-green-500 text-white"

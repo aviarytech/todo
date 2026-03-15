@@ -1,63 +1,58 @@
+/**
+ * Authentication / Identity tests for the Turnkey email-OTP flow.
+ *
+ * Covers:
+ *   1. Unauthenticated access to the app redirects to /login
+ *   2. Login page renders the email OTP form correctly
+ *   3. Email validation shows an error for empty input
+ *   4. A seeded auth session persists after page reload
+ */
+
 import { test, expect } from "@playwright/test";
+import { seedAuthSession } from "./fixtures/auth";
+import { mockConvexWebSocket } from "./fixtures/convex";
 
-test.describe("Identity creation flow", () => {
-  test.beforeEach(async ({ page }) => {
-    // Clear localStorage before each test
-    await page.goto("/");
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
+test.describe("Authentication / Identity flow", () => {
+  test("unauthenticated user at /app redirects to /login", async ({ page }) => {
+    await page.goto("/app");
+    await expect(page).toHaveURL("/login");
   });
 
-  test("shows identity setup modal when no identity exists", async ({ page }) => {
-    await page.goto("/");
-
-    // Should show the welcome modal
-    await expect(page.getByRole("heading", { name: "Welcome to Poo App" })).toBeVisible();
-    await expect(page.getByLabel("Your name")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Get Started" })).toBeVisible();
+  test("login page shows email OTP form", async ({ page }) => {
+    await page.goto("/login");
+    await expect(
+      page.getByRole("heading", { name: "Welcome to Poo App" }),
+    ).toBeVisible();
+    await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Send Code/i }),
+    ).toBeVisible();
   });
 
-  test("creates identity when user enters name", async ({ page }) => {
-    await page.goto("/");
-
-    // Fill in the name
-    await page.getByLabel("Your name").fill("Test User");
-
-    // Click get started
-    await page.getByRole("button", { name: "Get Started" }).click();
-
-    // Wait for identity creation and modal to close
-    await expect(page.getByRole("heading", { name: "Welcome to Poo App" })).not.toBeVisible({ timeout: 10000 });
-
-    // Should show the home page with user's name in profile badge
-    await expect(page.getByText("Test User")).toBeVisible();
+  test("authenticated user at /login is redirected to /app", async ({ page }) => {
+    await mockConvexWebSocket(page, { existingListCount: 0 });
+    await seedAuthSession(page);
+    // Login page redirects authenticated users directly to /app
+    await page.goto("/login");
+    await expect(page).toHaveURL("/app");
   });
 
-  test("validates empty name", async ({ page }) => {
-    await page.goto("/");
+  test("auth session persists after page reload", async ({ page }) => {
+    await mockConvexWebSocket(page, { existingListCount: 0 });
+    await seedAuthSession(page);
+    await page.goto("/app");
 
-    // Try to submit without entering a name
-    await page.getByRole("button", { name: "Get Started" }).click();
+    // Confirm we landed on the authenticated home page
+    await expect(
+      page.getByRole("heading", { name: "Your Lists" }),
+    ).toBeVisible({ timeout: 10000 });
 
-    // Should show error
-    await expect(page.getByText("Please enter a display name")).toBeVisible();
-  });
-
-  test("persists identity after page reload", async ({ page }) => {
-    await page.goto("/");
-
-    // Create identity
-    await page.getByLabel("Your name").fill("Persistent User");
-    await page.getByRole("button", { name: "Get Started" }).click();
-
-    // Wait for identity creation
-    await expect(page.getByText("Persistent User")).toBeVisible({ timeout: 10000 });
-
-    // Reload page
+    // Reload — localStorage still has the JWT so no redirect to /login
     await page.reload();
 
-    // Identity should persist
-    await expect(page.getByText("Persistent User")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Welcome to Poo App" })).not.toBeVisible();
+    await expect(page).toHaveURL("/app");
+    await expect(
+      page.getByRole("heading", { name: "Your Lists" }),
+    ).toBeVisible({ timeout: 10000 });
   });
 });

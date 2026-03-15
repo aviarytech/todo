@@ -1,0 +1,108 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Simple, honest pricing" [level=1] [ref=e5]
+      - paragraph [ref=e6]: Start free. Upgrade when you need more.
+      - generic [ref=e7]:
+        - button "Monthly" [ref=e8]
+        - button "YearlySave 20%" [ref=e9]
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]: Current plan
+        - generic [ref=e13]:
+          - heading "Free" [level=2] [ref=e14]
+          - paragraph [ref=e15]: For personal use
+          - generic [ref=e16]:
+            - generic [ref=e17]: $0
+            - generic [ref=e18]: forever
+        - list [ref=e19]:
+          - listitem [ref=e20]:
+            - img [ref=e21]
+            - text: Up to 5 lists
+          - listitem [ref=e23]:
+            - img [ref=e24]
+            - text: Up to 3 collaborators per list
+          - listitem [ref=e26]:
+            - img [ref=e27]
+            - text: Real-time sync
+          - listitem [ref=e29]:
+            - img [ref=e30]
+            - text: Offline support
+          - listitem [ref=e32]:
+            - img [ref=e33]
+            - text: Basic DID identity
+        - generic [ref=e35]: Current plan
+      - generic [ref=e36]:
+        - generic [ref=e37]: Most popular
+        - generic [ref=e38]:
+          - heading "Pro" [level=2] [ref=e39]
+          - paragraph [ref=e40]: For power users
+          - generic [ref=e41]:
+            - generic [ref=e42]: $5/mo
+            - generic [ref=e43]: per month
+        - list [ref=e44]:
+          - listitem [ref=e45]:
+            - img [ref=e46]
+            - text: Unlimited lists
+          - listitem [ref=e48]:
+            - img [ref=e49]
+            - text: Unlimited collaborators
+          - listitem [ref=e51]:
+            - img [ref=e52]
+            - text: Verifiable credentials (VC)
+          - listitem [ref=e54]:
+            - img [ref=e55]
+            - text: List templates
+          - listitem [ref=e57]:
+            - img [ref=e58]
+            - text: Export / backup
+          - listitem [ref=e60]:
+            - img [ref=e61]
+            - text: Priority sync
+        - button "Upgrade to Pro" [ref=e63]
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - heading "Team" [level=2] [ref=e66]
+          - paragraph [ref=e67]: For small teams
+          - generic [ref=e68]:
+            - generic [ref=e69]: $12
+            - generic [ref=e70]: per user / month
+        - list [ref=e71]:
+          - listitem [ref=e72]:
+            - img [ref=e73]
+            - text: Everything in Pro
+          - listitem [ref=e75]:
+            - img [ref=e76]
+            - text: Team workspace
+          - listitem [ref=e78]:
+            - img [ref=e79]
+            - text: Admin controls
+          - listitem [ref=e81]:
+            - img [ref=e82]
+            - text: API access
+          - listitem [ref=e84]:
+            - img [ref=e85]
+            - text: Shared templates library
+          - listitem [ref=e87]:
+            - img [ref=e88]
+            - text: Priority support
+        - button "Upgrade to Team" [ref=e90]
+    - link "← Back to app" [ref=e92] [cursor=pointer]:
+      - /url: /app
+  - dialog "Cookie consent" [ref=e93]:
+    - generic [ref=e94]:
+      - generic [ref=e95]:
+        - generic [ref=e96]: 🍪
+        - generic [ref=e97]:
+          - paragraph [ref=e98]: Cookies & Analytics
+          - paragraph [ref=e99]:
+            - text: We use PostHog to understand how you use Poo App so we can make it better. No data is sold or shared with third parties.
+            - link "Privacy policy" [ref=e100] [cursor=pointer]:
+              - /url: /privacy
+      - generic [ref=e101]:
+        - button "Decline" [ref=e102]
+        - button "Accept" [ref=e103]
+```

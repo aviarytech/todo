@@ -35,12 +35,15 @@ export function useBilling(): BillingState {
     convexUser?._id ? { userId: convexUser._id } : "skip"
   );
 
-  const isLoading = !isAuthenticated ? false : (convexUser === undefined || subscription === undefined);
+  // Use server-computed plan so referral Pro credits are reflected
+  const serverPlan = useQuery(
+    api.billing.getUserPlan,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  );
 
-  const plan: Plan =
-    subscription && subscription.status !== "canceled" && subscription.status !== "past_due"
-      ? (subscription.plan as Plan)
-      : "free";
+  const isLoading = !isAuthenticated ? false : (convexUser === undefined || subscription === undefined || serverPlan === undefined);
+
+  const plan: Plan = (serverPlan as Plan) ?? "free";
 
   return {
     plan,

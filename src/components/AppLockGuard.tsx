@@ -17,16 +17,16 @@ export function AppLockGuard({ children }: AppLockGuardProps) {
   const [biometricLockEnabled, setBiometricLockEnabled] = useState(false);
 
   useEffect(() => {
-    const lockEnabled = getBiometricLockEnabled();
-    setBiometricLockEnabled(lockEnabled);
-    
-    if (lockEnabled) {
-      // Attempt authentication on mount
-      authenticate();
-    } else {
-      // If lock is not enabled, unlock immediately
-      setIsLocked(false);
-    }
+    getBiometricLockEnabled().then((lockEnabled) => {
+      setBiometricLockEnabled(lockEnabled);
+      if (lockEnabled) {
+        // Attempt authentication on mount
+        authenticate();
+      } else {
+        // If lock is not enabled, unlock immediately
+        setIsLocked(false);
+      }
+    });
   }, []);
 
   const authenticate = async () => {

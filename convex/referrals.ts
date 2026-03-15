@@ -46,7 +46,7 @@ export const getReferralCode = query({
 });
 
 /**
- * Get referral stats for a user: total successful referrals.
+ * Get referral stats for a user: total successful referrals and Pro credit status.
  */
 export const getReferralStats = query({
   args: { userId: v.id("users") },
@@ -55,7 +55,30 @@ export const getReferralStats = query({
       .query("referrals")
       .withIndex("by_referrer", (q) => q.eq("referrerId", userId))
       .collect();
-    return { totalReferrals: referrals.length };
+    const user = await ctx.db.get(userId);
+    return {
+      totalReferrals: referrals.length,
+      referralProUntil: user?.referralProUntil ?? null,
+    };
+  },
+});
+
+/**
+ * Get referral Pro credit status for the current user (as referee).
+ * Returns whether they came via referral and when their Pro expires.
+ */
+export const getReferralProStatus = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    const referral = await ctx.db
+      .query("referrals")
+      .withIndex("by_referee", (q) => q.eq("refereeId", userId))
+      .first();
+    return {
+      referralProUntil: user?.referralProUntil ?? null,
+      pendingProGrant: referral != null && !referral.proGrantedAt,
+    };
   },
 });
 
@@ -144,20 +167,13 @@ export const redeemReferral = mutation({
       return { success: false, reason: "already_redeemed" };
     }
 
-    // Record the referral
+    // Record the referral — Pro credit is awarded when the referee creates their first list
     await ctx.db.insert("referrals", {
       referralCodeId: referralCode._id,
       referrerId: referralCode.userId,
       refereeId: refereeUserId,
       createdAt: Date.now(),
     });
-
-    // Award +1 bonus list to the referrer
-    const referrer = await ctx.db.get(referralCode.userId);
-    if (referrer) {
-      const current = referrer.bonusLists ?? 0;
-      await ctx.db.patch(referralCode.userId, { bonusLists: current + 1 });
-    }
 
     return { success: true };
   },
