@@ -36,6 +36,9 @@ function buildServiceWorker() {
             write: false,
             format: 'iife',
             target: 'es2020',
+            define: {
+              '__BUILD_TIMESTAMP__': JSON.stringify(new Date().toISOString()),
+            },
           })
           res.setHeader('Content-Type', 'application/javascript')
           res.end(result.outputFiles[0].text)

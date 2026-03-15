@@ -6,8 +6,8 @@ declare const self: ServiceWorkerGlobalScope;
 declare const __BUILD_TIMESTAMP__: string;
 const BUILD_VERSION = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev';
 
-// Bump this on breaking changes to force cache invalidation
-const CACHE_NAME = 'lisa-v4';
+// Cache name changes every build, forcing old caches to be cleaned up on activate
+const CACHE_NAME = `lisa-${BUILD_VERSION}`;
 
 // Log version for debugging
 console.log('[SW] Version:', BUILD_VERSION);
