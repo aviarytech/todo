@@ -1,4 +1,11 @@
+import { useEffect } from 'react';
+
 export function Terms() {
+  useEffect(() => {
+    document.body.classList.add('scrollable-page');
+    return () => document.body.classList.remove('scrollable-page');
+  }, []);
+
   return (
     <div className="min-h-screen bg-amber-50">
       <header className="bg-amber-900 text-amber-50 py-6 px-4">

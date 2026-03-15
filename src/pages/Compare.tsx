@@ -138,6 +138,11 @@ export function Compare() {
   const data = COMPETITORS[competitor ?? '']
 
   useEffect(() => {
+    document.body.classList.add('scrollable-page');
+    return () => document.body.classList.remove('scrollable-page');
+  }, []);
+
+  useEffect(() => {
     if (!data) return
     document.title = data.metaTitle
 

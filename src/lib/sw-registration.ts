@@ -119,6 +119,13 @@ export async function registerServiceWorker(
       registration.update().catch(() => {});
     }, 5 * 60 * 1000);
 
+    // Check for updates when user returns to the tab
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        registration.update().catch(() => {});
+      }
+    });
+
     // Check for updates periodically
     registration.addEventListener('updatefound', () => {
       const installingWorker = registration.installing;
@@ -190,6 +197,30 @@ export async function unregisterServiceWorker(): Promise<boolean> {
 export function skipWaitingAndReload(): void {
   navigator.serviceWorker.controller?.postMessage('skipWaiting');
   window.location.reload();
+}
+
+/**
+ * Check for a service worker update and apply it if available.
+ * Returns true if an update was found, false otherwise.
+ */
+export async function checkForUpdateAndApply(): Promise<boolean> {
+  if (!('serviceWorker' in navigator)) return false;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    await registration.update();
+
+    // If there's a waiting worker, activate it immediately
+    if (registration.waiting) {
+      registration.waiting.postMessage('skipWaiting');
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('[SW] Update check failed:', error);
+    return false;
+  }
 }
 
 /**

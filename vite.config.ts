@@ -10,6 +10,8 @@ function buildServiceWorker() {
     name: 'build-service-worker',
     async writeBundle() {
       // Build the service worker using esbuild (available via Vite)
+      // Inject a build timestamp so the SW file changes on every deploy,
+      // ensuring the browser detects it as a new version
       const { build } = await import('esbuild')
       await build({
         entryPoints: [resolve(__dirname, 'src/workers/service-worker.ts')],
@@ -18,6 +20,9 @@ function buildServiceWorker() {
         format: 'iife',
         target: 'es2020',
         minify: true,
+        define: {
+          '__BUILD_TIMESTAMP__': JSON.stringify(new Date().toISOString()),
+        },
       })
     },
     configureServer(server: { middlewares: { use: (path: string, handler: (req: unknown, res: { setHeader: (name: string, value: string) => void; end: (content: string) => void }, next: () => void) => void) => void } }) {

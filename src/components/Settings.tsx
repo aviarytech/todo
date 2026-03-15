@@ -12,6 +12,7 @@ import { ReferralInviteCurrentUser } from './ReferralInvite';
 import { supportsHaptics } from '../lib/haptics';
 import { supportsPushNotifications } from '../lib/notifications';
 import { biometrics } from '../lib/biometrics';
+import { checkForUpdateAndApply, clearAllCachesAndReload } from '../lib/sw-registration';
 import { Panel } from './ui/Panel';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -39,6 +40,9 @@ export function Settings({ onClose }: SettingsProps) {
   const [feedbackBody, setFeedbackBody] = useState('');
   const [feedbackCategory, setFeedbackCategory] = useState<'bug' | 'feature' | 'praise' | 'confusion' | 'churn_risk'>('feature');
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+
+  const [updateChecking, setUpdateChecking] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'updating' | 'current'>('idle');
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -79,6 +83,32 @@ export function Settings({ onClose }: SettingsProps) {
       addToast('Failed to delete account. Please try again.', 'error');
       setDeleteSubmitting(false);
     }
+  };
+
+  const handleCheckForUpdate = async () => {
+    haptic('light');
+    setUpdateChecking(true);
+    setUpdateStatus('checking');
+    try {
+      const found = await checkForUpdateAndApply();
+      if (found) {
+        setUpdateStatus('updating');
+        // The controllerchange listener in sw-registration will reload the page
+      } else {
+        setUpdateStatus('current');
+        setTimeout(() => setUpdateStatus('idle'), 3000);
+      }
+    } catch {
+      setUpdateStatus('idle');
+    } finally {
+      setUpdateChecking(false);
+    }
+  };
+
+  const handleForceRefresh = async () => {
+    haptic('medium');
+    setUpdateStatus('updating');
+    await clearAllCachesAndReload();
   };
 
   const handleToggle = (current: boolean, setter: (v: boolean) => void) => {
@@ -514,6 +544,50 @@ export function Settings({ onClose }: SettingsProps) {
             </button>
           </div>
         </section>
+
+        {/* App Updates Section */}
+        {'serviceWorker' in navigator && (
+          <section>
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+              App Updates
+            </h3>
+            <div className="space-y-2">
+              <button
+                onClick={handleCheckForUpdate}
+                disabled={updateChecking || updateStatus === 'updating'}
+                className="flex items-center justify-between w-full py-3 px-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl transition-colors disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl leading-none">
+                    {updateStatus === 'current' ? '✅' : '🔄'}
+                  </span>
+                  <div className="text-left">
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Check for Updates</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {updateStatus === 'checking' && 'Checking...'}
+                      {updateStatus === 'updating' && 'Updating, please wait...'}
+                      {updateStatus === 'current' && 'You\'re on the latest version'}
+                      {updateStatus === 'idle' && 'Tap to check for a new version'}
+                    </p>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={handleForceRefresh}
+                disabled={updateStatus === 'updating'}
+                className="flex items-center justify-between w-full py-3 px-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl transition-colors disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl leading-none">🧹</span>
+                  <div className="text-left">
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Force Refresh</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Clear cache and reload the app</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* About Section */}
         <section>

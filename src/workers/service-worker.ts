@@ -2,8 +2,15 @@
 
 declare const self: ServiceWorkerGlobalScope;
 
+// Injected at build time — ensures browser detects new SW on every deploy
+declare const __BUILD_TIMESTAMP__: string;
+const BUILD_VERSION = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev';
+
 // Bump this on breaking changes to force cache invalidation
 const CACHE_NAME = 'lisa-v4';
+
+// Log version for debugging
+console.log('[SW] Version:', BUILD_VERSION);
 
 // Critical assets to pre-cache for offline shell support
 // These ensure the app shell loads even when fully offline

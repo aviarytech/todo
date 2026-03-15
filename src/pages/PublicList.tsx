@@ -5,6 +5,7 @@
  * Shows items with attribution and verification status.
  */
 
+import { useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -12,6 +13,11 @@ import { VerificationBadge } from "../components/publish/VerificationBadge";
 import { formatRelativeTime } from "../lib/time";
 
 export function PublicList() {
+  useEffect(() => {
+    document.body.classList.add('scrollable-page');
+    return () => document.body.classList.remove('scrollable-page');
+  }, []);
+
   const { did } = useParams<{ did: string }>();
 
   // Construct full DID from URL parameter
