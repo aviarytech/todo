@@ -282,42 +282,9 @@ export function Home() {
   const hasLists = lists && lists.length > 0;
   const hasFilteredResults = processedLists && processedLists.length > 0;
   const totalListCount = lists?.length ?? 0;
-  const primaryFavourite = favouriteLists[0];
 
   return (
     <div className="min-h-full pb-28">
-      {/* Always-accessible favourite list */}
-      {primaryFavourite && (
-        <div className="sticky top-2 z-30 mb-3">
-          <Link
-            to={`/list/${primaryFavourite._id}`}
-            onClick={() => haptic('light')}
-            className="w-full inline-flex items-center justify-between gap-3 rounded-2xl px-4 py-3 bg-amber-100/95 dark:bg-amber-950/85 border border-amber-300/70 dark:border-amber-700/60 shadow-md backdrop-blur"
-          >
-            <span className="inline-flex items-center gap-2 min-w-0">
-              <span>⭐</span>
-              <span className="font-semibold text-amber-900 dark:text-amber-100 truncate">
-                {primaryFavourite.name}
-              </span>
-            </span>
-            <span className="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-              Open
-            </span>
-          </Link>
-        </div>
-      )}
-
-      {/* Instant quick start */}
-      <div className="pt-2 pb-4">
-        <button
-          onClick={handleOpenCreate}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 font-bold text-white bg-gradient-to-r from-amber-600 to-orange-500 hover:from-amber-500 hover:to-orange-400 active:from-amber-700 active:to-orange-600 shadow-lg shadow-amber-500/30 transition-all active:scale-[0.99]"
-        >
-          <span>➕</span>
-          <span>Start a list</span>
-        </button>
-      </div>
-
       {/* Header */}
       <div className="pt-2 pb-6">
         <div className="flex items-end justify-between mb-4">
