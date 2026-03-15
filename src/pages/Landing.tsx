@@ -52,18 +52,11 @@ export function Landing() {
           </p>
 
           <Link
-            to={isAuthenticated ? '/' : '/login'}
+            to={isAuthenticated ? '/app?action=new' : '/login'}
             className="inline-flex px-10 py-4 bg-amber-900 text-amber-50 rounded-full font-bold text-base sm:text-lg hover:bg-amber-800 active:bg-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-amber-50 transition-colors min-h-[52px] items-center justify-center"
           >
-            {isAuthenticated ? 'Go to My Lists' : 'Get Started'}
+            {isAuthenticated ? 'Start a List' : 'Sign in to Start a List'}
           </Link>
-
-          <a
-            href="#features"
-            className="mt-4 text-sm text-amber-700/50 hover:text-amber-700 transition-colors"
-          >
-            Learn more
-          </a>
         </div>
 
         {/* Features */}
