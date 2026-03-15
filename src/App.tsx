@@ -43,7 +43,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
-    <div className="min-h-screen-safe flex flex-col bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 transition-colors">
+    <div className="min-h-screen-safe flex flex-col bg-stone-50 dark:bg-gray-950 transition-colors">
       {/* Skip to main content link */}
       <a
         href="#main-content"
@@ -53,17 +53,15 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       </a>
 
       {/* Header */}
-      <header className="flex-shrink-0 sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800 safe-area-inset-top">
+      <header className="flex-shrink-0 sticky top-0 z-40 bg-stone-50/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-stone-200 dark:border-gray-800 safe-area-inset-top">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <Link 
-            to="/app" 
+          <Link
+            to="/app"
             onClick={() => haptic('light')}
             className="flex items-center gap-2 text-xl font-black text-amber-900 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
           >
             <span className="text-2xl">💩</span>
-            <span className="bg-gradient-to-r from-amber-700 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent">
-              Poo App
-            </span>
+            <span>Poo App</span>
           </Link>
           
           <div className="flex items-center gap-2">
@@ -73,7 +71,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                 haptic('light');
                 setIsSettingsOpen(true);
               }}
-              className="p-2.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              className="p-3 text-stone-400 dark:text-gray-400 hover:text-stone-600 dark:hover:text-gray-200 hover:bg-stone-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
               aria-label="Settings"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +86,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                 haptic('light');
                 toggleDarkMode();
               }}
-              className="p-2.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              className="p-3 text-stone-400 dark:text-gray-400 hover:text-stone-600 dark:hover:text-gray-200 hover:bg-stone-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
               aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {darkMode ? (
@@ -138,12 +136,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
  */
 function PageLoadingFallback() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center">
+    <div className="min-h-screen bg-stone-50 dark:bg-gray-950 flex items-center justify-center">
       <div className="text-center">
-        <div className="text-6xl animate-bounce-slow mb-4">💩</div>
+        <div className="text-6xl mb-4">💩</div>
         <div className="animate-pulse space-y-3">
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48 mx-auto"></div>
-          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-32 mx-auto"></div>
+          <div className="h-4 bg-stone-200 dark:bg-gray-700 rounded w-48 mx-auto"></div>
+          <div className="h-3 bg-stone-200 dark:bg-gray-700 rounded w-32 mx-auto"></div>
         </div>
       </div>
     </div>

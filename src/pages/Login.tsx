@@ -9,7 +9,7 @@
  */
 
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { OtpInput } from "../components/auth/OtpInput";
 import { trackSignupStarted, trackSignupCompleted } from "../lib/analytics";
@@ -19,6 +19,15 @@ type LoginStep = "email" | "otp";
 interface LoginProps {
   /** If true, don't redirect after authentication (for embedded use in JoinList etc.) */
   embedded?: boolean;
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return "Burning the midnight oil?";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 21) return "Good evening";
+  return "Late night organizing?";
 }
 
 export function Login({ embedded = false }: LoginProps) {
@@ -105,18 +114,23 @@ export function Login({ embedded = false }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center p-4">
-      <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-amber-200/50 max-w-md w-full p-8">
-        <div className="text-center mb-2">
-          <span className="text-6xl">💩</span>
-        </div>
+    <div className="min-h-screen bg-amber-50 flex flex-col items-center justify-center p-4">
+      {/* Brand header */}
+      {!embedded && (
+        <Link to="/" className="flex items-center gap-2 mb-8 text-amber-900 hover:text-amber-700 transition-colors">
+          <span className="text-3xl">💩</span>
+          <span className="font-black text-xl">Poo App</span>
+        </Link>
+      )}
+
+      <div className="bg-white rounded-2xl border border-amber-100 max-w-md w-full p-8">
         <h1 className="text-2xl font-bold text-amber-900 mb-2 text-center">
-          Welcome to Poo App
+          {step === "email" ? getGreeting() : "Check your email"}
         </h1>
-        <p className="text-amber-800/70 mb-6 text-center">
+        <p className="text-amber-800/60 mb-6 text-center text-sm">
           {step === "email"
             ? "Sign in with your email to get started"
-            : `Enter the code we sent to ${email}`}
+            : `We sent a code to ${email}`}
         </p>
 
         {step === "email" ? (
@@ -133,7 +147,7 @@ export function Login({ embedded = false }: LoginProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full px-4 py-3 border border-amber-200 rounded-xl shadow-sm text-amber-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              className="w-full px-4 py-3 border border-amber-200 rounded-xl text-amber-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               disabled={isLoading}
               autoFocus
               autoComplete="email"
@@ -144,7 +158,7 @@ export function Login({ embedded = false }: LoginProps) {
             <button
               type="submit"
               disabled={isLoading || !email.trim()}
-              className="mt-4 w-full bg-gradient-to-r from-amber-600 to-orange-500 text-white py-3 px-4 rounded-xl font-semibold hover:from-amber-500 hover:to-orange-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-500/20"
+              className="mt-4 w-full bg-amber-900 text-amber-50 py-3 px-4 rounded-full font-semibold hover:bg-amber-800 active:bg-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSendingCode ? "Sending code..." : "Send Code"}
             </button>
@@ -164,13 +178,13 @@ export function Login({ embedded = false }: LoginProps) {
               disabled={isLoading}
               className="mt-4 w-full text-amber-700 py-2 px-4 rounded-xl font-medium hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              ← Use a different email
+              Use a different email
             </button>
           </div>
         )}
 
         <p className="mt-6 text-xs text-amber-600/60 text-center">
-          🔐 Your keys are securely managed by Turnkey
+          Your keys are securely managed by Turnkey
         </p>
       </div>
     </div>
