@@ -246,6 +246,33 @@ export function ListView() {
   // Get publication status
   const publicationStatus = useQuery(api.publication.getPublicationStatus, { listId });
 
+  // Favourite (bookmark) state
+  const bookmarkMutation = useMutation(api.publication.bookmarkList);
+  const unbookmarkMutation = useMutation(api.publication.unbookmarkList);
+  const isBookmarked = useQuery(
+    api.publication.isBookmarked,
+    did ? { listId, userDid: did } : "skip"
+  );
+  const [favouritePending, setFavouritePending] = useState(false);
+
+  const handleToggleFavourite = useCallback(async () => {
+    if (!did || favouritePending) return;
+    setFavouritePending(true);
+    haptic("light");
+    try {
+      if (isBookmarked) {
+        await unbookmarkMutation({ listId, userDid: did });
+      } else {
+        await bookmarkMutation({ listId, userDid: did });
+      }
+    } catch (err) {
+      console.error("Failed to toggle favourite:", err);
+      haptic("error");
+    } finally {
+      setFavouritePending(false);
+    }
+  }, [did, favouritePending, haptic, isBookmarked, unbookmarkMutation, listId, bookmarkMutation]);
+
   // Get online status for disabling destructive operations
   const { isOnline } = useOffline();
 
@@ -769,6 +796,23 @@ export function ListView() {
               </svg>
             </button>
           </div>
+
+          {/* Favourite button */}
+          {did && (
+            <button
+              onClick={handleToggleFavourite}
+              disabled={favouritePending}
+              className={`inline-flex items-center justify-center p-2 rounded-full transition-all active:scale-95 ${
+                isBookmarked
+                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+              } ${favouritePending ? "opacity-50" : ""}`}
+              aria-label={isBookmarked ? "Remove from favourites" : "Add to favourites"}
+              title={isBookmarked ? "Remove from favourites" : "Add to favourites"}
+            >
+              <span className="text-sm leading-none">{isBookmarked ? "⭐" : "☆"}</span>
+            </button>
+          )}
 
           {/* Share button - always visible as it's commonly used */}
           {canUserInvite && (
