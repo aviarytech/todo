@@ -1050,21 +1050,20 @@ export function ListView() {
               {/* Completed section */}
               {aisleGroups.checked.length > 0 && (
                 <div className="mb-3">
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-t-xl bg-gradient-to-r from-green-50 to-emerald-50 dark:from-gray-700 dark:to-gray-750 border-b border-green-100 dark:border-gray-600">
-                    <span className="text-lg">✅</span>
-                    <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">Completed</span>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-t-xl bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-600">
+                    <span className="text-xs">✅</span>
+                    <span className="font-medium text-xs text-gray-500 dark:text-gray-400">Completed</span>
                     <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-                      {aisleGroups.checked.length} {aisleGroups.checked.length === 1 ? "item" : "items"}
+                      {aisleGroups.checked.length}
                     </span>
                   </div>
-                  <div className="bg-white dark:bg-gray-800 rounded-b-xl shadow-lg divide-y divide-gray-100 dark:divide-gray-700">
+                  <div className="bg-white/50 dark:bg-gray-800/50 rounded-b-xl divide-y divide-gray-100 dark:divide-gray-700/50">
                     {aisleGroups.checked.map((item) => {
                       const globalIndex = sortedItems.findIndex(si => si._id === item._id);
                       return (
                         <div
                           key={item._id}
                           data-item-id={item._id}
-                          className="animate-slide-up"
                         >
                           <NestedListItem
                             item={item}
@@ -1153,14 +1152,13 @@ export function ListView() {
                   </button>
 
                   {!doneCollapsed && (
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-1 bg-white/50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/50">
                       {sortedItems.filter(item => item.checked && !item.parentId).map((item: OptimisticItem) => {
                         const globalIndex = sortedItems.findIndex(si => si._id === item._id);
                         return (
                           <div
                             key={item._id}
                             data-item-id={item._id}
-                            className="bg-white/70 dark:bg-gray-800/70 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden animate-slide-up"
                           >
                             <NestedListItem
                               item={item}

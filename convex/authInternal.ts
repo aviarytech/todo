@@ -493,7 +493,7 @@ async function signJwtToken(subOrgId: string, email: string): Promise<string> {
   const token = await new jose.SignJWT({ sub: subOrgId, email })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("30d")
     .setIssuer("originals-auth")
     .setAudience("originals-api")
     .sign(secret);
@@ -503,7 +503,7 @@ async function signJwtToken(subOrgId: string, email: string): Promise<string> {
 
 function buildCookieValue(token: string): string {
   const isProduction = process.env.NODE_ENV === "production";
-  const maxAgeSeconds = 7 * 24 * 60 * 60; // 7 days
+  const maxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
 
   return (
     `auth_token=${token}; ` +
