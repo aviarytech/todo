@@ -170,7 +170,7 @@ export const ListItem = memo(function ListItem({
   const handleShare = async () => {
     haptic('light');
     
-    const listUrl = `${window.location.origin}/app/${item.listId}`;
+    const listUrl = `${window.location.origin}/d/${item.listId}`;
     const listName = "My List"; // We don't have the list name here, so use a generic name
     
     try {

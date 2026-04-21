@@ -55,7 +55,7 @@ export function Pricing() {
         },
         body: JSON.stringify({
           priceId,
-          successUrl: `${origin}/app?billing=success`,
+          successUrl: `${origin}/d?billing=success`,
           cancelUrl: `${origin}/pricing`,
         }),
       });
@@ -284,7 +284,7 @@ export function Pricing() {
       {/* Back link */}
       <div className="mt-10 text-center">
         <Link
-          to="/app"
+          to="/d"
           className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
         >
           ← Back to app

@@ -401,7 +401,7 @@ export function ListView() {
   const handleNativeShare = useCallback(async () => {
     if (!list) return;
     
-    const listUrl = `${window.location.origin}/app/${list._id}`;
+    const listUrl = `${window.location.origin}/d/${list._id}`;
     
     try {
       await shareList(list.name, listUrl);
@@ -627,7 +627,7 @@ export function ListView() {
           This list may have been deleted or you don't have access.
         </p>
         <Link 
-          to="/app" 
+          to="/d"
           className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -655,7 +655,7 @@ export function ListView() {
           This list is not shared. Ask the owner to publish it.
         </p>
         <Link 
-          to="/app" 
+          to="/d"
           className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -686,7 +686,7 @@ export function ListView() {
         <div className="flex items-start gap-3">
           {/* Back button */}
           <Link
-            to="/app"
+            to="/d"
             onClick={() => haptic('light')}
             className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
             aria-label="Back to lists"
@@ -1274,7 +1274,7 @@ export function ListView() {
           <DeleteListDialog
             list={list}
             onClose={() => setIsDeleteDialogOpen(false)}
-            onDeleted={() => navigate("/app")}
+            onDeleted={() => navigate("/d")}
           />
         )}
 

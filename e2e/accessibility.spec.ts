@@ -25,7 +25,7 @@ async function gotoHome(
 ) {
   await mockConvexWebSocket(page, { existingListCount });
   await seedAuthSession(page);
-  await page.goto("/app");
+  await page.goto("/d");
   await expect(page.getByRole("heading", { name: /Your lists|Welcome in/i })).toBeVisible({
     timeout: 10000,
   });

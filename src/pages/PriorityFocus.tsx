@@ -231,7 +231,7 @@ export function PriorityFocus() {
         <div>
           <div className="flex items-center gap-2">
             <Link
-              to="/app"
+              to="/d"
               onClick={() => haptic("light")}
               className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
             >

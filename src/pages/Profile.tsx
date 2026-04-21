@@ -77,7 +77,7 @@ export function Profile() {
     <div className="max-w-2xl mx-auto">
       {/* Back button */}
       <Link
-        to="/app"
+        to="/d"
         onClick={() => haptic('light')}
         className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-6 transition-colors"
       >

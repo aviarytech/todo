@@ -41,7 +41,7 @@ export function Login({ embedded = false }: LoginProps) {
 
   // Redirect if already authenticated (unless embedded)
   if (isAuthenticated && !embedded) {
-    navigate("/app", { replace: true });
+    navigate("/d", { replace: true });
     return null;
   }
 
@@ -87,7 +87,7 @@ export function Login({ embedded = false }: LoginProps) {
       // On successful verification, useAuth will update isAuthenticated
       // If not embedded, redirect to app; if embedded, parent handles navigation
       if (!embedded) {
-        navigate("/app", { replace: true });
+        navigate("/d", { replace: true });
       }
     } catch (err) {
       console.error("Failed to verify OTP:", err);

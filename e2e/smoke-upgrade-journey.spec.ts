@@ -147,7 +147,7 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     ).toBeVisible();
   });
 
-  test("8. sign-up: completing OTP redirects to /app", async ({ page }) => {
+  test("8. sign-up: completing OTP redirects to /d", async ({ page }) => {
     await mockConvexWebSocket(page);
     await mockAuthEndpoints(page);
 
@@ -160,7 +160,7 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     await page.getByLabel("Digit 1").click();
     await page.keyboard.type("123456");
 
-    await expect(page).toHaveURL("/app", { timeout: 10000 });
+    await expect(page).toHaveURL("/d", { timeout: 10000 });
   });
 
   // =========================================================================
@@ -172,7 +172,7 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
   }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await expect(
       page.getByRole("heading", { name: /Your lists|Welcome in/i }),
@@ -188,7 +188,7 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
   }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await page.getByRole("button", { name: "Create new list" }).click({ timeout: 10000 });
     // Template picker opens first — select "Blank List" to get the create modal
@@ -209,7 +209,7 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
       failCreateList: true,
     });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     // Wait for home page to finish loading
     await page.getByRole("button", { name: "Create new list" }).waitFor({
@@ -242,7 +242,7 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
       failCreateList: true,
     });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await page.getByRole("button", { name: "Create new list" }).waitFor({
       state: "visible",

@@ -56,7 +56,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <header className="flex-shrink-0 sticky top-0 z-40 bg-stone-50/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-stone-200 dark:border-gray-800 safe-area-inset-top">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <Link
-            to="/app"
+            to="/d"
             onClick={() => haptic('light')}
             className="boop-wordmark text-[20px] leading-none hover:opacity-80 transition-opacity"
             aria-label="boop — home"
@@ -219,13 +219,13 @@ function App() {
         <Routes>
           {/* Public routes - accessible without authentication */}
           <Route path="/invite/:code" element={<InviteLanding />} />
-          <Route path="/login" element={isAuthenticated ? <Navigate to="/app" replace /> : <Login />} />
+          <Route path="/login" element={isAuthenticated ? <Navigate to="/d" replace /> : <Login />} />
           <Route path="/join/:listId/:token" element={<JoinList />} />
           <Route path="/public/:did" element={<PublicList />} />
           <Route path="/:userPath/resources/:resourceId" element={<SharedListResource />} />
 
           {/* Landing page for unauthenticated, redirect to app if logged in */}
-          <Route path="/" element={isAuthenticated ? <Navigate to="/app" replace /> : <Landing />} />
+          <Route path="/" element={isAuthenticated ? <Navigate to="/d" replace /> : <Landing />} />
 
           {/* Pricing - accessible to all, authenticated or not */}
           <Route path="/pricing" element={<Pricing />} />
@@ -234,14 +234,14 @@ function App() {
           <Route path="/compare/:competitor" element={<Compare />} />
 
           {/* Protected routes - require authentication */}
-          <Route path="/app" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/d" element={<ProtectedRoute><Home /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
           <Route path="/priority" element={<ProtectedRoute><PriorityFocus /></ProtectedRoute>} />
           <Route path="/list/:id" element={<ProtectedRoute><ListView /></ProtectedRoute>} />
 
           {/* Fallback - redirect to app (AuthGuard will handle login redirect if needed) */}
-          <Route path="*" element={<ProtectedRoute><Navigate to="/app" replace /></ProtectedRoute>} />
+          <Route path="*" element={<ProtectedRoute><Navigate to="/d" replace /></ProtectedRoute>} />
         </Routes>
       </Suspense>
       <ToastContainer />

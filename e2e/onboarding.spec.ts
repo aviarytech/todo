@@ -181,7 +181,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
     // existingListCount=0 triggers demo list auto-creation path
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     // Wait for home page to settle
     await expect(
@@ -199,7 +199,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
   }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     // Wait for the home page to load and the demo creation effect to run
     await expect(
@@ -222,7 +222,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
     // existingListCount=1 means user already has lists — skip demo creation
     await mockConvexWebSocket(page, { existingListCount: 1 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await expect(
       page.getByRole("heading", { name: /Your lists|Welcome in/i }),
@@ -247,7 +247,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
     // Start with 1 existing list so demo is skipped; inviteNudgeDone is NOT set
     await mockConvexWebSocket(page, { existingListCount: 1 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await expect(
       page.getByRole("heading", { name: /Your lists|Welcome in/i }),
@@ -282,7 +282,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
   test("5. InviteNudge is dismissed by clicking Later", async ({ page }) => {
     await mockConvexWebSocket(page, { existingListCount: 1 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await expect(
       page.getByRole("heading", { name: /Your lists|Welcome in/i }),
@@ -327,7 +327,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
 
     await mockConvexWebSocket(page, { existingListCount: 1 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await expect(
       page.getByRole("heading", { name: /Your lists|Welcome in/i }),

@@ -14,7 +14,7 @@ test.describe("List management", () => {
   test("shows empty state when no lists exist", async ({ page }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await expect(
       page.getByRole("heading", { name: /Your lists|Welcome in/i }),
@@ -28,7 +28,7 @@ test.describe("List management", () => {
   test("opens create list modal via template picker", async ({ page }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await page.getByRole("button", { name: "Create new list" }).click({ timeout: 10000 });
 
@@ -48,7 +48,7 @@ test.describe("List management", () => {
   test("creates a new list", async ({ page }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await page.getByRole("button", { name: "Create new list" }).click({ timeout: 10000 });
     await expect(
@@ -69,7 +69,7 @@ test.describe("List management", () => {
   test("create list button is disabled when name is empty", async ({ page }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await page.getByRole("button", { name: "Create new list" }).click({ timeout: 10000 });
     await expect(
@@ -87,7 +87,7 @@ test.describe("List management", () => {
   test("can cancel list creation", async ({ page }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     await page.getByRole("button", { name: "Create new list" }).click({ timeout: 10000 });
     await expect(
