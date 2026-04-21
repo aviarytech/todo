@@ -5,7 +5,7 @@
  *   1. /profile route renders the Profile heading (user display name)
  *   2. Stats grid is visible (Lists Created, Shared Lists, Items Done, Completion Rate)
  *   3. Plan section shows "free" with an Upgrade link for free-plan users
- *   4. Back to lists link navigates to /app
+ *   4. Back to lists link navigates to /d
  *   5. User email is shown in profile header
  *
  * All tests use seedAuthSession() + mockConvexWebSocket() (free plan = getUserSubscription: null).
@@ -66,12 +66,12 @@ test.describe("Profile page", () => {
     await expect(upgradeLink).toHaveAttribute("href", "/pricing");
   });
 
-  test("6. Back to lists link navigates to /app", async ({ page }) => {
+  test("6. Back to lists link navigates to /d", async ({ page }) => {
     await gotoProfile(page);
 
     await page.getByRole("link", { name: /Back to lists/i }).click();
 
-    await expect(page).toHaveURL("/app", { timeout: 10000 });
+    await expect(page).toHaveURL("/d", { timeout: 10000 });
     await expect(
       page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });

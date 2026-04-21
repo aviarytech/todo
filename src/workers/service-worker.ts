@@ -217,7 +217,7 @@ self.addEventListener('notificationclick', (event) => {
 
   const notifData = event.notification.data;
   const listId = notifData?.listId || notifData?.data?.listId;
-  const urlToOpen = notifData?.url || (listId ? `/list/${listId}` : '/app');
+  const urlToOpen = notifData?.url || (listId ? `/list/${listId}` : '/d');
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

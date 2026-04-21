@@ -24,7 +24,7 @@ export function InviteLanding() {
 
     if (isAuthenticated) {
       // Already logged in — go to app (redemption happens via ReferralRedeemer)
-      navigate("/app", { replace: true });
+      navigate("/d", { replace: true });
     } else {
       navigate("/login", { replace: true });
     }

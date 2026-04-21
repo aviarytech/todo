@@ -19,7 +19,7 @@ import { mockConvexWebSocket } from "./fixtures/convex";
 async function openSettings(page: import("@playwright/test").Page) {
   await mockConvexWebSocket(page, { existingListCount: 0 });
   await seedAuthSession(page);
-  await page.goto("/app");
+  await page.goto("/d");
 
   await expect(
     page.getByRole("heading", { name: /Your lists|Welcome in/i }),
