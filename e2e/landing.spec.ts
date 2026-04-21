@@ -13,10 +13,8 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Landing page", () => {
-  test("1. page loads with boop wordmark in nav and hero", async ({ page }) => {
+  test("1. page loads with boop hero heading", async ({ page }) => {
     await page.goto("/");
-    // Wordmark in nav
-    await expect(page.getByRole("navigation").getByText("boop").first()).toBeVisible();
     // Hero heading "boop."
     await expect(page.getByRole("heading", { level: 1, name: /boop\./ })).toBeVisible();
     // Hero subtitle (partial match on a distinctive phrase)
@@ -31,9 +29,9 @@ test.describe("Landing page", () => {
     await expect(page).toHaveURL("/login");
   });
 
-  test("3. nav Sign in link navigates to /login", async ({ page }) => {
+  test("3. hero 'Already using boop? Sign in' link navigates to /login", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("navigation").getByRole("link", { name: "Sign in" }).click();
+    await page.locator(".hero-signin").getByRole("link", { name: "Sign in" }).click();
     await expect(page).toHaveURL("/login");
   });
 

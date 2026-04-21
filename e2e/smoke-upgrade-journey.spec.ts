@@ -71,8 +71,6 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
 
   test("1. landing page loads with branding", async ({ page }) => {
     await page.goto("/");
-    // Landing page shows the boop wordmark in the nav
-    await expect(page.getByRole("navigation").getByText("boop").first()).toBeVisible();
     // Hero heading
     await expect(page.getByRole("heading", { level: 1, name: /boop\./ })).toBeVisible();
   });

@@ -285,28 +285,22 @@ export function Home() {
 
   return (
     <div className="min-h-full pb-28">
-      {/* Top bar — wordmark + profile avatar */}
-      <div className="flex items-center justify-between pt-2 pb-5">
-        <div className="boop-wordmark text-[22px] sm:text-[26px] leading-none">
-          <span className="boop-dot" aria-hidden="true" />
-          <span>boop</span>
-        </div>
-        <div className="flex items-center gap-2.5">
-          {streak > 0 && <StreakBadge streak={streak} />}
-          <Link
-            to="/profile"
-            onClick={() => haptic('light')}
-            aria-label="Profile"
-            className="flex items-center justify-center w-[34px] h-[34px] rounded-full text-white font-extrabold text-sm active:scale-95 transition-transform"
-            style={{
-              background: 'var(--boop-accent)',
-              fontFamily: 'Nunito, system-ui, sans-serif',
-              letterSpacing: -0.3,
-            }}
-          >
-            {(did ?? 'r').slice(-1).toUpperCase() || 'R'}
-          </Link>
-        </div>
+      {/* Top bar — streak + profile avatar */}
+      <div className="flex items-center justify-end gap-2.5 pt-2 pb-5">
+        {streak > 0 && <StreakBadge streak={streak} />}
+        <Link
+          to="/profile"
+          onClick={() => haptic('light')}
+          aria-label="Profile"
+          className="flex items-center justify-center w-[34px] h-[34px] rounded-full text-white font-extrabold text-sm active:scale-95 transition-transform"
+          style={{
+            background: 'var(--boop-accent)',
+            fontFamily: 'Nunito, system-ui, sans-serif',
+            letterSpacing: -0.3,
+          }}
+        >
+          {(did ?? 'r').slice(-1).toUpperCase() || 'R'}
+        </Link>
       </div>
 
       {/* Greeting hero */}
