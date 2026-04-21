@@ -50,7 +50,7 @@ export function AppLockGuard({ children }: AppLockGuardProps) {
 
   // Show lock screen
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-amber-100 dark:bg-gray-900 flex items-center justify-center z-50">
       <div className="text-center px-6">
         <div className="mb-8">
           <span className="text-8xl">🔒</span>

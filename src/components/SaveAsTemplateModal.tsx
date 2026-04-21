@@ -121,7 +121,7 @@ export function SaveAsTemplateModal({ listId, listName, onClose, onSuccess }: Sa
         type="submit"
         form="save-template-form"
         disabled={isSaving || !name.trim()}
-        className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
+        className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
       >
         {isSaving ? (
           <span className="flex items-center justify-center gap-2">

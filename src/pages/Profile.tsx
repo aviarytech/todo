@@ -289,7 +289,7 @@ export function Profile() {
         {/* Motivational footer */}
         {completionRate >= 80 && (
           <div className="px-6 pb-6">
-            <div className="bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-xl p-4 text-center">
+            <div className="bg-amber-100 dark:bg-amber-900/30 rounded-xl p-4 text-center">
               <p className="text-2xl mb-2">🏆</p>
               <p className="font-medium text-amber-800 dark:text-amber-200">
                 Amazing! You're a productivity champion!
@@ -300,7 +300,7 @@ export function Profile() {
         
         {completionRate < 80 && completionRate >= 50 && (
           <div className="px-6 pb-6">
-            <div className="bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-xl p-4 text-center">
+            <div className="bg-amber-100 dark:bg-amber-900/30 rounded-xl p-4 text-center">
               <p className="text-2xl mb-2">💪</p>
               <p className="font-medium text-amber-800 dark:text-amber-200">
                 Great progress! Keep up the momentum!
@@ -311,7 +311,7 @@ export function Profile() {
         
         {completionRate < 50 && totalItems > 0 && (
           <div className="px-6 pb-6">
-            <div className="bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-xl p-4 text-center">
+            <div className="bg-amber-100 dark:bg-amber-900/30 rounded-xl p-4 text-center">
               <p className="text-2xl mb-2">🚀</p>
               <p className="font-medium text-orange-800 dark:text-orange-200">
                 You've got this! Every item counts!

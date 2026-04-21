@@ -139,7 +139,7 @@ export function CreateListModal({ onClose, onListCreated }: CreateListModalProps
       <button
         type="button"
         onClick={() => { haptic('medium'); handleShareList(); }}
-        className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 transition-all"
+        className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 transition-all"
       >
         Share list
       </button>
@@ -161,7 +161,7 @@ export function CreateListModal({ onClose, onListCreated }: CreateListModalProps
         type="submit"
         form="create-list-form"
         disabled={isCreating || !name.trim()}
-        className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
+        className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
       >
         {isCreating ? (
           <span className="flex items-center justify-center gap-2">

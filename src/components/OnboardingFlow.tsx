@@ -180,7 +180,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-amber-100 safe-area-inset-top safe-area-inset-bottom">
+    <div className="fixed inset-0 z-[200] flex flex-col bg-amber-50 safe-area-inset-top safe-area-inset-bottom">
       {/* Top bar: progress + skip */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         {/* Progress dots */}
@@ -287,7 +287,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       </p>
       <button
         onClick={onNext}
-        className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-amber-500/30 hover:from-amber-500 hover:to-orange-400 active:from-amber-700 active:to-orange-600 transition-all"
+        className="w-full py-4 bg-amber-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-amber-500/30 hover:bg-amber-500 active:bg-amber-700 transition-all"
       >
         Let's go 🚀
       </button>
@@ -336,7 +336,7 @@ function CreateListStep({
         <button
           type="submit"
           disabled={!value.trim() || isCreating}
-          className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-500 text-white rounded-2xl font-bold text-base shadow-lg shadow-amber-500/25 disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-500 hover:to-orange-400 transition-all"
+          className="w-full py-4 bg-amber-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-amber-500/25 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-amber-500 transition-all"
         >
           {isCreating ? "Creating..." : "Create List ✨"}
         </button>
@@ -414,7 +414,7 @@ function AddItemsStep({
 
       <button
         onClick={onNext}
-        className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-500 text-white rounded-2xl font-bold text-base shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-orange-400 transition-all"
+        className="w-full py-4 bg-amber-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-amber-500/25 hover:bg-amber-500 transition-all"
       >
         {addedItems.length === 0 ? "Skip this step →" : "Next →"}
       </button>
@@ -480,7 +480,7 @@ export function InviteNudge({
             <div className="flex gap-2">
               <button
                 onClick={handleInvite}
-                className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold text-sm shadow-lg shadow-amber-500/25 hover:from-amber-400 hover:to-orange-400 transition-all"
+                className="flex-1 py-2.5 bg-amber-500 text-white rounded-xl font-semibold text-sm shadow-lg shadow-amber-500/25 hover:bg-amber-400 transition-all"
               >
                 Invite someone →
               </button>
@@ -573,7 +573,7 @@ function ShareStep({
 
           <button
             onClick={onFinish}
-            className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-500 text-white rounded-2xl font-bold text-base shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-orange-400 transition-all"
+            className="w-full py-4 bg-amber-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-amber-500/25 hover:bg-amber-500 transition-all"
           >
             Open my list →
           </button>
@@ -604,7 +604,7 @@ function ShareStep({
           <button
             onClick={onPublish}
             disabled={isPublishing}
-            className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-500 text-white rounded-2xl font-bold text-base shadow-lg shadow-amber-500/25 disabled:opacity-50 hover:from-amber-500 hover:to-orange-400 transition-all"
+            className="w-full py-4 bg-amber-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-amber-500/25 disabled:opacity-50 hover:bg-amber-500 transition-all"
           >
             {isPublishing ? (
               <span className="flex items-center justify-center gap-2">

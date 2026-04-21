@@ -408,7 +408,7 @@ export function Home() {
 
       {/* Referral CTA — shown to free users who have lists */}
       {!isLoading && hasLists && !isPro && (
-        <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-2xl animate-slide-up">
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 rounded-2xl animate-slide-up">
           <ReferralInviteCurrentUser compact />
         </div>
       )}
