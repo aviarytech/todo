@@ -20,9 +20,8 @@ test.describe("Authentication / Identity flow", () => {
 
   test("login page shows email OTP form", async ({ page }) => {
     await page.goto("/login");
-    await expect(
-      page.getByRole("heading", { name: "Welcome to Poo App" }),
-    ).toBeVisible();
+    // Login page shows the boop wordmark and the email OTP form.
+    await expect(page.getByLabel("boop")).toBeVisible();
     await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
     await expect(
       page.getByRole("button", { name: /Send Code/i }),
@@ -44,7 +43,7 @@ test.describe("Authentication / Identity flow", () => {
 
     // Confirm we landed on the authenticated home page
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
 
     // Reload — localStorage still has the JWT so no redirect to /login
@@ -52,7 +51,7 @@ test.describe("Authentication / Identity flow", () => {
 
     await expect(page).toHaveURL("/app");
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
   });
 });

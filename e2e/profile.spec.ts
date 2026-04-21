@@ -73,7 +73,7 @@ test.describe("Profile page", () => {
 
     await expect(page).toHaveURL("/app", { timeout: 10000 });
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
   });
 

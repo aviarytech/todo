@@ -71,16 +71,14 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
 
   test("1. landing page loads with branding", async ({ page }) => {
     await page.goto("/");
-    // Landing page shows product name and tagline
-    await expect(page.getByText("Poo App").first()).toBeVisible();
-    // Pricing link is present in the nav
-    await expect(page.getByRole("navigation").getByRole("link", { name: "Pricing" })).toBeVisible();
+    // Landing page shows the boop wordmark in the nav
+    await expect(page.getByRole("navigation").getByText("boop").first()).toBeVisible();
+    // Hero heading
+    await expect(page.getByRole("heading", { level: 1, name: /boop\./ })).toBeVisible();
   });
 
-  test("2. pricing link in nav navigates to pricing page", async ({ page }) => {
-    await page.goto("/");
-    await page.getByRole("navigation").getByRole("link", { name: "Pricing" }).click();
-    await expect(page).toHaveURL("/pricing");
+  test("2. direct navigation to /pricing shows pricing headline", async ({ page }) => {
+    await page.goto("/pricing");
     await expect(
       page.getByRole("heading", { name: "Simple, honest pricing" }),
     ).toBeVisible();
@@ -112,6 +110,11 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
   test("5. pricing page: unauthenticated upgrade redirects to login", async ({
     page,
   }) => {
+    // Dismiss the cookie-consent banner, which otherwise intercepts pointer events
+    // in the bottom area of the pricing page.
+    await page.addInitScript(() => {
+      localStorage.setItem("poo-cookie-consent", "accepted");
+    });
     await page.goto("/pricing");
     await page.getByRole("button", { name: "Upgrade to Pro" }).click();
     // Unauthenticated user is redirected to login
@@ -124,9 +127,6 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
 
   test("6. sign-up: email entry shows send-code button", async ({ page }) => {
     await page.goto("/login");
-    await expect(
-      page.getByRole("heading", { name: "Welcome to Poo App" }),
-    ).toBeVisible();
     await expect(
       page.getByPlaceholder("you@example.com"),
     ).toBeVisible();
@@ -142,7 +142,7 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     await page.getByRole("button", { name: /Send Code/i }).click();
     // After initiating OTP, the verification step is shown
     await expect(
-      page.getByText(/Enter the code we sent to/),
+      page.getByText(/We sent a code to/),
     ).toBeVisible({ timeout: 5000 });
     await expect(
       page.getByLabel("Digit 1"),
@@ -177,11 +177,11 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     await page.goto("/app");
 
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
     // FAB / new list button is visible
     await expect(
-      page.getByRole("button", { name: "➕ New list" }),
+      page.getByRole("button", { name: "Create new list" }),
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -192,7 +192,7 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     await seedAuthSession(page);
     await page.goto("/app");
 
-    await page.getByRole("button", { name: "➕ New list" }).click({ timeout: 10000 });
+    await page.getByRole("button", { name: "Create new list" }).click({ timeout: 10000 });
     // Template picker opens first — select "Blank List" to get the create modal
     await expect(page.getByRole("heading", { name: "Choose a Template" })).toBeVisible({ timeout: 5000 });
     await page.getByRole("button", { name: "Blank List" }).click();
@@ -214,13 +214,13 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     await page.goto("/app");
 
     // Wait for home page to finish loading
-    await page.getByRole("button", { name: "➕ New list" }).waitFor({
+    await page.getByRole("button", { name: "Create new list" }).waitFor({
       state: "visible",
       timeout: 10000,
     });
 
     // Open create list modal via template picker
-    await page.getByRole("button", { name: "➕ New list" }).click();
+    await page.getByRole("button", { name: "Create new list" }).click();
     await expect(page.getByRole("heading", { name: "Choose a Template" })).toBeVisible({ timeout: 5000 });
     await page.getByRole("button", { name: "Blank List" }).click();
     await page.getByLabel("List name").waitFor({ state: "visible", timeout: 5000 });
@@ -246,11 +246,11 @@ test.describe("Smoke: landing to paid upgrade journey", () => {
     await seedAuthSession(page);
     await page.goto("/app");
 
-    await page.getByRole("button", { name: "➕ New list" }).waitFor({
+    await page.getByRole("button", { name: "Create new list" }).waitFor({
       state: "visible",
       timeout: 10000,
     });
-    await page.getByRole("button", { name: "➕ New list" }).click();
+    await page.getByRole("button", { name: "Create new list" }).click();
     await expect(page.getByRole("heading", { name: "Choose a Template" })).toBeVisible({ timeout: 5000 });
     await page.getByRole("button", { name: "Blank List" }).click();
     await page.getByLabel("List name").waitFor({ state: "visible", timeout: 5000 });

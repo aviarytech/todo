@@ -23,6 +23,10 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     env: {
       VITE_E2E_MOCK_ORIGINALS: "true",
+      // Stub Stripe price IDs so the Upgrade buttons are not disabled during tests.
+      VITE_STRIPE_PRO_MONTHLY_PRICE_ID: "price_e2e_pro_monthly",
+      VITE_STRIPE_PRO_YEARLY_PRICE_ID: "price_e2e_pro_yearly",
+      VITE_STRIPE_TEAM_PRICE_ID: "price_e2e_team",
     },
   },
 });

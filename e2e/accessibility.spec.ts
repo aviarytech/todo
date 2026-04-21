@@ -26,7 +26,7 @@ async function gotoHome(
   await mockConvexWebSocket(page, { existingListCount });
   await seedAuthSession(page);
   await page.goto("/app");
-  await expect(page.getByRole("heading", { name: "Your Lists" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: /Your lists|Welcome in/i })).toBeVisible({
     timeout: 10000,
   });
 }
@@ -58,7 +58,7 @@ test.describe("Accessibility — Home page", () => {
   test("empty state heading is present for screen readers", async ({ page }) => {
     await gotoHome(page, 0);
 
-    await expect(page.getByRole("heading", { name: "No lists yet!" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Nothing here yet." })).toBeVisible();
   });
 
   test("list cards have aria-labels when lists exist", async ({ page }) => {
@@ -150,7 +150,7 @@ test.describe("Accessibility — Create list modal", () => {
   test("modal has dialog role and labelled input", async ({ page }) => {
     await gotoHome(page, 0);
 
-    await page.getByRole("button", { name: /New list/ }).click();
+    await page.getByRole("button", { name: "Create new list" }).click();
 
     // Template picker appears first
     await expect(
@@ -171,7 +171,7 @@ test.describe("Accessibility — Create list modal", () => {
   test("modal can be dismissed with Escape key", async ({ page }) => {
     await gotoHome(page, 0);
 
-    await page.getByRole("button", { name: /New list/ }).click();
+    await page.getByRole("button", { name: "Create new list" }).click();
     await expect(
       page.getByRole("heading", { name: "Choose a Template" }),
     ).toBeVisible({ timeout: 5000 });

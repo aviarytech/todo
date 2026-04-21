@@ -32,7 +32,7 @@ test.describe("Item management", () => {
 
     await expect(page.getByText("This list is empty")).toBeVisible();
     await expect(
-      page.getByText("Add your first item below to get started!"),
+      page.getByText("Add your first item below to get started."),
     ).toBeVisible();
   });
 
@@ -40,7 +40,7 @@ test.describe("Item management", () => {
     await gotoListPage(page, []);
 
     await page.getByPlaceholder("Add item...").fill("Milk");
-    await page.getByRole("button", { name: "Add" }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
 
     // Optimistic update — item appears immediately without a server round-trip
     await expect(page.getByText("Milk")).toBeVisible({ timeout: 5000 });
@@ -91,7 +91,7 @@ test.describe("Item management", () => {
     await page.getByRole("link", { name: "Back to lists" }).click();
 
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
   });
 });
