@@ -13,8 +13,8 @@ import { seedAuthSession } from "./fixtures/auth";
 import { mockConvexWebSocket } from "./fixtures/convex";
 
 test.describe("Authentication / Identity flow", () => {
-  test("unauthenticated user at /app redirects to /login", async ({ page }) => {
-    await page.goto("/app");
+  test("unauthenticated user at /d redirects to /login", async ({ page }) => {
+    await page.goto("/d");
     await expect(page).toHaveURL("/login");
   });
 
@@ -28,18 +28,18 @@ test.describe("Authentication / Identity flow", () => {
     ).toBeVisible();
   });
 
-  test("authenticated user at /login is redirected to /app", async ({ page }) => {
+  test("authenticated user at /login is redirected to /d", async ({ page }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    // Login page redirects authenticated users directly to /app
+    // Login page redirects authenticated users directly to /d
     await page.goto("/login");
-    await expect(page).toHaveURL("/app");
+    await expect(page).toHaveURL("/d");
   });
 
   test("auth session persists after page reload", async ({ page }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
     await seedAuthSession(page);
-    await page.goto("/app");
+    await page.goto("/d");
 
     // Confirm we landed on the authenticated home page
     await expect(
@@ -49,7 +49,7 @@ test.describe("Authentication / Identity flow", () => {
     // Reload — localStorage still has the JWT so no redirect to /login
     await page.reload();
 
-    await expect(page).toHaveURL("/app");
+    await expect(page).toHaveURL("/d");
     await expect(
       page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });

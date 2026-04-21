@@ -77,7 +77,7 @@
       "name": "New List",
       "short_name": "New",
       "description": "Create a new list",
-      "url": "/app?action=new",
+      "url": "/d?action=new",
       "icons": [{"src": "/icons/new-list.png", "sizes": "96x96"}]
     }
   ],
