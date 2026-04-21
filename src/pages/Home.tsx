@@ -285,64 +285,64 @@ export function Home() {
 
   return (
     <div className="min-h-full pb-28">
-      {/* Top bar — streak + profile avatar */}
-      <div className="flex items-center justify-end gap-2.5 pt-2 pb-5">
-        {streak > 0 && <StreakBadge streak={streak} />}
-        <Link
-          to="/profile"
-          onClick={() => haptic('light')}
-          aria-label="Profile"
-          className="flex items-center justify-center w-[34px] h-[34px] rounded-full text-white font-extrabold text-sm active:scale-95 transition-transform"
-          style={{
-            background: 'var(--boop-accent)',
-            fontFamily: 'Nunito, system-ui, sans-serif',
-            letterSpacing: -0.3,
-          }}
-        >
-          {(did ?? 'r').slice(-1).toUpperCase() || 'R'}
-        </Link>
-      </div>
-
-      {/* Greeting hero */}
-      <div className="pb-5">
-        <h1
-          className="text-stone-900 dark:text-stone-50"
-          style={{
-            fontFamily: 'Nunito, system-ui, sans-serif',
-            fontWeight: 700,
-            fontSize: 'clamp(30px, 5.5vw, 40px)',
-            letterSpacing: -1.2,
-            lineHeight: 1.05,
-            margin: 0,
-          }}
-        >
-          {hasLists ? <>Your lists —<br /><span className="text-stone-500 dark:text-stone-400" style={{ fontWeight: 600 }}>what's on today?</span></> : <>Welcome in,<br /><span className="text-stone-500 dark:text-stone-400" style={{ fontWeight: 600 }}>let's make your first list.</span></>}
-        </h1>
-        {hasLists && (
-          <div
-            className="flex items-center gap-3.5 flex-wrap mt-3 text-[13px] text-stone-500 dark:text-stone-400"
+      {/* Greeting hero with streak + profile avatar inline on the right */}
+      <div className="flex items-start justify-between gap-3 pt-2 pb-5">
+        <div className="flex-1 min-w-0">
+          <h1
+            className="text-stone-900 dark:text-stone-50"
+            style={{
+              fontFamily: 'Nunito, system-ui, sans-serif',
+              fontWeight: 700,
+              fontSize: 'clamp(30px, 5.5vw, 40px)',
+              letterSpacing: -1.2,
+              lineHeight: 1.05,
+              margin: 0,
+            }}
           >
-            <span>
-              <b className="text-stone-900 dark:text-stone-100">{totalListCount}</b> {totalListCount === 1 ? 'list' : 'lists'}
-            </span>
-            {allSharedLists.length > 0 && (
-              <>
-                <span className="text-stone-300 dark:text-stone-600">·</span>
-                <span>
-                  <b className="text-stone-900 dark:text-stone-100">{allSharedLists.length}</b> shared
-                </span>
-              </>
-            )}
-            {favouriteLists.length > 0 && (
-              <>
-                <span className="text-stone-300 dark:text-stone-600">·</span>
-                <span>
-                  <b className="text-stone-900 dark:text-stone-100">{favouriteLists.length}</b> pinned
-                </span>
-              </>
-            )}
-          </div>
-        )}
+            {hasLists ? <>Your lists —<br /><span className="text-stone-500 dark:text-stone-400" style={{ fontWeight: 600 }}>what's on today?</span></> : <>Welcome in,<br /><span className="text-stone-500 dark:text-stone-400" style={{ fontWeight: 600 }}>let's make your first list.</span></>}
+          </h1>
+          {hasLists && (
+            <div
+              className="flex items-center gap-3.5 flex-wrap mt-3 text-[13px] text-stone-500 dark:text-stone-400"
+            >
+              <span>
+                <b className="text-stone-900 dark:text-stone-100">{totalListCount}</b> {totalListCount === 1 ? 'list' : 'lists'}
+              </span>
+              {allSharedLists.length > 0 && (
+                <>
+                  <span className="text-stone-300 dark:text-stone-600">·</span>
+                  <span>
+                    <b className="text-stone-900 dark:text-stone-100">{allSharedLists.length}</b> shared
+                  </span>
+                </>
+              )}
+              {favouriteLists.length > 0 && (
+                <>
+                  <span className="text-stone-300 dark:text-stone-600">·</span>
+                  <span>
+                    <b className="text-stone-900 dark:text-stone-100">{favouriteLists.length}</b> pinned
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          {streak > 0 && <StreakBadge streak={streak} />}
+          <Link
+            to="/profile"
+            onClick={() => haptic('light')}
+            aria-label="Profile"
+            className="flex items-center justify-center w-[34px] h-[34px] rounded-full text-white font-extrabold text-sm active:scale-95 transition-transform"
+            style={{
+              background: 'var(--boop-accent)',
+              fontFamily: 'Nunito, system-ui, sans-serif',
+              letterSpacing: -0.3,
+            }}
+          >
+            {(did ?? 'r').slice(-1).toUpperCase() || 'R'}
+          </Link>
+        </div>
       </div>
 
       {/* Search + New button — inline pill row */}
