@@ -61,23 +61,11 @@ test.describe("Terms of Service page", () => {
   test("6. back link navigates to landing page", async ({ page }) => {
     await page.goto("/terms");
 
-    const backLink = page.getByRole("link", { name: /Back to Poo App/i });
+    const backLink = page.getByRole("link", { name: /Back to boop/i });
     await expect(backLink).toBeVisible();
     await backLink.click();
 
     // Should be on the landing page
     await expect(page).toHaveURL("/");
-  });
-
-  test("7. footer Terms link on landing page navigates to /terms", async ({ page }) => {
-    await page.goto("/");
-
-    // Footer has a Terms link
-    const termsLink = page.getByRole("contentinfo").getByRole("link", { name: "Terms" });
-    await expect(termsLink).toBeVisible();
-    await termsLink.click();
-
-    await expect(page).toHaveURL("/terms");
-    await expect(page.getByRole("heading", { name: "Terms of Service" })).toBeVisible();
   });
 });

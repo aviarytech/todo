@@ -39,7 +39,7 @@ export function StreakCelebration({ milestone, onDismiss }: StreakCelebrationPro
       }`}
     >
       {/* Backdrop glow */}
-      <div className={`absolute inset-0 bg-gradient-to-b from-orange-500/10 to-amber-500/10 dark:from-orange-500/20 dark:to-amber-500/20 transition-opacity duration-300 ${
+      <div className={`absolute inset-0 bg-amber-500/10 dark:bg-amber-500/20 transition-opacity duration-300 ${
         isVisible ? 'opacity-100' : 'opacity-0'
       }`} />
 

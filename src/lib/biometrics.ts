@@ -34,7 +34,7 @@ class NativeBiometric implements BiometricService {
     const plugin = await this.getPlugin();
     if (!plugin) return false;
     try {
-      await plugin.verifyIdentity({ reason, title: 'Poo App' });
+      await plugin.verifyIdentity({ reason, title: 'boop' });
       return true;
     } catch { return false; }
   }

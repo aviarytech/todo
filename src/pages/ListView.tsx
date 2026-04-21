@@ -699,7 +699,17 @@ export function ListView() {
           {/* Title and info - takes remaining space */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 break-words min-w-0">
+              <h1
+                className="text-gray-900 dark:text-gray-100 break-words min-w-0"
+                style={{
+                  fontFamily: 'Nunito, system-ui, sans-serif',
+                  fontWeight: 700,
+                  fontSize: 'clamp(24px, 4.5vw, 32px)',
+                  letterSpacing: -0.9,
+                  lineHeight: 1.05,
+                  margin: 0,
+                }}
+              >
                 {list.name}
               </h1>
               {streak > 0 && <StreakBadge streak={streak} size="sm" />}
@@ -712,24 +722,61 @@ export function ListView() {
               anchorTxId={publicationStatus?.anchorTxId}
             />
             </div>
-          
+
             {/* Progress and collaborators info */}
-            <div className="flex items-center gap-2 text-xs sm:text-sm">
+            <div
+              className="flex items-center gap-2 text-[12px] mt-1 text-stone-500 dark:text-stone-400"
+              style={{ fontFamily: 'Geist Mono, ui-monospace, monospace' }}
+            >
             {totalCount > 0 && (
-              <span className="text-gray-500 dark:text-gray-400">
+              <span>
                 {checkedCount}/{totalCount} done
               </span>
             )}
-            
+
             {isPublished && (
               <>
-                <span className="text-gray-300 dark:text-gray-600">•</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs sm:text-sm">
-                  🌐 Shared
+                <span className="text-stone-300 dark:text-stone-600">·</span>
+                <span className="inline-flex items-center gap-1">
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: '#1a7a4c',
+                      display: 'inline-block',
+                    }}
+                    aria-hidden="true"
+                  />
+                  shared
                 </span>
               </>
             )}
             </div>
+
+            {/* Progress bar — only show if there are items */}
+            {totalCount > 0 && (
+              <div className="flex items-center gap-2.5 mt-3 max-w-md">
+                <div className="flex-1 h-[6px] rounded-full overflow-hidden bg-stone-200/70 dark:bg-stone-700/60">
+                  <div
+                    className="h-full rounded-full transition-[width] duration-300"
+                    style={{
+                      width: `${Math.round((checkedCount / totalCount) * 100)}%`,
+                      background: 'var(--boop-accent)',
+                    }}
+                  />
+                </div>
+                <span
+                  className="text-[11px] font-semibold tabular-nums"
+                  style={{
+                    color: 'var(--boop-accent)',
+                    fontFamily: 'Geist Mono, ui-monospace, monospace',
+                  }}
+                >
+                  {Math.round((checkedCount / totalCount) * 100)}%
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Compact action buttons */}
@@ -867,7 +914,7 @@ export function ListView() {
       {totalCount > 0 && (
         <div className="mb-4 bg-amber-100 dark:bg-amber-900/30 rounded-full h-2.5 overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-amber-400 to-amber-500 dark:from-amber-500 dark:to-amber-400 transition-all duration-500 ease-out rounded-full"
+            className="h-full bg-amber-500 transition-all duration-500 ease-out rounded-full"
             style={{ width: `${(checkedCount / totalCount) * 100}%` }}
           />
         </div>
@@ -937,8 +984,8 @@ export function ListView() {
                   {/* Aisle section header — highlights when dragging over */}
                   <div className={`flex items-center gap-2 px-3 py-2 rounded-t-xl border-b transition-colors duration-150 ${
                     dragOverAisleId === aisle.id && groceryTouchDrag.state.draggedId
-                      ? "bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-400 dark:ring-amber-600"
-                      : "bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700 dark:to-gray-750 border-amber-100 dark:border-gray-600"
+                      ? "bg-amber-100 dark:bg-amber-900/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-400 dark:ring-amber-600"
+                      : "bg-amber-50 dark:bg-gray-700 border-amber-100 dark:border-gray-600"
                   }`}>
                     <span className="text-lg">{aisle.emoji}</span>
                     <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">{aisle.name}</span>

@@ -13,6 +13,7 @@ import { initNetworkMonitoring } from './lib/network'
 import { initAnalyticsIfConsented } from './components/CookieConsent'
 import { initSentry } from './lib/sentry'
 import './index.css'
+import './pages/Landing.css'
 import App from './App.tsx'
 
 // Initialize Sentry before anything else (no-op if VITE_SENTRY_DSN is not set)

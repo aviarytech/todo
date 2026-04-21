@@ -17,11 +17,11 @@ test.describe("List management", () => {
     await page.goto("/app");
 
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("No lists yet!")).toBeVisible();
+    await expect(page.getByText("Nothing here yet.")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Create Your First List" }),
+      page.getByRole("button", { name: "Make your first list" }),
     ).toBeVisible();
   });
 
@@ -30,7 +30,7 @@ test.describe("List management", () => {
     await seedAuthSession(page);
     await page.goto("/app");
 
-    await page.getByRole("button", { name: "➕ New list" }).click({ timeout: 10000 });
+    await page.getByRole("button", { name: "Create new list" }).click({ timeout: 10000 });
 
     // Template picker opens first
     await expect(
@@ -50,7 +50,7 @@ test.describe("List management", () => {
     await seedAuthSession(page);
     await page.goto("/app");
 
-    await page.getByRole("button", { name: "➕ New list" }).click({ timeout: 10000 });
+    await page.getByRole("button", { name: "Create new list" }).click({ timeout: 10000 });
     await expect(
       page.getByRole("heading", { name: "Choose a Template" }),
     ).toBeVisible({ timeout: 5000 });
@@ -71,7 +71,7 @@ test.describe("List management", () => {
     await seedAuthSession(page);
     await page.goto("/app");
 
-    await page.getByRole("button", { name: "➕ New list" }).click({ timeout: 10000 });
+    await page.getByRole("button", { name: "Create new list" }).click({ timeout: 10000 });
     await expect(
       page.getByRole("heading", { name: "Choose a Template" }),
     ).toBeVisible({ timeout: 5000 });
@@ -89,7 +89,7 @@ test.describe("List management", () => {
     await seedAuthSession(page);
     await page.goto("/app");
 
-    await page.getByRole("button", { name: "➕ New list" }).click({ timeout: 10000 });
+    await page.getByRole("button", { name: "Create new list" }).click({ timeout: 10000 });
     await expect(
       page.getByRole("heading", { name: "Choose a Template" }),
     ).toBeVisible({ timeout: 5000 });

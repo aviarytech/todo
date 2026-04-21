@@ -174,7 +174,6 @@ function PriorityItem({
 function NoPriorityItemsEmptyState() {
   return (
     <EmptyState
-      emoji="🎯"
       title="No high-priority items"
       description="You don't have any high-priority items across your lists. When you mark items as high priority, they'll appear here for easy focus."
     />

@@ -1,11 +1,6 @@
 /**
- * Landing page for Poo App
- * "Organize your life while you Poop"
- *
- * Responsive design with mobile-first approach:
- * - Mobile: < 640px (sm)
- * - Tablet: 640px - 1024px (md)
- * - Desktop: > 1024px (lg)
+ * Boop marketing landing page.
+ * Ported from design handoff: Boop Landing.html.
  */
 
 import { Link } from 'react-router-dom';
@@ -13,131 +8,306 @@ import { useAuth } from '../hooks/useAuth';
 
 export function Landing() {
   const { isAuthenticated } = useAuth();
+  const appHref = isAuthenticated ? '/' : '/login';
 
   return (
-    <div className="min-h-screen bg-amber-50 overflow-x-hidden">
-
-      {/* Header */}
-      <header className="pt-14 px-4 pb-4 sm:pt-8 sm:px-6 sm:pb-6 safe-area-inset-top">
-        <nav className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            <span className="text-2xl sm:text-3xl flex-shrink-0">💩</span>
-            <span className="font-black text-lg sm:text-xl text-amber-900 truncate">Poo App</span>
-          </div>
-          <Link
-            to={isAuthenticated ? '/' : '/login'}
-            className="px-4 sm:px-6 py-2 sm:py-2.5 bg-amber-900 text-amber-50 rounded-full font-semibold text-sm sm:text-base hover:bg-amber-800 active:bg-amber-950 transition-colors whitespace-nowrap flex-shrink-0"
-          >
-            {isAuthenticated ? 'Open App' : 'Sign In'}
-          </Link>
-        </nav>
-      </header>
-
-      {/* Hero */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-12 sm:pt-20 md:pt-28 pb-16 sm:pb-20 md:pb-24">
-        <div className="text-center">
-          <div className="text-[72px] sm:text-[96px] md:text-[112px] leading-none mb-6 sm:mb-8 cursor-default select-none hover:animate-wiggle" aria-hidden="true">
-            💩
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-black text-amber-900 mb-6 sm:mb-8 leading-[0.95] tracking-tight">
-            Organize your life
-            <br />
-            <span className="font-light text-amber-700">while you</span> Poop
-          </h1>
-
-          <p className="text-base sm:text-lg md:text-xl text-amber-800/60 max-w-md mx-auto mb-10 sm:mb-14 leading-relaxed">
-            The world's most <em>productive</em> todo app. Turn your bathroom breaks
-            into breakthrough moments.
+    <div className="boop-landing">
+      <section className="hero">
+        <div className="wrap">
+          <h1><span className="mark" />boop.</h1>
+          <p className="hero-sub">
+            A calm little place for the things you need to do — alone or with a few people you trust.
+            No feeds, no nags, no notifications asking how you feel.
           </p>
+          <div className="hero-cta">
+            <Link to={appHref} className="btn btn-primary">Get boop — free</Link>
+            <a href="#how" className="btn btn-ghost">See how it works →</a>
+          </div>
+          <p className="hero-signin">
+            Already using boop? <Link to={appHref}>Sign in</Link>
+          </p>
+          <div className="hero-meta">
+            <span className="pip" />
+            <span>no ads · no tracking · end-to-end signed</span>
+          </div>
 
-          <Link
-            to={isAuthenticated ? '/app?action=new' : '/login'}
-            className="inline-flex px-10 py-4 bg-amber-900 text-amber-50 rounded-full font-bold text-base sm:text-lg hover:bg-amber-800 active:bg-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-amber-50 transition-colors min-h-[52px] items-center justify-center"
-          >
-            {isAuthenticated ? 'Start a List' : 'Sign in to Start a List'}
-          </Link>
+          <div className="shot">
+            <div className="shot-grid">
+              <div className="phone">
+                <div className="phone-inner">
+                  <div className="phone-topbar">
+                    <span>9:41</span>
+                    <span>•••</span>
+                  </div>
+                  <div className="wordmark wordmark-sm"><span className="dot" />boop</div>
+                  <h4>Weekend, again.</h4>
+                  <div className="mono-sub">shared · with jamie</div>
+                  <div className="progress"><div /></div>
+
+                  <div className="item"><span className="box on" /><span className="t">Call mom</span></div>
+                  <div className="item"><span className="box" /><span className="t">Long walk, no phone</span></div>
+                  <div className="item"><span className="box" /><span className="t">Finish the book</span><span className="chip">!! high</span></div>
+                  <div className="item"><span className="box on" /><span className="t">Tomatoes, a lot</span><span className="chip">produce</span></div>
+                  <div className="item"><span className="box" /><span className="t">Basil</span><span className="chip">produce</span></div>
+                </div>
+              </div>
+              <div className="mock">
+                <div className="mock-head">
+                  <div>
+                    <div className="mock-tag">shared</div>
+                    <h3>Sprint 24</h3>
+                  </div>
+                  <div className="avatars">
+                    <div className="avy avy-violet">R</div>
+                    <div className="avy avy-coral">J</div>
+                    <div className="avy avy-green">M</div>
+                  </div>
+                </div>
+                <div className="progress progress-lg"><div /></div>
+                <div className="item done"><span className="box on" /><span className="t">Finalize auth migration plan</span><span className="chip">eng</span></div>
+                <div className="item done"><span className="box on" /><span className="t">Review PR #2317</span><span className="chip">review</span></div>
+                <div className="item done"><span className="box on" /><span className="t">Write launch post</span><span className="chip">comms</span></div>
+                <div className="item"><span className="box" /><span className="t">Perf investigation</span><span className="chip chip-accent">!! high</span></div>
+                <div className="item"><span className="box" /><span className="t">Ship settings redesign</span><span className="chip">eng</span></div>
+                <div className="item"><span className="box" /><span className="t">Customer sync — Acme</span><span className="chip">cs</span></div>
+              </div>
+            </div>
+          </div>
         </div>
+      </section>
 
-        {/* Features */}
-        <section id="features" className="mt-28 sm:mt-36 md:mt-44 scroll-mt-16 sm:scroll-mt-20">
-
-          {/* Lead feature — the differentiator */}
-          <div className="bg-amber-900 text-amber-50 rounded-2xl p-8 sm:p-10 md:p-12 mb-4 sm:mb-6">
-            <div className="max-w-lg">
-              <div className="text-3xl mb-4">🔐</div>
-              <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 leading-snug">
-                Cryptographically yours
-              </h3>
-              <p className="text-amber-200 text-sm sm:text-base md:text-lg leading-relaxed">
-                Every task is signed with your personal keys via the Originals Protocol.
-                Your todos, your proof, your legacy — not someone else's database entry.
-              </p>
-            </div>
-          </div>
-
-          {/* Supporting features */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <div className="bg-white rounded-2xl p-6 sm:p-8 border border-amber-100">
-              <div className="text-2xl sm:text-3xl mb-3">⚡</div>
-              <h3 className="text-lg font-bold text-amber-900 mb-1.5">Lightning fast</h3>
-              <p className="text-sm text-amber-800/60 leading-relaxed">
-                Add tasks faster than... well, you know. Perfect for those quick sessions.
-              </p>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 sm:p-8 border border-amber-100">
-              <div className="text-2xl sm:text-3xl mb-3">👥</div>
-              <h3 className="text-lg font-bold text-amber-900 mb-1.5">Share lists</h3>
-              <p className="text-sm text-amber-800/60 leading-relaxed">
-                Collaborate with family, roommates, or coworkers. Shared accountability, shared relief.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Bottom CTA */}
-        <section className="mt-28 sm:mt-36 md:mt-44 text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-900 mb-3 sm:mb-4">
-            Ready to be more productive?
-          </h2>
-          <p className="text-sm sm:text-base md:text-lg text-amber-800/60 mb-8 sm:mb-10 max-w-md mx-auto">
-            Join thousands who've transformed their bathroom time into
-            the most organized part of their day.
+      <section className="section" id="how">
+        <div className="wrap">
+          <div className="section-label">how it works</div>
+          <h2>Three things,<br />done <em>beautifully</em>.</h2>
+          <p className="section-lede">
+            No second-brain claims. No AI that rewrites your life. Just a fast, quiet way to remember stuff and check it off.
           </p>
-          <Link
-            to={isAuthenticated ? '/' : '/login'}
-            className="inline-flex px-10 py-4 sm:py-5 bg-amber-900 text-amber-50 rounded-full font-bold text-lg sm:text-xl hover:bg-amber-800 active:bg-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-amber-50 transition-colors min-h-[56px] items-center justify-center"
-          >
-            Start Organizing 💩
-          </Link>
-        </section>
-      </main>
 
-      {/* Footer */}
-      <footer className="border-t border-amber-200 bg-amber-50 py-8 sm:py-10 safe-area-inset-bottom">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center text-amber-700/60 text-xs sm:text-sm">
-          <p>Made with 💩 by Aviary Tech</p>
-          <p className="mt-2">Powered by Originals Protocol</p>
+          <div className="features">
+            <div className="feat">
+              <div className="feat-icon">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <rect x="3" y="3" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M7 10l2 2 4-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h3>Write it down.</h3>
+              <p>Open boop. Type. Hit return. You can add <kbd>#tags</kbd> and <kbd>!!</kbd> priorities inline. That's it — that's the app.</p>
+            </div>
+            <div className="feat">
+              <div className="feat-icon">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <circle cx="5" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+                  <circle cx="15" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+                  <circle cx="5" cy="15" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M7 6l6 3M7 14l6-3" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+              </div>
+              <h3>Share, carefully.</h3>
+              <p>Invite a few humans. Lists carry a signature so collaborators know it really came from you. Not blockchain jargon — a quiet green dot.</p>
+            </div>
+            <div className="feat">
+              <div className="feat-icon">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M10 4v6l4 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+              </div>
+              <h3>Boop it.</h3>
+              <p>Check the box. Feel the little pop. Watch the progress ring fill. No social graph, no streak lectures — just the quiet satisfaction of a done thing.</p>
+            </div>
+          </div>
+
+          <div className="stats">
+            <div className="stat"><div className="n">3s</div><div className="l">to capture a thing</div></div>
+            <div className="stat"><div className="n">0</div><div className="l">notifications unless you ask</div></div>
+            <div className="stat"><div className="n">⌘K</div><div className="l">to go anywhere</div></div>
+            <div className="stat"><div className="n">E2EE</div><div className="l">on shared lists, by default</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section section-tight" id="trust">
+        <div className="wrap">
+          <div className="trust">
+            <div className="trust-grid">
+              <div>
+                <div className="section-label section-label-dark">trust, not hype</div>
+                <h2>Your lists are yours.<br />Proven, not promised.</h2>
+                <p>
+                  Every list you share carries a signature from your device. Collaborators see a verified badge —
+                  so nobody can spoof "Mom's grocery list" or edit your sprint plan without leaving a trace.
+                </p>
+                <p>
+                  You can export your key, rotate it, or switch devices. The usual web3 strangeness stays behind the curtain.
+                  You just see a small green dot.
+                </p>
+              </div>
+              <div className="badge-card">
+                <div className="who">
+                  <span className="avy avy-violet big">R</span>
+                  <div>
+                    <div className="name">
+                      Riley Chen
+                      <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+                        <path d="M6 1l1.5 1.2 1.8-.1.2 1.8L10.8 5 10 6.5l.8 1.5-1.3 1.1-.2 1.8-1.8-.1L6 11l-1.5-1.2-1.8.1-.2-1.8L1.2 7 2 5.5 1.2 4l1.3-1.1.2-1.8 1.8.1L6 1z" fill="#6b3cff" />
+                        <path d="M4 6l1.5 1.5L8 4.5" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <div className="did">did:boop:rly.2kx8f…9qn</div>
+                  </div>
+                </div>
+                <div className="badge-note">
+                  "Sprint 24" shared this list with 3 people. Signed 2 minutes ago.
+                </div>
+                <span className="signed">
+                  <span className="signed-dot" />
+                  verified · signature intact
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="pullquote">
+        <div className="wrap">
+          <blockquote>
+            "Finally, a to-do app that doesn't want to be my second brain, my coach, or my life partner. It just remembers milk."
+          </blockquote>
+          <cite>— every early tester, basically</cite>
+        </div>
+      </section>
+
+      <section className="section" id="pricing">
+        <div className="wrap">
+          <div className="section-label">pricing</div>
+          <h2>Fair, flat, forever.</h2>
+          <p className="section-lede">One paid tier, priced for a human. Free forever for solo use. No per-seat price-gouging.</p>
+
+          <div className="plans">
+            <div className="plan">
+              <div className="plan-name">Personal</div>
+              <div className="plan-desc">For you and your groceries.</div>
+              <div className="price">$0<small>/forever</small></div>
+              <ul>
+                <li>Unlimited personal lists</li>
+                <li>Calendar view</li>
+                <li>Keyboard shortcuts, ⌘K palette</li>
+                <li>Light + dark</li>
+              </ul>
+              <Link to={appHref} className="btn btn-ghost plan-cta">Start free</Link>
+            </div>
+            <div className="plan hero-plan">
+              <div className="plan-name">Shared</div>
+              <div className="plan-desc">For a few humans you trust.</div>
+              <div className="price">$5<small>/month</small></div>
+              <ul>
+                <li>Everything in Personal</li>
+                <li>Shared + signed lists</li>
+                <li>Up to 8 collaborators per list</li>
+                <li>Activity history</li>
+                <li>Identity + verification</li>
+              </ul>
+              <Link to={appHref} className="btn btn-primary plan-cta plan-cta-invert">Start 14-day trial</Link>
+            </div>
+            <div className="plan">
+              <div className="plan-name">Team</div>
+              <div className="plan-desc">For small teams, no nonsense.</div>
+              <div className="price">$8<small>/user/month</small></div>
+              <ul>
+                <li>Everything in Shared</li>
+                <li>Unlimited collaborators</li>
+                <li>Workspace templates</li>
+                <li>SSO, audit log</li>
+                <li>Priority support</li>
+              </ul>
+              <a href="mailto:hello@boop.app" className="btn btn-ghost plan-cta">Contact us</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section section-tight" id="faq">
+        <div className="wrap">
+          <div className="section-label">faq</div>
+          <h2>Just the honest questions.</h2>
+
+          <div className="faq-grid">
+            <div>
+              <h3 className="faq-q">Is this another second-brain app?</h3>
+              <p className="faq-a">No. It's a first-brain app. It remembers the five things you need to do today and gets out of the way.</p>
+            </div>
+            <div>
+              <h3 className="faq-q">Do I need to understand DIDs?</h3>
+              <p className="faq-a">No. You'll see a small green dot next to your name. That's the whole user-facing surface.</p>
+            </div>
+            <div>
+              <h3 className="faq-q">Offline?</h3>
+              <p className="faq-a">Works fully offline. Syncs when you reconnect. Your device holds your signing key.</p>
+            </div>
+            <div>
+              <h3 className="faq-q">Do you sell my data?</h3>
+              <p className="faq-a">We can't. Shared lists are end-to-end encrypted. We see a blob of ciphertext and the bill you pay us. That's how it should be.</p>
+            </div>
+            <div>
+              <h3 className="faq-q">Will you add AI?</h3>
+              <p className="faq-a">Only if it helps you write down "milk" faster. Probably not.</p>
+            </div>
+            <div>
+              <h3 className="faq-q">What platforms?</h3>
+              <p className="faq-a">iOS, Android, Mac, Windows, web. Keyboard-first on desktop. Thumb-first on mobile.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="cta-wrap">
+        <div className="wrap">
+          <div className="cta-band">
+            <h2>One thing, then<br />the next.</h2>
+            <p>Free for solo use. Nothing to cancel.</p>
+            <Link to={appHref} className="btn btn-primary cta-btn">Get boop</Link>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div className="wrap">
+          <div className="foot">
+            <div className="foot-col foot-col-brand">
+              <div className="wordmark wordmark-sm"><span className="dot" />boop</div>
+              <div className="foot-tag">Made carefully, in a quiet room.</div>
+            </div>
+            <div className="foot-col">
+              <strong>Product</strong>
+              <a href="#how">How it works</a>
+              <a href="#pricing">Pricing</a>
+              <a href="#">Changelog</a>
+              <a href="#">Roadmap</a>
+            </div>
+            <div className="foot-col">
+              <strong>Trust</strong>
+              <Link to="/privacy">Privacy</Link>
+              <a href="#trust">Security</a>
+              <a href="#">Open protocol</a>
+              <a href="#">Delete my data</a>
+            </div>
+            <div className="foot-col">
+              <strong>Company</strong>
+              <a href="#">About</a>
+              <a href="#">Manifesto</a>
+              <a href="mailto:hello@boop.app">Contact</a>
+              <Link to={appHref}>Sign in</Link>
+            </div>
+          </div>
+          <div className="foot-bottom">
+            <span>© 2026 boop · made in a quiet room</span>
+            <span>v0.4.0 · signed build</span>
+          </div>
         </div>
       </footer>
-      <style>{`
-        @keyframes wiggle {
-          0%, 100% { transform: rotate(0deg); }
-          20% { transform: rotate(-6deg); }
-          40% { transform: rotate(5deg); }
-          60% { transform: rotate(-3deg); }
-          80% { transform: rotate(2deg); }
-        }
-        .hover\\:animate-wiggle:hover {
-          animation: wiggle 0.5s ease-in-out;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .hover\\:animate-wiggle:hover {
-            animation: none;
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -169,7 +169,7 @@ export function PublishModal({ list, onClose }: PublishModalProps) {
       <button
         onClick={handlePublish}
         disabled={isPublishing}
-        className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 disabled:opacity-50 transition-all"
+        className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 disabled:opacity-50 transition-all"
       >
         {isPublishing ? (
           <span className="flex items-center justify-center gap-2">

@@ -2,7 +2,7 @@
  * Onboarding flow tests (POO-45)
  *
  * Tests the 2-step new-user onboarding:
- *   Step 1 — auto-create "Getting Started 💩" demo list on first login.
+ *   Step 1 — auto-create "Getting Started" demo list on first login.
  *   Step 2 — InviteNudge banner shown after user creates their first real list.
  *
  * All tests use:
@@ -78,7 +78,7 @@ async function mockConvexWebSocket(
                       ? Array.from({ length: existingListCount }, (_, i) => ({
                           _id: `lists:mocklist${i}`,
                           _creationTime: Date.now() - (existingListCount - i) * 3600_000,
-                          name: i === 0 ? "Getting Started 💩" : `Test List ${i}`,
+                          name: i === 0 ? "Getting Started" : `Test List ${i}`,
                           ownerDid: "did:webvh:e2e.poo.app:users:e2e-suborg-001",
                           assetDid: `did:example:asset${i}`,
                           createdAt: Date.now() - (existingListCount - i) * 3600_000,
@@ -185,12 +185,12 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
 
     // Wait for home page to settle
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
 
     // The old 4-step flow modal should NOT appear — it's suppressed by the 2-step path
     await expect(
-      page.getByRole("heading", { name: "Welcome to Poo App" }),
+      page.getByRole("heading", { name: "Welcome to boop." }),
     ).not.toBeVisible();
   });
 
@@ -203,7 +203,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
 
     // Wait for the home page to load and the demo creation effect to run
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
 
     // Give the async demo creation a moment to fire
@@ -225,7 +225,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
     await page.goto("/app");
 
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
 
     // Give the effect time to run
@@ -250,7 +250,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
     await page.goto("/app");
 
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
 
     // Open template picker (pill chip "New list" button — first match; FAB is second)
@@ -285,7 +285,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
     await page.goto("/app");
 
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
 
     // Open template picker and create a blank list
@@ -330,7 +330,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
     await page.goto("/app");
 
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 10000 });
 
     // Create a list

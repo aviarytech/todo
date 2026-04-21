@@ -183,7 +183,7 @@ self.addEventListener('push', (event) => {
 
   try {
     const data = event.data.json();
-    const title = data.title || '💩 Poo App';
+    const title = data.title || 'boop';
     const options = {
       body: data.body || 'You have a notification',
       icon: '/pwa-192x192.png',
@@ -203,7 +203,7 @@ self.addEventListener('push', (event) => {
     // Fallback for plain text push
     const body = event.data.text();
     event.waitUntil(
-      self.registration.showNotification('💩 Poo App', {
+      self.registration.showNotification('boop', {
         body,
         icon: '/pwa-192x192.png',
       })

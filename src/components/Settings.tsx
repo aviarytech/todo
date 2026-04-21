@@ -595,16 +595,16 @@ export function Settings({ onClose }: SettingsProps) {
             About
           </h3>
           
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700 dark:to-gray-700 rounded-xl p-4">
+          <div className="bg-stone-50 dark:bg-gray-700 rounded-xl p-4 border border-stone-200/70 dark:border-transparent">
             <div className="flex items-center gap-3 mb-3">
-              <span className="text-3xl leading-none">💩</span>
-              <div>
-                <p className="font-bold text-gray-900 dark:text-gray-100">Poo App</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Version 1.0.0</p>
+              <div className="boop-wordmark text-[22px] leading-none">
+                <span className="boop-dot" aria-hidden="true" />
+                <span>boop</span>
               </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 ml-auto">v1.0.0</p>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              Organize your life while you poop. Powered by Originals Protocol.
+              A calm place for the things you need to do. Powered by Originals Protocol.
             </p>
           </div>
         </section>

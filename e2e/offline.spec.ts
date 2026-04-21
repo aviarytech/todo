@@ -22,7 +22,7 @@ async function gotoAppOnline(page: import("@playwright/test").Page) {
   await seedAuthSession(page);
   await page.goto("/app");
   await expect(
-    page.getByRole("heading", { name: "Your Lists" }),
+    page.getByRole("heading", { name: /Your lists|Welcome in/i }),
   ).toBeVisible({ timeout: 10000 });
 }
 
@@ -71,7 +71,7 @@ test.describe("Offline indicator", () => {
 
     // The home page content should still be visible despite being offline
     await expect(
-      page.getByRole("heading", { name: "Your Lists" }),
+      page.getByRole("heading", { name: /Your lists|Welcome in/i }),
     ).toBeVisible({ timeout: 5000 });
   });
 });

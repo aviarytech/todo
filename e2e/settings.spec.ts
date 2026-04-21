@@ -22,7 +22,7 @@ async function openSettings(page: import("@playwright/test").Page) {
   await page.goto("/app");
 
   await expect(
-    page.getByRole("heading", { name: "Your Lists" }),
+    page.getByRole("heading", { name: /Your lists|Welcome in/i }),
   ).toBeVisible({ timeout: 10000 });
 
   await page.getByRole("button", { name: "Settings" }).click();

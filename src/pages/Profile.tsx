@@ -90,14 +90,32 @@ export function Profile() {
       {/* Profile Card */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
         {/* Header with avatar */}
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-8 text-center">
-          <div className="w-24 h-24 mx-auto bg-white dark:bg-gray-800 rounded-full flex items-center justify-center text-5xl shadow-lg mb-4">
-            💩
+        <div className="px-6 py-8 text-center" style={{ background: 'var(--boop-accent)' }}>
+          <div
+            className="w-20 h-20 mx-auto rounded-full flex items-center justify-center text-white shadow-lg mb-4"
+            style={{
+              background: 'rgba(255,255,255,0.15)',
+              fontFamily: 'Nunito, system-ui, sans-serif',
+              fontWeight: 800,
+              fontSize: 34,
+              letterSpacing: -1,
+            }}
+            aria-hidden="true"
+          >
+            {(displayName || email || 'B').trim().charAt(0).toUpperCase()}
           </div>
-          <h1 className="text-2xl font-bold text-white mb-1">
+          <h1
+            className="text-white mb-1"
+            style={{
+              fontFamily: 'Nunito, system-ui, sans-serif',
+              fontWeight: 800,
+              fontSize: 24,
+              letterSpacing: -0.5,
+            }}
+          >
             {displayName || email?.split('@')[0] || 'Anonymous'}
           </h1>
-          <p className="text-amber-100 text-sm">
+          <p className="text-white/75 text-sm">
             {email || 'No email set'}
           </p>
         </div>
@@ -271,7 +289,7 @@ export function Profile() {
         {/* Motivational footer */}
         {completionRate >= 80 && (
           <div className="px-6 pb-6">
-            <div className="bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-xl p-4 text-center">
+            <div className="bg-amber-100 dark:bg-amber-900/30 rounded-xl p-4 text-center">
               <p className="text-2xl mb-2">🏆</p>
               <p className="font-medium text-amber-800 dark:text-amber-200">
                 Amazing! You're a productivity champion!
@@ -282,7 +300,7 @@ export function Profile() {
         
         {completionRate < 80 && completionRate >= 50 && (
           <div className="px-6 pb-6">
-            <div className="bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-xl p-4 text-center">
+            <div className="bg-amber-100 dark:bg-amber-900/30 rounded-xl p-4 text-center">
               <p className="text-2xl mb-2">💪</p>
               <p className="font-medium text-amber-800 dark:text-amber-200">
                 Great progress! Keep up the momentum!
@@ -293,7 +311,7 @@ export function Profile() {
         
         {completionRate < 50 && totalItems > 0 && (
           <div className="px-6 pb-6">
-            <div className="bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-xl p-4 text-center">
+            <div className="bg-amber-100 dark:bg-amber-900/30 rounded-xl p-4 text-center">
               <p className="text-2xl mb-2">🚀</p>
               <p className="font-medium text-orange-800 dark:text-orange-200">
                 You've got this! Every item counts!

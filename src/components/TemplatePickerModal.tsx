@@ -161,7 +161,7 @@ export function TemplatePickerModal({ onClose, onCreateBlank }: TemplatePickerMo
           type="button"
           onClick={handleCreateFromBuiltin}
           disabled={isCreating}
-          className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
+          className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-white rounded-xl font-semibold shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
         >
           {isCreating ? (
             <span className="flex items-center justify-center gap-2">
@@ -269,7 +269,7 @@ export function TemplatePickerModal({ onClose, onCreateBlank }: TemplatePickerMo
                 haptic('light');
                 onCreateBlank();
               }}
-              className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-2 border-dashed border-amber-300 dark:border-amber-700 rounded-xl hover:border-amber-400 dark:hover:border-amber-600 transition-colors text-left"
+              className="w-full flex items-center gap-4 p-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-dashed border-amber-300 dark:border-amber-700 rounded-xl hover:border-amber-400 dark:hover:border-amber-600 transition-colors text-left"
             >
               <span className="text-2xl leading-none">✨</span>
               <div>

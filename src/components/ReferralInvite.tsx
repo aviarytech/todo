@@ -72,8 +72,8 @@ export function ReferralInvite({ userId, compact = false }: ReferralInviteProps)
     if (!referralUrl) return;
     if (navigator.share) {
       await navigator.share({
-        title: "Join me on Poo App",
-        text: "I use Poo App to manage my lists. Sign up with my link and we both get 1 month Pro free!",
+        title: "Join me on boop",
+        text: "I use boop to manage my lists. Sign up with my link and we both get 1 month Pro free!",
         url: referralUrl,
       });
     } else {
