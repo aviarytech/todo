@@ -3,7 +3,7 @@
  * Accessed via /{userPath}/resources/list-{listId}
  *
  * - Anyone can view the list
- * - Logged-in Poo App users can save to favourites
+ * - Logged-in boop users can save to favourites
  */
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -176,12 +176,12 @@ export function SharedListResource() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
         <div className="text-center p-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            {error === "List not found" ? "💩 List not found" : "💩 Something went wrong"}
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2" style={{ fontFamily: 'Nunito, system-ui, sans-serif', letterSpacing: -0.5 }}>
+            {error === "List not found" ? "List not found" : "Something went wrong"}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
-          <Link to="/" className="text-amber-500 hover:text-amber-600 font-medium">
-            Go to Poo App →
+          <Link to="/" className="text-amber-600 hover:text-amber-500 font-medium">
+            Go to boop →
           </Link>
         </div>
       </div>
@@ -198,9 +198,9 @@ export function SharedListResource() {
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
-              <span>💩</span>
-              <span>Shared List</span>
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <span className="boop-dot" aria-hidden="true" style={{ width: 10, height: 10 }} />
+              <span style={{ fontFamily: 'Geist Mono, ui-monospace, monospace', fontSize: 12 }}>shared list</span>
             </div>
             {/* Favourite button — only for logged-in users */}
             {did && convexListId && (
@@ -356,8 +356,8 @@ export function SharedListResource() {
         <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
             Shared via{" "}
-            <a href="https://trypoo.app" className="text-amber-500 hover:text-amber-600">
-              Poo App
+            <a href="/" className="text-amber-600 hover:text-amber-500">
+              boop
             </a>
             {" "}· Verified with{" "}
             <span className="font-mono">did:webvh</span>

@@ -259,16 +259,29 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <div className="text-center max-w-sm w-full">
-      <div className="text-[100px] leading-none mb-6 animate-bounce-slow">
-        💩
+      <div className="mx-auto mb-8 flex items-center justify-center" style={{ width: 96, height: 96, borderRadius: '50%', background: 'var(--boop-accent-soft)' }}>
+        <div
+          className="rounded-full animate-bounce-slow"
+          style={{ width: 44, height: 44, background: 'var(--boop-accent)' }}
+          aria-hidden="true"
+        />
       </div>
-      <h1 className="text-3xl font-black text-amber-900 mb-3 leading-tight">
-        Welcome to Poo App
+      <h1
+        className="text-stone-900 dark:text-stone-50 mb-3"
+        style={{
+          fontFamily: 'Nunito, system-ui, sans-serif',
+          fontWeight: 800,
+          fontSize: 32,
+          letterSpacing: -1,
+          lineHeight: 1.1,
+        }}
+      >
+        Welcome to boop.
       </h1>
-      <p className="text-amber-800/70 text-base mb-2 leading-relaxed">
-        Organize your life while you poop.
+      <p className="text-stone-600 dark:text-stone-300 text-base mb-2 leading-relaxed">
+        A calm place for the things you need to do.
       </p>
-      <p className="text-amber-700/60 text-sm mb-10 leading-relaxed">
+      <p className="text-stone-500 dark:text-stone-400 text-sm mb-10 leading-relaxed">
         Let's get you set up in under 60 seconds. We'll create your first
         list and show you how to share it with someone.
       </p>
@@ -562,7 +575,7 @@ function ShareStep({
             onClick={onFinish}
             className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-500 text-white rounded-2xl font-bold text-base shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-orange-400 transition-all"
           >
-            Open my list 💩
+            Open my list →
           </button>
         </div>
       ) : (

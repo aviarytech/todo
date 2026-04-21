@@ -25,12 +25,12 @@ const COMPETITORS: Record<string, CompetitorData> = {
   todoist: {
     name: 'Todoist',
     slug: 'todoist',
-    tagline: 'Poo App vs Todoist',
-    metaTitle: 'Poo App vs Todoist — The Better Todoist Alternative',
+    tagline: 'boop vs Todoist',
+    metaTitle: 'boop vs Todoist — The Better Todoist Alternative',
     metaDescription:
-      'Comparing Poo App vs Todoist: offline-first access, real-time collaboration, DID-signed data ownership, and a free tier that actually works. See why teams are switching.',
+      'Comparing boop vs Todoist: offline-first access, real-time collaboration, DID-signed data ownership, and a free tier that actually works. See why teams are switching.',
     ogDescription:
-      'Poo App vs Todoist — offline-first, real-time sync, and data you actually own. Free to start.',
+      'boop vs Todoist — offline-first, real-time sync, and data you actually own. Free to start.',
     pooHeadline: 'Offline-first. Data you own. Free to start.',
     competitorHeadline: 'Todoist requires a connection and a credit card for collaboration.',
     features: [
@@ -54,12 +54,12 @@ const COMPETITORS: Record<string, CompetitorData> = {
   reminders: {
     name: 'Apple Reminders',
     slug: 'reminders',
-    tagline: 'Poo App vs Apple Reminders',
-    metaTitle: 'Poo App vs Apple Reminders — Better Cross-Platform Todo App',
+    tagline: 'boop vs Apple Reminders',
+    metaTitle: 'boop vs Apple Reminders — Better Cross-Platform Todo App',
     metaDescription:
-      'Comparing Poo App vs Apple Reminders: real-time sync across all platforms, full offline support, and list sharing without an Apple device. Free to start.',
+      'Comparing boop vs Apple Reminders: real-time sync across all platforms, full offline support, and list sharing without an Apple device. Free to start.',
     ogDescription:
-      'Poo App vs Apple Reminders — works on Android, Windows, and web. Real-time sync. Free.',
+      'boop vs Apple Reminders — works on Android, Windows, and web. Real-time sync. Free.',
     pooHeadline: 'Cross-platform. Real-time. No Apple required.',
     competitorHeadline: 'Apple Reminders only works if everyone you share with owns Apple devices.',
     features: [
@@ -83,12 +83,12 @@ const COMPETITORS: Record<string, CompetitorData> = {
   things: {
     name: 'Things 3',
     slug: 'things',
-    tagline: 'Poo App vs Things 3',
-    metaTitle: 'Poo App vs Things 3 — Free Alternative with Real-Time Sharing',
+    tagline: 'boop vs Things 3',
+    metaTitle: 'boop vs Things 3 — Free Alternative with Real-Time Sharing',
     metaDescription:
-      'Comparing Poo App vs Things 3: free to start, real-time collaboration, cross-platform, and no $50 Mac app purchase. See why Poo App is the modern Things alternative.',
+      'Comparing boop vs Things 3: free to start, real-time collaboration, cross-platform, and no $50 Mac app purchase. See why boop is the modern Things alternative.',
     ogDescription:
-      'Poo App vs Things 3 — free to start, real-time sharing, works on Android and web. No $50 upfront.',
+      'boop vs Things 3 — free to start, real-time sharing, works on Android and web. No $50 upfront.',
     pooHeadline: 'Free to start. Real-time. Works everywhere.',
     competitorHeadline: 'Things 3 costs $50 for Mac, has no Android app, and has zero collaboration.',
     features: [
@@ -164,7 +164,7 @@ export function Compare() {
     setMeta('twitter:description', data.ogDescription)
 
     return () => {
-      document.title = '💩 Poo App - Organize Your Life'
+      document.title = 'boop'
     }
   }, [data])
 
@@ -172,9 +172,13 @@ export function Compare() {
     return (
       <div className="min-h-screen bg-amber-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">💩</div>
+          <div
+            className="mx-auto mb-5 rounded-full"
+            style={{ width: 48, height: 48, background: 'var(--boop-accent)' }}
+            aria-hidden="true"
+          />
           <h1 className="text-2xl font-bold text-amber-900 mb-2">Comparison not found</h1>
-          <a href="/" className="text-amber-600 underline">Back to Poo App</a>
+          <a href="/" className="text-amber-600 underline">Back to boop</a>
         </div>
       </div>
     )
@@ -186,10 +190,14 @@ export function Compare() {
       <header className="bg-amber-900 text-amber-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <a href="/" className="flex items-center gap-2 mb-6 text-amber-200 hover:text-white transition-colors text-sm">
-            &larr; Back to Poo App
+            &larr; Back to boop
           </a>
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-4xl">💩</span>
+            <span
+              className="rounded-full"
+              style={{ width: 28, height: 28, background: 'var(--boop-accent)', display: 'inline-block' }}
+              aria-hidden="true"
+            />
             <h1 className="text-3xl md:text-4xl font-black">{data.tagline}</h1>
           </div>
           <p className="text-amber-200 text-lg max-w-2xl">{data.pooHeadline}</p>
@@ -213,7 +221,12 @@ export function Compare() {
                   <th className="text-left px-4 py-3 font-semibold w-1/2">Feature</th>
                   <th className="text-center px-4 py-3 font-semibold w-1/4">
                     <span className="flex items-center justify-center gap-1.5">
-                      <span>💩</span> Poo App
+                      <span
+                        className="rounded-full"
+                        style={{ width: 10, height: 10, background: '#fff', display: 'inline-block' }}
+                        aria-hidden="true"
+                      />
+                      boop
                     </span>
                   </th>
                   <th className="text-center px-4 py-3 font-semibold w-1/4">{data.name}</th>
@@ -241,7 +254,11 @@ export function Compare() {
 
         {/* CTA */}
         <section className="bg-amber-900 text-amber-50 rounded-2xl px-8 py-10 text-center shadow-lg">
-          <div className="text-5xl mb-4">💩</div>
+          <div
+            className="mx-auto mb-5 rounded-full"
+            style={{ width: 44, height: 44, background: 'var(--boop-accent)' }}
+            aria-hidden="true"
+          />
           <h2 className="text-2xl md:text-3xl font-black mb-3">
             Ready to ditch {data.name}?
           </h2>
@@ -252,7 +269,7 @@ export function Compare() {
             href="/"
             className="inline-block bg-amber-400 hover:bg-amber-300 text-amber-900 font-bold text-lg px-8 py-3 rounded-xl transition-colors shadow"
           >
-            Try Poo App Free
+            Try boop Free
           </a>
           <p className="text-amber-300 text-sm mt-4">
             Free forever for up to 5 lists. No credit card needed.
@@ -271,7 +288,7 @@ export function Compare() {
                   href={`/compare/${c.slug}`}
                   className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 font-medium rounded-lg transition-colors text-sm border border-amber-200"
                 >
-                  Poo App vs {c.name} &rarr;
+                  boop vs {c.name} &rarr;
                 </a>
               ))}
           </div>
@@ -280,7 +297,10 @@ export function Compare() {
 
       <footer className="border-t border-amber-200 py-6 px-4 text-center text-amber-600 text-sm mt-4">
         <p>
-          <a href="/" className="hover:text-amber-900 transition-colors font-semibold">💩 Poo App</a>
+          <a href="/" className="boop-wordmark hover:opacity-80 transition-opacity" aria-label="boop">
+            <span className="boop-dot" aria-hidden="true" style={{ width: 10, height: 10 }} />
+            <span>boop</span>
+          </a>
           {' · '}
           <a href="/pricing" className="hover:text-amber-900 transition-colors">Pricing</a>
           {' · '}

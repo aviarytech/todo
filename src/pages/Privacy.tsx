@@ -11,7 +11,7 @@ export function Privacy() {
       <header className="bg-amber-900 text-amber-50 py-6 px-4">
         <div className="max-w-3xl mx-auto">
           <a href="/" className="flex items-center gap-2 mb-4 text-amber-200 hover:text-white transition-colors text-sm">
-            &larr; Back to Poo App
+            &larr; Back to boop
           </a>
           <h1 className="text-3xl font-black">Privacy Policy</h1>
           <p className="text-amber-200 mt-1 text-sm">Last updated: March 2026</p>
@@ -22,7 +22,7 @@ export function Privacy() {
         <section className="mb-8">
           <h2 className="text-xl font-bold text-amber-900 mb-3">Overview</h2>
           <p className="text-amber-800 leading-relaxed">
-            Poo App (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) is a todo list and task management application.
+            boop (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) is a todo list and task management application.
             We take your privacy seriously. This policy explains what data we collect, how we use it,
             and your rights regarding your personal information.
           </p>
@@ -41,7 +41,7 @@ export function Privacy() {
         <section className="mb-8">
           <h2 className="text-xl font-bold text-amber-900 mb-3">How We Use Your Data</h2>
           <ul className="space-y-2 text-amber-800">
-            <li>To provide and improve the Poo App service.</li>
+            <li>To provide and improve the boop service.</li>
             <li>To sync your lists across devices.</li>
             <li>To enable list sharing with collaborators you invite.</li>
             <li>To send transactional emails (account verification, password reset).</li>
@@ -73,7 +73,7 @@ export function Privacy() {
         <section className="mb-8">
           <h2 className="text-xl font-bold text-amber-900 mb-3">Offline Data</h2>
           <p className="text-amber-800 leading-relaxed">
-            Poo App stores a local copy of your lists on your device to support offline access.
+            boop stores a local copy of your lists on your device to support offline access.
             This data is stored in your device&apos;s local storage and is not accessible to other apps.
           </p>
         </section>
@@ -91,7 +91,7 @@ export function Privacy() {
         <section className="mb-8">
           <h2 className="text-xl font-bold text-amber-900 mb-3">Children&apos;s Privacy</h2>
           <p className="text-amber-800 leading-relaxed">
-            Poo App is not directed at children under 13 years of age. We do not knowingly collect
+            boop is not directed at children under 13 years of age. We do not knowingly collect
             personal information from children under 13.
           </p>
         </section>

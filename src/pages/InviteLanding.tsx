@@ -31,10 +31,14 @@ export function InviteLanding() {
   }, [code, isAuthenticated, navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--boop-bg)' }}>
       <div className="text-center">
-        <div className="text-6xl mb-4">💩</div>
-        <p className="text-amber-800 font-medium">Getting your invite ready…</p>
+        <div
+          className="mx-auto mb-5 rounded-full animate-pulse-ring"
+          style={{ width: 56, height: 56, background: 'var(--boop-accent)' }}
+          aria-hidden="true"
+        />
+        <p className="text-stone-600 dark:text-stone-300 font-medium">Getting your invite ready…</p>
       </div>
     </div>
   );

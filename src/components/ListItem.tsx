@@ -235,10 +235,10 @@ export const ListItem = memo(function ListItem({
           aria-checked={isSelected}
           aria-label={`Select ${item.name}`}
         >
-          <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
             isSelected
-              ? "bg-amber-500 text-white"
-              : "bg-gray-200 dark:bg-gray-600"
+              ? "bg-[#6b3cff] text-white"
+              : "bg-stone-200 dark:bg-stone-600"
           }`}>
             {isSelected && (
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
@@ -279,45 +279,49 @@ export const ListItem = memo(function ListItem({
             handleToggleCheck();
           }}
           disabled={isUpdating}
-          className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-50 -ml-2`}
+          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 disabled:opacity-50 -ml-2`}
           aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
         >
-          <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
-            item.checked
-              ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-sm shadow-green-500/30"
-              : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
-          }`}>
-            {item.checked ? (
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <div
+            className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+              item.checked
+                ? "bg-[#6b3cff] text-white shadow-sm shadow-[#6b3cff]/30"
+                : "bg-transparent border-[1.6px] border-stone-300 dark:border-stone-500 hover:border-[#6b3cff] dark:hover:border-[#9b74ff]"
+            }`}
+          >
+            {item.checked && (
+              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                 <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
+                  d="M2.5 6.5l2.5 2.5 5-6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               </svg>
-            ) : (
-              <div className="w-2 h-2" aria-hidden="true" />
             )}
           </div>
         </button>
       ) : (
         // Read-only checkbox display for viewers
         <div
-          className={`flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center ${
-            item.checked 
-              ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white" 
-              : "bg-gray-100 dark:bg-gray-700"
+          className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
+            item.checked
+              ? "bg-[#6b3cff] text-white"
+              : "border-[1.6px] border-stone-300 dark:border-stone-500"
           }`}
           role="checkbox"
           aria-checked={item.checked}
           aria-label={`${item.name} is ${item.checked ? 'checked' : 'unchecked'}`}
         >
           {item.checked && (
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd"
+                d="M2.5 6.5l2.5 2.5 5-6"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
             </svg>
           )}

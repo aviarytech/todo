@@ -58,10 +58,11 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           <Link
             to="/app"
             onClick={() => haptic('light')}
-            className="flex items-center gap-2 text-xl font-black text-amber-900 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+            className="boop-wordmark text-[20px] leading-none hover:opacity-80 transition-opacity"
+            aria-label="boop — home"
           >
-            <span className="text-2xl">💩</span>
-            <span>Poo App</span>
+            <span className="boop-dot" aria-hidden="true" />
+            <span>boop</span>
           </Link>
           
           <div className="flex items-center gap-2">
@@ -138,7 +139,16 @@ function PageLoadingFallback() {
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-gray-950 flex items-center justify-center">
       <div className="text-center">
-        <div className="text-6xl mb-4">💩</div>
+        <div
+          className="mx-auto mb-5 rounded-full"
+          style={{
+            width: 56,
+            height: 56,
+            background: 'var(--boop-accent)',
+            animation: 'pulse-ring 2s ease-in-out infinite',
+          }}
+          aria-hidden="true"
+        />
         <div className="animate-pulse space-y-3">
           <div className="h-4 bg-stone-200 dark:bg-gray-700 rounded w-48 mx-auto"></div>
           <div className="h-3 bg-stone-200 dark:bg-gray-700 rounded w-32 mx-auto"></div>

@@ -699,7 +699,17 @@ export function ListView() {
           {/* Title and info - takes remaining space */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 break-words min-w-0">
+              <h1
+                className="text-gray-900 dark:text-gray-100 break-words min-w-0"
+                style={{
+                  fontFamily: 'Nunito, system-ui, sans-serif',
+                  fontWeight: 700,
+                  fontSize: 'clamp(24px, 4.5vw, 32px)',
+                  letterSpacing: -0.9,
+                  lineHeight: 1.05,
+                  margin: 0,
+                }}
+              >
                 {list.name}
               </h1>
               {streak > 0 && <StreakBadge streak={streak} size="sm" />}
@@ -712,24 +722,61 @@ export function ListView() {
               anchorTxId={publicationStatus?.anchorTxId}
             />
             </div>
-          
+
             {/* Progress and collaborators info */}
-            <div className="flex items-center gap-2 text-xs sm:text-sm">
+            <div
+              className="flex items-center gap-2 text-[12px] mt-1 text-stone-500 dark:text-stone-400"
+              style={{ fontFamily: 'Geist Mono, ui-monospace, monospace' }}
+            >
             {totalCount > 0 && (
-              <span className="text-gray-500 dark:text-gray-400">
+              <span>
                 {checkedCount}/{totalCount} done
               </span>
             )}
-            
+
             {isPublished && (
               <>
-                <span className="text-gray-300 dark:text-gray-600">•</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs sm:text-sm">
-                  🌐 Shared
+                <span className="text-stone-300 dark:text-stone-600">·</span>
+                <span className="inline-flex items-center gap-1">
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: '#1a7a4c',
+                      display: 'inline-block',
+                    }}
+                    aria-hidden="true"
+                  />
+                  shared
                 </span>
               </>
             )}
             </div>
+
+            {/* Progress bar — only show if there are items */}
+            {totalCount > 0 && (
+              <div className="flex items-center gap-2.5 mt-3 max-w-md">
+                <div className="flex-1 h-[6px] rounded-full overflow-hidden bg-stone-200/70 dark:bg-stone-700/60">
+                  <div
+                    className="h-full rounded-full transition-[width] duration-300"
+                    style={{
+                      width: `${Math.round((checkedCount / totalCount) * 100)}%`,
+                      background: 'var(--boop-accent)',
+                    }}
+                  />
+                </div>
+                <span
+                  className="text-[11px] font-semibold tabular-nums"
+                  style={{
+                    color: 'var(--boop-accent)',
+                    fontFamily: 'Geist Mono, ui-monospace, monospace',
+                  }}
+                >
+                  {Math.round((checkedCount / totalCount) * 100)}%
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Compact action buttons */}

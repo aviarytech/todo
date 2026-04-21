@@ -1,12 +1,11 @@
 /**
- * Empty state components with playful Poo App branding.
+ * Empty state components — Boop design.
  */
 
 import { type ReactNode } from 'react';
 
 interface EmptyStateProps {
   icon?: ReactNode;
-  emoji?: string;
   title: string;
   description: string;
   action?: ReactNode;
@@ -15,27 +14,51 @@ interface EmptyStateProps {
 /**
  * Generic empty state component.
  */
-export function EmptyState({ icon, emoji = '💩', title, description, action }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="text-center py-16 px-6 bg-gradient-to-b from-amber-50 to-orange-50 dark:from-gray-800 dark:to-gray-900 rounded-3xl border-2 border-dashed border-amber-200 dark:border-gray-700">
+    <div
+      className="text-center py-14 px-6 rounded-3xl border-2 border-dashed border-stone-200 dark:border-stone-700"
+      style={{ background: 'var(--boop-panel)' }}
+    >
       <div className="relative inline-block mb-6">
         {icon || (
-          <div className="text-7xl animate-bounce-slow filter drop-shadow-lg">
-            {emoji}
+          <div
+            className="rounded-full mx-auto flex items-center justify-center"
+            style={{
+              width: 88,
+              height: 88,
+              background: 'var(--boop-accent-soft)',
+            }}
+          >
+            <div
+              className="rounded-full"
+              style={{
+                width: 40,
+                height: 40,
+                background: 'var(--boop-accent)',
+                animation: 'pulse-ring 2.4s ease-in-out infinite',
+              }}
+              aria-hidden="true"
+            />
           </div>
         )}
-        {/* Floating particles */}
-        <div className="absolute -top-2 -right-2 text-2xl animate-float-delayed">✨</div>
-        <div className="absolute -bottom-1 -left-3 text-xl animate-float">🌟</div>
       </div>
-      
-      <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+
+      <h3
+        className="text-stone-900 dark:text-stone-50 mb-2"
+        style={{
+          fontFamily: 'Nunito, system-ui, sans-serif',
+          fontWeight: 700,
+          fontSize: 22,
+          letterSpacing: -0.6,
+        }}
+      >
         {title}
       </h3>
-      <p className="text-gray-600 dark:text-gray-400 max-w-sm mx-auto mb-6">
+      <p className="text-stone-500 dark:text-stone-400 max-w-sm mx-auto mb-6 text-sm leading-relaxed">
         {description}
       </p>
-      
+
       {action}
     </div>
   );
@@ -47,16 +70,18 @@ export function EmptyState({ icon, emoji = '💩', title, description, action }:
 export function NoListsEmptyState({ onCreateList }: { onCreateList: () => void }) {
   return (
     <EmptyState
-      emoji="📝"
-      title="No lists yet!"
-      description="Create your first list and start organizing your life. Every great journey starts with a single step... or a single list."
+      title="Nothing here yet."
+      description="Make a list for the thing you keep meaning to do. One is enough to start."
       action={
         <button
           onClick={onCreateList}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-2xl font-bold text-lg shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 transition-all hover:-translate-y-0.5 active:translate-y-0"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-white text-sm transition-transform active:scale-95"
+          style={{
+            background: 'var(--boop-accent)',
+            boxShadow: '0 8px 20px rgba(107,60,255,0.35)',
+          }}
         >
-          <span>💩</span>
-          Create Your First List
+          Make your first list
         </button>
       }
     />
@@ -69,12 +94,28 @@ export function NoListsEmptyState({ onCreateList }: { onCreateList: () => void }
 export function NoItemsEmptyState() {
   return (
     <div className="py-12 px-6 text-center">
-      <div className="text-5xl mb-4 animate-bounce-slow">📋</div>
-      <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-1">
+      <div
+        className="rounded-full mx-auto mb-4"
+        style={{
+          width: 44,
+          height: 44,
+          background: 'var(--boop-accent-soft)',
+        }}
+        aria-hidden="true"
+      />
+      <h3
+        className="text-stone-700 dark:text-stone-200 mb-1"
+        style={{
+          fontFamily: 'Nunito, system-ui, sans-serif',
+          fontWeight: 700,
+          fontSize: 18,
+          letterSpacing: -0.4,
+        }}
+      >
         This list is empty
       </h3>
-      <p className="text-gray-500 dark:text-gray-400 text-sm">
-        Add your first item below to get started!
+      <p className="text-stone-500 dark:text-stone-400 text-sm">
+        Add your first item below to get started.
       </p>
     </div>
   );
@@ -86,9 +127,8 @@ export function NoItemsEmptyState() {
 export function NoSearchResultsEmptyState({ query }: { query: string }) {
   return (
     <EmptyState
-      emoji="🔍"
-      title="No matches found"
-      description={`We couldn't find any lists matching "${query}". Try a different search term!`}
+      title="Nothing matches."
+      description={`No lists matching "${query}". Try a different search term.`}
     />
   );
 }

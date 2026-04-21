@@ -75,8 +75,9 @@ export function PublicList() {
       <header className="bg-white shadow-sm">
         <div className="container mx-auto p-4">
           <div className="flex items-center justify-between">
-            <Link to="/" className="text-xl font-bold hover:text-gray-700">
-              Poo App
+            <Link to="/" className="boop-wordmark text-[20px] hover:opacity-80 transition-opacity" aria-label="boop">
+              <span className="boop-dot" aria-hidden="true" />
+              <span>boop</span>
             </Link>
             <span className="text-sm text-gray-500">Public List</span>
           </div>
@@ -186,7 +187,7 @@ export function PublicList() {
             to="/login"
             className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
           >
-            Sign up for Poo App
+            Sign up for boop
           </Link>
         </div>
       </main>

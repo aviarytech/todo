@@ -114,12 +114,12 @@ export function Login({ embedded = false }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-amber-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'var(--boop-bg)' }}>
       {/* Brand header */}
       {!embedded && (
-        <Link to="/" className="flex items-center gap-2 mb-8 text-amber-900 hover:text-amber-700 transition-colors">
-          <span className="text-3xl">💩</span>
-          <span className="font-black text-xl">Poo App</span>
+        <Link to="/" className="boop-wordmark text-[26px] mb-8 hover:opacity-80 transition-opacity" aria-label="boop">
+          <span className="boop-dot" aria-hidden="true" />
+          <span>boop</span>
         </Link>
       )}
 

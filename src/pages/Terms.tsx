@@ -11,7 +11,7 @@ export function Terms() {
       <header className="bg-amber-900 text-amber-50 py-6 px-4">
         <div className="max-w-3xl mx-auto">
           <a href="/" className="flex items-center gap-2 mb-4 text-amber-200 hover:text-white transition-colors text-sm">
-            &larr; Back to Poo App
+            &larr; Back to boop
           </a>
           <h1 className="text-3xl font-black">Terms of Service</h1>
           <p className="text-amber-200 mt-1 text-sm">Last updated: March 2026</p>
@@ -22,7 +22,7 @@ export function Terms() {
         <section className="mb-8">
           <h2 className="text-xl font-bold text-amber-900 mb-3">Agreement to Terms</h2>
           <p className="text-amber-800 leading-relaxed">
-            By accessing or using Poo App (&quot;the Service&quot;), operated by Aviary Tech (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;),
+            By accessing or using boop (&quot;the Service&quot;), operated by Aviary Tech (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;),
             you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.
           </p>
         </section>

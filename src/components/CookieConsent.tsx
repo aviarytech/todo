@@ -72,7 +72,7 @@ export function CookieConsent() {
               Cookies & Analytics
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              We use PostHog to understand how you use Poo App so we can make it better.
+              We use PostHog to understand how you use boop so we can make it better.
               No data is sold or shared with third parties.{' '}
               <a
                 href="/privacy"

@@ -32,7 +32,7 @@ export function AppLockGuard({ children }: AppLockGuardProps) {
   const authenticate = async () => {
     setIsAuthenticating(true);
     try {
-      const success = await biometrics.authenticate('Unlock Poo App');
+      const success = await biometrics.authenticate('Unlock boop');
       if (success) {
         setIsLocked(false);
       }
@@ -55,8 +55,16 @@ export function AppLockGuard({ children }: AppLockGuardProps) {
         <div className="mb-8">
           <span className="text-8xl">🔒</span>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-          Poo App is Locked
+        <h1
+          className="text-gray-900 dark:text-gray-100 mb-3"
+          style={{
+            fontFamily: 'Nunito, system-ui, sans-serif',
+            fontWeight: 800,
+            fontSize: 30,
+            letterSpacing: -1,
+          }}
+        >
+          boop is locked
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-8">
           Use Face ID or fingerprint to unlock

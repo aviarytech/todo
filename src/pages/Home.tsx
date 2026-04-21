@@ -96,7 +96,7 @@ export function Home() {
     }
   }, [isOnline, serverLists]);
 
-  // Step 1: auto-create "Getting Started 💩" demo list for new users
+  // Step 1: auto-create "Getting Started" demo list for new users
   useEffect(() => {
     if (demoStarted || demoCreatingRef.current) return;
     if (!did || serverLists === undefined) return;
@@ -115,17 +115,17 @@ export function Home() {
 
     const createDemo = async () => {
       try {
-        const listAsset = await createListAsset("Getting Started 💩", did);
+        const listAsset = await createListAsset("Getting Started", did);
         const listId = await createList({
           assetDid: listAsset.assetDid,
-          name: "Getting Started 💩",
+          name: "Getting Started",
           ownerDid: did,
           createdAt: Date.now(),
         });
         const demoItems = [
-          "Add your first item 💩",
-          "Share this list with someone 🤝",
-          "Check off a task ✅",
+          "Add your first item",
+          "Share this list with someone",
+          "Check off a task",
         ];
         for (const name of demoItems) {
           await addItem({
@@ -285,30 +285,105 @@ export function Home() {
 
   return (
     <div className="min-h-full pb-28">
-      {/* Header */}
-      <div className="pt-2 pb-6">
-        <div className="flex items-end justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-[2rem] sm:text-4xl font-extrabold text-stone-900 dark:text-stone-50 tracking-tight leading-none">
-                Your Lists
-              </h1>
-              {streak > 0 && <StreakBadge streak={streak} />}
-            </div>
-            {hasLists && (
-              <p className="mt-1.5 text-sm font-medium text-stone-400 dark:text-stone-500">
-                {totalListCount} {totalListCount === 1 ? 'list' : 'lists'}
-              </p>
+      {/* Top bar — wordmark + profile avatar */}
+      <div className="flex items-center justify-between pt-2 pb-5">
+        <div className="boop-wordmark text-[22px] sm:text-[26px] leading-none">
+          <span className="boop-dot" aria-hidden="true" />
+          <span>boop</span>
+        </div>
+        <div className="flex items-center gap-2.5">
+          {streak > 0 && <StreakBadge streak={streak} />}
+          <Link
+            to="/profile"
+            onClick={() => haptic('light')}
+            aria-label="Profile"
+            className="flex items-center justify-center w-[34px] h-[34px] rounded-full text-white font-extrabold text-sm active:scale-95 transition-transform"
+            style={{
+              background: 'var(--boop-accent)',
+              fontFamily: 'Nunito, system-ui, sans-serif',
+              letterSpacing: -0.3,
+            }}
+          >
+            {(did ?? 'r').slice(-1).toUpperCase() || 'R'}
+          </Link>
+        </div>
+      </div>
+
+      {/* Greeting hero */}
+      <div className="pb-5">
+        <h1
+          className="text-stone-900 dark:text-stone-50"
+          style={{
+            fontFamily: 'Nunito, system-ui, sans-serif',
+            fontWeight: 700,
+            fontSize: 'clamp(30px, 5.5vw, 40px)',
+            letterSpacing: -1.2,
+            lineHeight: 1.05,
+            margin: 0,
+          }}
+        >
+          {hasLists ? <>Your lists —<br /><span className="text-stone-500 dark:text-stone-400" style={{ fontWeight: 600 }}>what's on today?</span></> : <>Welcome in,<br /><span className="text-stone-500 dark:text-stone-400" style={{ fontWeight: 600 }}>let's make your first list.</span></>}
+        </h1>
+        {hasLists && (
+          <div
+            className="flex items-center gap-3.5 flex-wrap mt-3 text-[13px] text-stone-500 dark:text-stone-400"
+          >
+            <span>
+              <b className="text-stone-900 dark:text-stone-100">{totalListCount}</b> {totalListCount === 1 ? 'list' : 'lists'}
+            </span>
+            {allSharedLists.length > 0 && (
+              <>
+                <span className="text-stone-300 dark:text-stone-600">·</span>
+                <span>
+                  <b className="text-stone-900 dark:text-stone-100">{allSharedLists.length}</b> shared
+                </span>
+              </>
+            )}
+            {favouriteLists.length > 0 && (
+              <>
+                <span className="text-stone-300 dark:text-stone-600">·</span>
+                <span>
+                  <b className="text-stone-900 dark:text-stone-100">{favouriteLists.length}</b> pinned
+                </span>
+              </>
             )}
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Quick Actions - pill chips */}
-        <div className="flex items-center gap-2.5">
+      {/* Search + New button — inline pill row */}
+      {hasLists && (
+        <div className="flex gap-2.5 mb-3 items-center">
+          <div className="flex-1 min-w-0">
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              className="w-full"
+            />
+          </div>
+          <button
+            onClick={handleOpenCreate}
+            className="inline-flex items-center gap-1.5 flex-shrink-0 px-3.5 py-2 rounded-full text-[13px] font-semibold text-white active:scale-95 transition-transform whitespace-nowrap"
+            style={{
+              background: 'var(--boop-accent)',
+              boxShadow: '0 4px 14px rgba(107,60,255,0.3)',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            <span>New</span>
+          </button>
+        </div>
+      )}
+
+      {/* Secondary row — Focus, Categories, Sort */}
+      {hasLists && (
+        <div className="flex items-center gap-2 mb-5 flex-wrap">
           <Link
             to="/priority"
             onClick={() => haptic('light')}
-            className="inline-flex items-center gap-1.5 text-[13px] text-amber-700 dark:text-amber-400 pl-3 pr-3.5 py-2 rounded-full font-semibold bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200/60 dark:border-amber-800/50 transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-stone-800/60 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
           >
             <span>🎯</span>
             <span>Focus</span>
@@ -318,30 +393,14 @@ export function Home() {
               haptic('light');
               setIsCategoryManagerOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 text-[13px] text-stone-600 dark:text-stone-400 pl-3 pr-3.5 py-2 rounded-full font-semibold bg-stone-100 dark:bg-stone-800/60 hover:bg-stone-200 dark:hover:bg-stone-800 border border-stone-200/60 dark:border-stone-700/50 transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-stone-800/60 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
           >
             <span>📁</span>
             <span>Categories</span>
           </button>
-          <button
-            onClick={handleOpenCreate}
-            className="inline-flex items-center gap-1.5 text-[13px] text-amber-900 dark:text-amber-100 pl-3 pr-3.5 py-2 rounded-full font-semibold bg-amber-400/90 dark:bg-amber-500/80 hover:bg-amber-300 dark:hover:bg-amber-400 border border-amber-500/70 dark:border-amber-400/70 shadow-sm shadow-amber-500/30 transition-all active:scale-95"
-          >
-            <span>➕</span>
-            <span>New list</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Search and Sort */}
-      {hasLists && (
-        <div className="relative z-20 flex gap-2.5 mb-6 animate-slide-up">
-          <SearchInput
-            value={searchQuery}
-            onChange={setSearchQuery}
-            className="flex-1"
-          />
-          <SortDropdown />
+          <div className="ml-auto">
+            <SortDropdown />
+          </div>
         </div>
       )}
 
