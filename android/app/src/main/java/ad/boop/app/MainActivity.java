@@ -1,4 +1,4 @@
-package app.trypoo.app;
+package ad.boop.app;
 
 import com.getcapacitor.BridgeActivity;
 
