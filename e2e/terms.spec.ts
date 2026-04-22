@@ -45,9 +45,9 @@ test.describe("Terms of Service page", () => {
     await page.goto("/terms");
 
     // Legal email
-    await expect(page.getByRole("link", { name: "legal@trypoo.app" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "legal@boop.app" })).toBeVisible();
     // Support email in Payment Terms
-    await expect(page.getByRole("link", { name: "support@trypoo.app" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "support@boop.app" })).toBeVisible();
   });
 
   test("5. Stripe terms link is present", async ({ page }) => {

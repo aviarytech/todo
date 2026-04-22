@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://trypoo.app/sitemap.xml
+Sitemap: https://ad.boop.app/sitemap.xml

@@ -1,6 +1,6 @@
 # Deployment Runbook
 
-Checklist-format runbook for deploying and rolling back the Poo App stack.
+Checklist-format runbook for deploying and rolling back the boop stack.
 
 **Stack:** React 19 frontend on Railway, Convex backend (cloud-hosted).
 
@@ -73,7 +73,7 @@ These are injected at build time as `import.meta.env.*`.
 |---|---|---|
 | `VITE_CONVEX_URL` | ✅ | Convex deployment URL (e.g. `https://effervescent-jay-955.convex.cloud`) |
 | `VITE_CONVEX_HTTP_URL` | ✅ | Convex HTTP actions URL (e.g. `https://effervescent-jay-955.convex.site`) |
-| `VITE_WEBVH_DOMAIN` | ✅ | Domain used for did:webvh identity creation (e.g. `trypoo.app`) |
+| `VITE_WEBVH_DOMAIN` | ✅ | Domain used for did:webvh identity creation (e.g. `ad.boop.app`) |
 | `VITE_TURNKEY_AUTH_PROXY_CONFIG_ID` | ✅ | Turnkey auth proxy config ID (from Turnkey dashboard) |
 | `VITE_TURNKEY_ORGANIZATION_ID` | ✅ | Turnkey organization ID |
 | `VITE_STRIPE_PRO_MONTHLY_PRICE_ID` | ✅ | Stripe price ID for Pro monthly plan |
@@ -118,7 +118,7 @@ These are injected at build time as `import.meta.env.*`.
 
 ## 6. Post-Deploy Verification
 
-- [ ] Open `https://trypoo.app` — landing page loads
+- [ ] Open `https://ad.boop.app` — landing page loads
 - [ ] Sign in with OTP — auth flow completes
 - [ ] Create a list, add items — real-time sync works
 - [ ] Open Convex dashboard → **Logs** — no error spikes

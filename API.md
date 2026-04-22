@@ -1,6 +1,6 @@
-# Poo App Agent API
+# boop Agent API
 
-REST API for programmatic access to Poo App lists and items. Designed for agents, scripts, and integrations to interact without using a browser.
+REST API for programmatic access to boop lists and items. Designed for agents, scripts, and integrations to interact without using a browser.
 
 ## Base URL
 

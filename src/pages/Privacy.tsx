@@ -108,7 +108,7 @@ export function Privacy() {
           <h2 className="text-xl font-bold text-amber-900 mb-3">Contact</h2>
           <p className="text-amber-800 leading-relaxed">
             Questions about this privacy policy? Email us at{' '}
-            <a href="mailto:privacy@trypoo.app" className="text-amber-600 underline">privacy@trypoo.app</a>.
+            <a href="mailto:privacy@boop.app" className="text-amber-600 underline">privacy@boop.app</a>.
           </p>
         </section>
       </main>

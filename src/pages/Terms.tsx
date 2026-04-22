@@ -57,7 +57,7 @@ export function Terms() {
             Paid features are billed through Stripe. By subscribing, you authorize us to charge your payment method
             on a recurring basis at the applicable rate. Subscriptions auto-renew unless cancelled before the renewal date.
             We reserve the right to change pricing with 30 days&apos; notice. Refunds are handled on a case-by-case basis —
-            contact us at <a href="mailto:support@trypoo.app" className="text-amber-600 underline">support@trypoo.app</a>.
+            contact us at <a href="mailto:support@boop.app" className="text-amber-600 underline">support@boop.app</a>.
             We never store your full card details — all payment processing is handled by Stripe and subject to{' '}
             <a href="https://stripe.com/legal" className="text-amber-600 underline" target="_blank" rel="noopener noreferrer">Stripe&apos;s terms</a>.
           </p>
@@ -121,7 +121,7 @@ export function Terms() {
           <h2 className="text-xl font-bold text-amber-900 mb-3">Contact</h2>
           <p className="text-amber-800 leading-relaxed">
             Questions about these Terms? Email us at{' '}
-            <a href="mailto:legal@trypoo.app" className="text-amber-600 underline">legal@trypoo.app</a>.
+            <a href="mailto:legal@boop.app" className="text-amber-600 underline">legal@boop.app</a>.
           </p>
         </section>
       </main>
