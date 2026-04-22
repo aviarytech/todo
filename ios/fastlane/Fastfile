@@ -29,8 +29,8 @@ platform :ios do
       use_automatic_signing: false,
       path: "App/App.xcodeproj",
       team_id: ENV["APPLE_TEAM_ID"],
-      bundle_identifier: "app.trypoo.app",
-      profile_name: "match AppStore app.trypoo.app",
+      bundle_identifier: "ad.boop.app",
+      profile_name: "match AppStore ad.boop.app",
       code_sign_identity: "iPhone Distribution"
     )
 
