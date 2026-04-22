@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.trypoo.app',
-  appName: 'Poo App',
+  appId: 'ad.boop.app',
+  appName: 'boop',
   webDir: 'dist',
   // Allow service worker and offline caching in native WebView
   server: {
