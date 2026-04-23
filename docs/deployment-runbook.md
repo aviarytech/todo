@@ -73,7 +73,7 @@ These are injected at build time as `import.meta.env.*`.
 |---|---|---|
 | `VITE_CONVEX_URL` | ✅ | Convex deployment URL (e.g. `https://effervescent-jay-955.convex.cloud`) |
 | `VITE_CONVEX_HTTP_URL` | ✅ | Convex HTTP actions URL (e.g. `https://effervescent-jay-955.convex.site`) |
-| `VITE_WEBVH_DOMAIN` | ✅ | Domain used for did:webvh identity creation (e.g. `ad.boop.app`) |
+| `VITE_WEBVH_DOMAIN` | ✅ | Domain used for did:webvh identity creation (e.g. `boop.ad`) |
 | `VITE_TURNKEY_AUTH_PROXY_CONFIG_ID` | ✅ | Turnkey auth proxy config ID (from Turnkey dashboard) |
 | `VITE_TURNKEY_ORGANIZATION_ID` | ✅ | Turnkey organization ID |
 | `VITE_STRIPE_PRO_MONTHLY_PRICE_ID` | ✅ | Stripe price ID for Pro monthly plan |
