@@ -53,5 +53,7 @@
 	<string>boop needs photo library access to attach images to your list items.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>boop needs permission to save photos to your library.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>boop uses Face ID to unlock the app and protect your data.</string>
 </dict>
 </plist>
