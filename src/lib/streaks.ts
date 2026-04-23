@@ -5,7 +5,7 @@
  * Data is stored in localStorage keyed by user DID.
  */
 
-const STREAK_KEY_PREFIX = 'pooapp:streak:';
+const STREAK_KEY_PREFIX = 'boop:streak:';
 
 export interface StreakData {
   /** Sorted array of date strings (YYYY-MM-DD) when tasks were completed */

@@ -19,6 +19,7 @@
     "env:turnkey:prod": "bash ./scripts/sync-convex-turnkey-env.sh .env.local prod",
     "cap:sync": "npx cap sync",
     "cap:build": "npm run build && npx cap sync",
+    "generate:assets": "node scripts/generate-icons.mjs && npx capacitor-assets generate --iconBackgroundColor '#6b3cff' --iconBackgroundColorDark '#6b3cff' --splashBackgroundColor '#fafaf7' --splashBackgroundColorDark '#0c0b10' --ios --android",
     "mission-control:readiness-drill": "node scripts/mission-control-readiness-drill.mjs"
   },
   "dependencies": {
@@ -53,6 +54,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.39.1",
     "@napi-rs/canvas": "^0.1.90",
     "@playwright/test": "^1.57.0",

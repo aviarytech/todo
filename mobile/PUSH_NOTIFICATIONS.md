@@ -1,6 +1,6 @@
 # Push Notifications Setup Guide
 
-This document outlines the setup requirements for native push notifications in the Poo App using Capacitor.
+This document outlines the setup requirements for native push notifications in the boop app using Capacitor.
 
 ## Overview
 
@@ -48,7 +48,7 @@ You'll need to send the APNs key/certificate to your backend for push delivery. 
 2. Create a new project or select existing one
 3. Add an Android app to your Firebase project:
    - **Package name**: Must match your `android/app/build.gradle` `applicationId`
-   - Example: `com.aviarytech.pooapp`
+   - Example: `ad.boop.app`
 4. Download `google-services.json`
 
 ### 2. Add google-services.json

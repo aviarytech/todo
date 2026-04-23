@@ -2,7 +2,7 @@
  * DID log storage and retrieval for did:webvh resolution.
  *
  * Stores DID logs in Convex so they can be served at
- * https://trypoo.app/{path}/did.jsonl for DID resolution.
+ * https://boop.ad/{path}/did.jsonl for DID resolution.
  */
 
 import { v } from "convex/values";

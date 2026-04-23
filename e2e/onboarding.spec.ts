@@ -194,7 +194,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
     ).not.toBeVisible();
   });
 
-  test("2. new user: demo creation sets localStorage flag pooapp:onboarding_demo_created", async ({
+  test("2. new user: demo creation sets localStorage flag boop:onboarding_demo_created", async ({
     page,
   }) => {
     await mockConvexWebSocket(page, { existingListCount: 0 });
@@ -210,7 +210,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
     await page.waitForTimeout(2000);
 
     const flagValue = await page.evaluate(() =>
-      localStorage.getItem("pooapp:onboarding_demo_created"),
+      localStorage.getItem("boop:onboarding_demo_created"),
     );
     // Should be "pending" or "done" — either means the 2-step flow kicked off
     expect(["pending", "done"]).toContain(flagValue);
@@ -232,7 +232,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
     await page.waitForTimeout(1000);
 
     const flagValue = await page.evaluate(() =>
-      localStorage.getItem("pooapp:onboarding_demo_created"),
+      localStorage.getItem("boop:onboarding_demo_created"),
     );
     expect(flagValue).toBe("done");
   });
@@ -312,7 +312,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
 
     // localStorage flag should be set
     const flagValue = await page.evaluate(() =>
-      localStorage.getItem("pooapp:onboarding_invite_nudge_done"),
+      localStorage.getItem("boop:onboarding_invite_nudge_done"),
     );
     expect(flagValue).toBe("done");
   });
@@ -322,7 +322,7 @@ test.describe("Onboarding: 2-step new user flow (POO-45)", () => {
   }) => {
     // Pre-set the nudge-done flag
     await page.addInitScript(() => {
-      localStorage.setItem("pooapp:onboarding_invite_nudge_done", "done");
+      localStorage.setItem("boop:onboarding_invite_nudge_done", "done");
     });
 
     await mockConvexWebSocket(page, { existingListCount: 1 });

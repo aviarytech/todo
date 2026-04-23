@@ -1,4 +1,4 @@
-# Poo App - Specs Overview
+# boop - Specs Overview
 
 A collaborative list-sharing app with decentralized identity (DID) and verifiable credential support.
 

@@ -1,6 +1,6 @@
 {
-	"appId": "app.trypoo.app",
-	"appName": "Poo App",
+	"appId": "ad.boop.app",
+	"appName": "boop",
 	"webDir": "dist",
 	"server": {
 		"androidScheme": "https",

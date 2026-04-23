@@ -1,12 +1,12 @@
-# iOS App Store Submission — Poo App
+# iOS App Store Submission — boop
 
 ## App Store Listing Copy
 
 ### Title (max 30 chars)
 ```
-Poo App - Todo & Task Lists
+boop - Todo & Task Lists
 ```
-(28 chars)
+(24 chars)
 
 ### Subtitle (max 30 chars)
 ```
@@ -16,7 +16,7 @@ Organize While You Poop
 
 ### Bundle ID
 ```
-app.trypoo.app
+ad.boop.app
 ```
 
 ### Primary Category
@@ -36,7 +36,7 @@ todo,tasks,lists,offline,collaborate,share,groceries,reminders,productivity,chec
 ## Description (max 4000 chars)
 
 ```
-Poo App is the todo list that meets you where you are — on the toilet, on the train, or anywhere without Wi-Fi.
+boop is the todo list that meets you where you are — on the toilet, on the train, or anywhere without Wi-Fi.
 
 Create lists. Check things off. Share with your crew. Works offline, syncs everywhere.
 
@@ -74,7 +74,7 @@ PERFECT FOR
 - Family to-do lists
 - Anything you need to remember while sitting down
 
-Privacy policy: https://trypoo.app/privacy
+Privacy policy: https://boop.ad/privacy
 ```
 
 (~1300 chars — well under limit)
@@ -122,24 +122,24 @@ npx cap sync ios
 ## App Store Connect Submission Checklist
 
 ### Before Submitting (Engineer tasks — can be done now)
-- [x] Privacy policy live at https://trypoo.app/privacy (deploy this PR)
+- [x] Privacy policy live at https://boop.ad/privacy (deploy this PR)
 - [ ] 5 screenshots captured at 1290×2796 (iPhone 15 Pro Max)
 - [ ] App icon: 1024×1024 PNG, no alpha channel (check resources/ios/)
-- [ ] Verify bundle ID `app.trypoo.app` matches Xcode project
+- [ ] Verify bundle ID `ad.boop.app` matches Xcode project
 - [ ] Set version to 1.0.0 and build number to 1 in Xcode
 - [ ] Archive build in Xcode (Product → Archive)
 - [ ] Upload to App Store Connect via Xcode Organizer
 
 ### App Store Connect Form Fields (requires Apple Developer account)
 - [ ] Sign in to https://appstoreconnect.apple.com
-- [ ] Create new app with bundle ID `app.trypoo.app`
+- [ ] Create new app with bundle ID `ad.boop.app`
 - [ ] Paste listing copy from this doc
 - [ ] Upload screenshots
 - [ ] Set pricing: Free (with in-app purchases for Pro)
 - [ ] Add in-app purchase for Pro subscription (monthly + annual)
 - [ ] Set age rating: 4+
-- [ ] Privacy policy URL: https://trypoo.app/privacy
-- [ ] Support URL: https://trypoo.app
+- [ ] Privacy policy URL: https://boop.ad/privacy
+- [ ] Support URL: https://boop.ad
 - [ ] Submit for review
 
 ### Requires Board / Human Action
@@ -154,22 +154,22 @@ npx cap sync ios
 
 | Field | Value |
 |-------|-------|
-| Bundle ID | app.trypoo.app |
-| App Name | Poo App |
+| Bundle ID | ad.boop.app |
+| App Name | boop |
 | Version | 1.0.0 |
 | Build | 1 |
 | Category | Productivity |
 | Age Rating | 4+ |
 | Price | Free |
-| Privacy Policy | https://trypoo.app/privacy |
-| Support URL | https://trypoo.app |
-| Copyright | 2026 Poo App |
+| Privacy Policy | https://boop.ad/privacy |
+| Support URL | https://boop.ad |
+| Copyright | 2026 boop |
 
 ---
 
 ## Notes
 
-- The Capacitor config is already set with `appId: 'app.trypoo.app'` and `appName: 'Poo App'`
+- The Capacitor config is already set with `appId: 'ad.boop.app'` and `appName: 'boop'`
 - iOS folder exists at `app/ios/` — should be ready to open in Xcode
 - Submission will be rejected without a valid privacy policy URL — deploy this PR first
 - Apple review typically takes 1-3 business days for a new app

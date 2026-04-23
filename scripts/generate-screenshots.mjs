@@ -34,7 +34,7 @@ for (const { name, width, height } of screenshots) {
   ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('💩 Poo App', width / 2, height / 2 - fontSize);
+  ctx.fillText('boop', width / 2, height / 2 - fontSize);
   
   // Tagline
   const taglineSize = Math.floor(fontSize * 0.5);

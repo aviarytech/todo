@@ -1,11 +1,11 @@
 {
-  "name": "Poo App",
-  "short_name": "Poo",
-  "description": "Organize your life while you poop. The world's most productive todo app.",
+  "name": "boop",
+  "short_name": "boop",
+  "description": "A calm little place for the things you need to do.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FFFBEB",
-  "theme_color": "#78350F",
+  "background_color": "#fafaf7",
+  "theme_color": "#6b3cff",
   "orientation": "portrait-primary",
   "icons": [
     {

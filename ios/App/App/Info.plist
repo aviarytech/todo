@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Poo App</string>
+        <string>boop</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -48,10 +48,10 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Poo App needs camera access to take photos for your list items.</string>
+	<string>boop needs camera access to take photos for your list items.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Poo App needs photo library access to attach images to your list items.</string>
+	<string>boop needs photo library access to attach images to your list items.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Poo App needs permission to save photos to your library.</string>
+	<string>boop needs permission to save photos to your library.</string>
 </dict>
 </plist>

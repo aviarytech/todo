@@ -1,35 +1,32 @@
 # Mobile App Resources
 
-This directory contains generated assets for the mobile app.
+Source images and fonts for the boop mobile app icons and splash screens.
 
-## Regenerating Assets
+## Pipeline
 
-To regenerate all icons and splash screens:
+Three source images under `resources/` feed `@capacitor/assets`, which produces
+every size iOS and Android need and installs them into the native projects:
+
+- `icon.png` (1024×1024) — violet tile + cream `b`
+- `splash.png` (2732×2732) — cream + centred violet dot (light)
+- `splash-dark.png` (2732×2732) — ink + centred violet dot (dark)
+
+`scripts/generate-icons.mjs` regenerates the three source images using
+`@napi-rs/canvas` and the vendored `fonts/Nunito-Black.ttf`.
+
+## Regenerating
 
 ```bash
-node scripts/generate-icons.js
+bun run generate:assets
 ```
 
-## Icon Sizes
+This runs the generator and then `npx capacitor-assets generate --ios --android`.
 
-### iOS
-- 20, 29, 40, 58, 60, 76, 80, 87, 120, 152, 167, 180, 1024px
+## Brand tokens
 
-### Android
-- 48, 72, 96, 144, 192, 512px
+- Violet `#6b3cff` — accent and icon background
+- Cream `#fafaf7` — light-mode surface
+- Ink `#0c0b10` — dark-mode surface
 
-## Splash Screens
-
-Multiple sizes for different device orientations:
-- Universal: 2732x2732
-- iPhone Portrait: 1242x2688
-- iPhone Landscape: 2688x1242
-- iPhone Small: 828x1792
-
-Both light and dark versions are provided.
-
-## Design
-
-- **Theme**: Poo App 💩
-- **Icon**: Brown/amber gradient (#8B4513 to #D2691E) with white poop emoji, rounded corners
-- **Splash**: Centered poop emoji on white (light) or dark (#1a1a1a) background
+These match `src/pages/Landing.css` and the `<meta name="theme-color">` in
+`index.html`.

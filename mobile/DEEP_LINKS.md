@@ -1,16 +1,16 @@
 # Deep Linking Configuration
 
-This document describes the native configuration required for deep linking support in the Poo App.
+This document describes the native configuration required for deep linking support in the boop app.
 
 ## Overview
 
 The app supports two types of deep links:
-- **Custom URL scheme:** `pooapp://` - Opens the app directly
-- **Universal links (iOS) / App Links (Android):** `https://trypoo.app/list/*` - Seamless web-to-app transitions
+- **Custom URL scheme:** `boop://` - Opens the app directly
+- **Universal links (iOS) / App Links (Android):** `https://boop.ad/list/*` - Seamless web-to-app transitions
 
 ## iOS Configuration
 
-### 1. URL Scheme (`pooapp://`)
+### 1. URL Scheme (`boop://`)
 
 Add the following to `ios/App/App/Info.plist`:
 
@@ -19,27 +19,27 @@ Add the following to `ios/App/App/Info.plist`:
 <array>
   <dict>
     <key>CFBundleURLName</key>
-    <string>app.trypoo</string>
+    <string>ad.boop</string>
     <key>CFBundleURLSchemes</key>
     <array>
-      <string>pooapp</string>
+      <string>boop</string>
     </array>
   </dict>
 </array>
 ```
 
-### 2. Universal Links (`https://trypoo.app/*`)
+### 2. Universal Links (`https://boop.ad/*`)
 
 1. Add Associated Domains capability to `ios/App/App.entitlements`:
 
 ```xml
 <key>com.apple.developer.associated-domains</key>
 <array>
-  <string>applinks:trypoo.app</string>
+  <string>applinks:boop.ad</string>
 </array>
 ```
 
-2. Host an Apple App Site Association (AASA) file at `https://trypoo.app/.well-known/apple-app-site-association`:
+2. Host an Apple App Site Association (AASA) file at `https://boop.ad/.well-known/apple-app-site-association`:
 
 ```json
 {
@@ -47,7 +47,7 @@ Add the following to `ios/App/App/Info.plist`:
     "apps": [],
     "details": [
       {
-        "appID": "TEAM_ID.app.trypoo",
+        "appID": "TEAM_ID.ad.boop.app",
         "paths": ["/list/*", "/join/*", "/public/*"]
       }
     ]
@@ -69,7 +69,7 @@ Add the following intent filters to `android/app/src/main/AndroidManifest.xml` i
   <action android:name="android.intent.action.VIEW" />
   <category android:name="android.intent.category.DEFAULT" />
   <category android:name="android.intent.category.BROWSABLE" />
-  <data android:scheme="pooapp" />
+  <data android:scheme="boop" />
 </intent-filter>
 
 <!-- App Links (verified) -->
@@ -79,22 +79,22 @@ Add the following intent filters to `android/app/src/main/AndroidManifest.xml` i
   <category android:name="android.intent.category.BROWSABLE" />
   <data
     android:scheme="https"
-    android:host="trypoo.app"
+    android:host="boop.ad"
     android:pathPrefix="/list" />
   <data
     android:scheme="https"
-    android:host="trypoo.app"
+    android:host="boop.ad"
     android:pathPrefix="/join" />
   <data
     android:scheme="https"
-    android:host="trypoo.app"
+    android:host="boop.ad"
     android:pathPrefix="/public" />
 </intent-filter>
 ```
 
 ### 2. Digital Asset Links
 
-Host an `assetlinks.json` file at `https://trypoo.app/.well-known/assetlinks.json`:
+Host an `assetlinks.json` file at `https://boop.ad/.well-known/assetlinks.json`:
 
 ```json
 [
@@ -102,7 +102,7 @@ Host an `assetlinks.json` file at `https://trypoo.app/.well-known/assetlinks.jso
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "app.trypoo",
+      "package_name": "ad.boop.app",
       "sha256_cert_fingerprints": [
         "CERTIFICATE_FINGERPRINT_HERE"
       ]
@@ -131,22 +131,22 @@ npx cap open ios   # or npx cap open android
 
 ## Testing Deep Links
 
-### Custom scheme (`pooapp://`)
+### Custom scheme (`boop://`)
 ```bash
 # iOS Simulator
-xcrun simctl openurl booted pooapp://list/123
+xcrun simctl openurl booted boop://list/123
 
 # Android
-adb shell am start -W -a android.intent.action.VIEW -d "pooapp://list/123" app.trypoo
+adb shell am start -W -a android.intent.action.VIEW -d "boop://list/123" ad.boop.app
 ```
 
 ### Universal/App Links
 ```bash
 # iOS Simulator
-xcrun simctl openurl booted https://trypoo.app/list/123
+xcrun simctl openurl booted https://boop.ad/list/123
 
 # Android
-adb shell am start -W -a android.intent.action.VIEW -d "https://trypoo.app/list/123" app.trypoo
+adb shell am start -W -a android.intent.action.VIEW -d "https://boop.ad/list/123" ad.boop.app
 ```
 
 ## Notes

@@ -1,10 +1,10 @@
-# Poo App Mobile — Project Goals
+# boop Mobile — Project Goals
 
 **Date:** 2026-02-07
 **Status:** Active
 
 ## Vision
-Build a native mobile app for Poo App (iOS + Android) that maximizes code reuse from the existing React + Vite + Convex web app.
+Build a native mobile app for boop (iOS + Android) that maximizes code reuse from the existing React + Vite + Convex web app.
 
 ## Key Goals
 

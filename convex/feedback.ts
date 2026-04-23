@@ -78,13 +78,13 @@ export const sendWelcomeEmail = internalAction({
 
     const body = `Hey ${args.displayName},
 
-Thanks for trying Poo App. You're one of our first users and that means your opinion actually matters to us.
+Thanks for trying boop. You're one of our first users and that means your opinion actually matters to us.
 
 Quick question: what's the one thing you'd want us to build next?
 
 Just reply to this email. I read every one.
 
-— Brian, Poo App
+— Brian, boop
 
 P.S. If something broke or felt weird, tell me that too. No feelings will be hurt.`;
 
@@ -95,7 +95,7 @@ P.S. If something broke or felt weird, tell me that too. No feelings will be hur
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "brian@trypoo.app",
+        from: "brian@boop.ad",
         to: args.email,
         subject: "You're in. What should we build next?",
         text: body,

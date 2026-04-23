@@ -12,13 +12,13 @@
 import { storageAdapter } from './storageAdapter';
 
 const STORAGE_KEYS = {
-  DARK_MODE: 'pooapp:darkMode',
-  LIST_SORT: 'pooapp:listSort',
-  HAPTICS_ENABLED: 'pooapp:hapticsEnabled',
-  ONBOARDING_COMPLETE: 'pooapp:onboardingComplete',
-  NOTIFICATIONS_ENABLED: 'pooapp:notificationsEnabled',
-  REMINDER_MINUTES: 'pooapp:reminderMinutes',
-  BIOMETRIC_LOCK_ENABLED: 'pooapp:biometricLockEnabled',
+  DARK_MODE: 'boop:darkMode',
+  LIST_SORT: 'boop:listSort',
+  HAPTICS_ENABLED: 'boop:hapticsEnabled',
+  ONBOARDING_COMPLETE: 'boop:onboardingComplete',
+  NOTIFICATIONS_ENABLED: 'boop:notificationsEnabled',
+  REMINDER_MINUTES: 'boop:reminderMinutes',
+  BIOMETRIC_LOCK_ENABLED: 'boop:biometricLockEnabled',
 } as const;
 
 export type SortOption = 'name-asc' | 'name-desc' | 'newest' | 'oldest';
