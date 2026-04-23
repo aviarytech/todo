@@ -223,7 +223,7 @@ export function Landing() {
                 <li>SSO, audit log</li>
                 <li>Priority support</li>
               </ul>
-              <a href="mailto:hello@boop.app" className="btn btn-ghost plan-cta">Contact us</a>
+              <a href="mailto:hello@boop.ad" className="btn btn-ghost plan-cta">Contact us</a>
             </div>
           </div>
         </div>
@@ -298,7 +298,7 @@ export function Landing() {
               <strong>Company</strong>
               <a href="#">About</a>
               <a href="#">Manifesto</a>
-              <a href="mailto:hello@boop.app">Contact</a>
+              <a href="mailto:hello@boop.ad">Contact</a>
               <Link to={appHref}>Sign in</Link>
             </div>
           </div>

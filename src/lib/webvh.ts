@@ -124,7 +124,7 @@ export function getStoredDidLog(subOrgId: string): DIDLog | null {
 
 /**
  * Extract the path slug from a did:webvh DID.
- * e.g. "did:webvh:{scid}:ad.boop.app:user-abc123" → "user-abc123"
+ * e.g. "did:webvh:{scid}:boop.ad:user-abc123" → "user-abc123"
  */
 export function pathFromDid(did: string): string {
   const parts = did.split(":");
@@ -142,7 +142,7 @@ export async function createUserWebVHDid(params: {
 }) {
   const { privateKey, publicKeyMultibase } = await getOrCreateKeyPair(params.subOrgId);
   const signer = new BrowserWebVHSigner(privateKey, publicKeyMultibase);
-  const host = Capacitor.isNativePlatform() ? 'ad.boop.app' : window.location.host;
+  const host = Capacitor.isNativePlatform() ? 'boop.ad' : window.location.host;
   const domain =
     params.domain || (import.meta.env.VITE_WEBVH_DOMAIN as string | undefined) || host;
 
@@ -187,7 +187,7 @@ export async function createUserWebVHDid(params: {
 
 /**
  * Extract the domain from a did:webvh string.
- * e.g. "did:webvh:{scid}:ad.boop.app:user-abc123" → "ad.boop.app"
+ * e.g. "did:webvh:{scid}:boop.ad:user-abc123" → "boop.ad"
  */
 export function domainFromDid(did: string): string {
   const parts = did.split(":");
@@ -199,7 +199,7 @@ export function domainFromDid(did: string): string {
 
 /**
  * Build the DID URI for a list resource under the user's DID.
- * e.g. "did:webvh:{scid}:ad.boop.app:user-abc123/resources/list-{listId}"
+ * e.g. "did:webvh:{scid}:boop.ad:user-abc123/resources/list-{listId}"
  */
 export function buildListResourceDid(userDid: string, listId: string): string {
   return `${userDid}/resources/list-${listId}`;
@@ -207,7 +207,7 @@ export function buildListResourceDid(userDid: string, listId: string): string {
 
 /**
  * Build the HTTPS URL for a list resource.
- * e.g. "https://ad.boop.app/user-abc123/resources/list-{listId}"
+ * e.g. "https://boop.ad/user-abc123/resources/list-{listId}"
  */
 export function buildListResourceUrl(userDid: string, listId: string): string {
   const domain = domainFromDid(userDid);

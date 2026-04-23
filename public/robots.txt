@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ad.boop.app/sitemap.xml
+Sitemap: https://boop.ad/sitemap.xml

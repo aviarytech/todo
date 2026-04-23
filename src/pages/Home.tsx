@@ -55,7 +55,7 @@ export function Home() {
   // 2-step onboarding state
   const demoCreatingRef = useRef(false);
   const [demoStarted, setDemoStarted] = useState(
-    () => !!localStorage.getItem("pooapp:onboarding_demo_created")
+    () => !!localStorage.getItem("boop:onboarding_demo_created")
   );
   const [inviteNudge, setInviteNudge] = useState<{ listId: Id<"lists">; listName: string } | null>(null);
   const [inviteNudgeDone, setInviteNudgeDone] = useState(isInviteNudgeDone);
@@ -103,14 +103,14 @@ export function Home() {
 
     if (serverLists.length > 0) {
       // Existing user — mark done without creating demo
-      localStorage.setItem("pooapp:onboarding_demo_created", "done");
+      localStorage.setItem("boop:onboarding_demo_created", "done");
       setDemoStarted(true);
       return;
     }
 
     // New user with no lists — create demo immediately
     demoCreatingRef.current = true;
-    localStorage.setItem("pooapp:onboarding_demo_created", "pending");
+    localStorage.setItem("boop:onboarding_demo_created", "pending");
     setDemoStarted(true); // suppress old 4-step OnboardingFlow
 
     const createDemo = async () => {
@@ -137,10 +137,10 @@ export function Home() {
           });
         }
         trackFirstListCreated();
-        localStorage.setItem("pooapp:onboarding_demo_created", "done");
+        localStorage.setItem("boop:onboarding_demo_created", "done");
       } catch {
         // If creation fails, clear so it can retry next session
-        localStorage.removeItem("pooapp:onboarding_demo_created");
+        localStorage.removeItem("boop:onboarding_demo_created");
         setDemoStarted(false);
         demoCreatingRef.current = false;
       }

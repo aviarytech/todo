@@ -118,7 +118,7 @@ These are injected at build time as `import.meta.env.*`.
 
 ## 6. Post-Deploy Verification
 
-- [ ] Open `https://ad.boop.app` — landing page loads
+- [ ] Open `https://boop.ad` — landing page loads
 - [ ] Sign in with OTP — auth flow completes
 - [ ] Create a list, add items — real-time sync works
 - [ ] Open Convex dashboard → **Logs** — no error spikes

@@ -95,7 +95,7 @@ P.S. If something broke or felt weird, tell me that too. No feelings will be hur
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "brian@boop.app",
+        from: "brian@boop.ad",
         to: args.email,
         subject: "You're in. What should we build next?",
         text: body,

@@ -6,7 +6,7 @@ This document describes the native configuration required for deep linking suppo
 
 The app supports two types of deep links:
 - **Custom URL scheme:** `boop://` - Opens the app directly
-- **Universal links (iOS) / App Links (Android):** `https://boop.app/list/*` - Seamless web-to-app transitions
+- **Universal links (iOS) / App Links (Android):** `https://boop.ad/list/*` - Seamless web-to-app transitions
 
 ## iOS Configuration
 
@@ -28,18 +28,18 @@ Add the following to `ios/App/App/Info.plist`:
 </array>
 ```
 
-### 2. Universal Links (`https://boop.app/*`)
+### 2. Universal Links (`https://boop.ad/*`)
 
 1. Add Associated Domains capability to `ios/App/App.entitlements`:
 
 ```xml
 <key>com.apple.developer.associated-domains</key>
 <array>
-  <string>applinks:boop.app</string>
+  <string>applinks:boop.ad</string>
 </array>
 ```
 
-2. Host an Apple App Site Association (AASA) file at `https://boop.app/.well-known/apple-app-site-association`:
+2. Host an Apple App Site Association (AASA) file at `https://boop.ad/.well-known/apple-app-site-association`:
 
 ```json
 {
@@ -79,22 +79,22 @@ Add the following intent filters to `android/app/src/main/AndroidManifest.xml` i
   <category android:name="android.intent.category.BROWSABLE" />
   <data
     android:scheme="https"
-    android:host="boop.app"
+    android:host="boop.ad"
     android:pathPrefix="/list" />
   <data
     android:scheme="https"
-    android:host="boop.app"
+    android:host="boop.ad"
     android:pathPrefix="/join" />
   <data
     android:scheme="https"
-    android:host="boop.app"
+    android:host="boop.ad"
     android:pathPrefix="/public" />
 </intent-filter>
 ```
 
 ### 2. Digital Asset Links
 
-Host an `assetlinks.json` file at `https://boop.app/.well-known/assetlinks.json`:
+Host an `assetlinks.json` file at `https://boop.ad/.well-known/assetlinks.json`:
 
 ```json
 [
@@ -143,10 +143,10 @@ adb shell am start -W -a android.intent.action.VIEW -d "boop://list/123" ad.boop
 ### Universal/App Links
 ```bash
 # iOS Simulator
-xcrun simctl openurl booted https://boop.app/list/123
+xcrun simctl openurl booted https://boop.ad/list/123
 
 # Android
-adb shell am start -W -a android.intent.action.VIEW -d "https://boop.app/list/123" ad.boop.app
+adb shell am start -W -a android.intent.action.VIEW -d "https://boop.ad/list/123" ad.boop.app
 ```
 
 ## Notes

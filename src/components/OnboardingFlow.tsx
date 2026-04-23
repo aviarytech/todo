@@ -17,7 +17,7 @@ import { buildListResourceDid, buildListResourceUrl } from "../lib/webvh";
 import { trackInviteSent } from "../lib/analytics";
 
 const ONBOARDING_KEY = "poo_onboarding_v1";
-const DEMO_CREATED_KEY = "pooapp:onboarding_demo_created";
+const DEMO_CREATED_KEY = "boop:onboarding_demo_created";
 
 export function markOnboardingDone() {
   localStorage.setItem(ONBOARDING_KEY, "done");
@@ -427,7 +427,7 @@ function AddItemsStep({
 // Shown after the user creates their first real list.
 // ---------------------------------------------------------------------------
 
-const INVITE_NUDGE_DONE_KEY = "pooapp:onboarding_invite_nudge_done";
+const INVITE_NUDGE_DONE_KEY = "boop:onboarding_invite_nudge_done";
 
 export function isInviteNudgeDone(): boolean {
   return localStorage.getItem(INVITE_NUDGE_DONE_KEY) === "done";

@@ -39,7 +39,7 @@
     <!-- Initialize dark mode before render to prevent flash -->
     <script>
       (function() {
-        const stored = localStorage.getItem('pooapp:darkMode') || localStorage.getItem('boop:darkMode');
+        const stored = localStorage.getItem('boop:darkMode');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (stored === 'true' || (stored === null && prefersDark)) {
           document.documentElement.classList.add('dark');

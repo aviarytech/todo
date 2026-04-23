@@ -74,7 +74,7 @@ PERFECT FOR
 - Family to-do lists
 - Anything you need to remember while sitting down
 
-Privacy policy: https://ad.boop.app/privacy
+Privacy policy: https://boop.ad/privacy
 ```
 
 (~1300 chars — well under limit)
@@ -122,7 +122,7 @@ npx cap sync ios
 ## App Store Connect Submission Checklist
 
 ### Before Submitting (Engineer tasks — can be done now)
-- [x] Privacy policy live at https://ad.boop.app/privacy (deploy this PR)
+- [x] Privacy policy live at https://boop.ad/privacy (deploy this PR)
 - [ ] 5 screenshots captured at 1290×2796 (iPhone 15 Pro Max)
 - [ ] App icon: 1024×1024 PNG, no alpha channel (check resources/ios/)
 - [ ] Verify bundle ID `ad.boop.app` matches Xcode project
@@ -138,8 +138,8 @@ npx cap sync ios
 - [ ] Set pricing: Free (with in-app purchases for Pro)
 - [ ] Add in-app purchase for Pro subscription (monthly + annual)
 - [ ] Set age rating: 4+
-- [ ] Privacy policy URL: https://ad.boop.app/privacy
-- [ ] Support URL: https://ad.boop.app
+- [ ] Privacy policy URL: https://boop.ad/privacy
+- [ ] Support URL: https://boop.ad
 - [ ] Submit for review
 
 ### Requires Board / Human Action
@@ -161,8 +161,8 @@ npx cap sync ios
 | Category | Productivity |
 | Age Rating | 4+ |
 | Price | Free |
-| Privacy Policy | https://ad.boop.app/privacy |
-| Support URL | https://ad.boop.app |
+| Privacy Policy | https://boop.ad/privacy |
+| Support URL | https://boop.ad |
 | Copyright | 2026 boop |
 
 ---

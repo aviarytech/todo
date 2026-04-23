@@ -55,7 +55,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = (e: MediaQueryListEvent) => {
       // Only follow system if no explicit preference is set
-      if (localStorage.getItem('pooapp:darkMode') === null) {
+      if (localStorage.getItem('boop:darkMode') === null) {
         setDarkModeState(e.matches);
         if (e.matches) {
           document.documentElement.classList.add('dark');
