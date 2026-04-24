@@ -391,12 +391,27 @@ html {
 }
 .dark .boop-wordmark { color: #f1eef9; }
 .boop-dot {
+  position: relative;
   display: inline-block;
   width: 0.73em;
   height: 0.73em;
   border-radius: 50%;
   background: var(--boop-accent);
   flex: none;
+}
+/* Soft ripple ring — the design's "01 · Original" mark. */
+.boop-dot::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1.25em;
+  height: 1.25em;
+  border-radius: 50%;
+  border: max(1.5px, 0.025em) solid var(--boop-accent);
+  opacity: 0.25;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 /* Hide focus ring for mouse users */

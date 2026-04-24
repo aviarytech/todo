@@ -8,7 +8,7 @@
 //      which consumes these three files and installs the full iOS + Android
 //      size matrix into the native projects.
 
-import { GlobalFonts, createCanvas } from '@napi-rs/canvas';
+import { createCanvas } from '@napi-rs/canvas';
 import { writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,12 +22,26 @@ const VIOLET = '#6b3cff';
 const CREAM = '#fafaf7';
 const INK = '#0c0b10';
 
-const fontOk = GlobalFonts.registerFromPath(
-  join(RES, 'fonts', 'Nunito-Black.ttf'),
-  'Nunito',
-);
-if (!fontOk) {
-  throw new Error('Failed to register Nunito-Black.ttf — check resources/fonts/');
+// The mark: a filled dot with a soft ripple ring, proportions locked to the
+// identity pack — dot r = 0.218·s, ring r = 0.373·s, stroke = max(1.5, 0.0136·s).
+function drawMark(ctx, cx, cy, s, { dotColor, ringColor, ringOpacity = 0.25 }) {
+  const dotR = s * 0.218;
+  const ringR = s * 0.373;
+  const strokeW = Math.max(1.5, s * 0.0136);
+
+  ctx.save();
+  ctx.globalAlpha = ringOpacity;
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth = strokeW;
+  ctx.beginPath();
+  ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = dotColor;
+  ctx.beginPath();
+  ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function renderIcon() {
@@ -39,13 +53,13 @@ function renderIcon() {
   ctx.fillStyle = VIOLET;
   ctx.fillRect(0, 0, size, size);
 
-  // Cream `b` glyph. Optical-centre nudge up 3% because `b` has an ascender
-  // but no descender — geometric centring leaves it looking low.
-  ctx.fillStyle = CREAM;
-  ctx.font = `900 ${size * 0.68}px Nunito`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('b', size / 2, size / 2 - size * 0.03);
+  // Cream dot + ripple — the "iOS rounded" artboard from the identity pack.
+  // Ring opacity bumps to 0.4 so the cream stroke holds against violet.
+  drawMark(ctx, size / 2, size / 2, size, {
+    dotColor: CREAM,
+    ringColor: CREAM,
+    ringOpacity: 0.4,
+  });
 
   return c.toBuffer('image/png');
 }
@@ -58,11 +72,13 @@ function renderSplash({ bg, fg }) {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, size, size);
 
-  // Violet dot ~18% of the short-edge diameter.
-  ctx.fillStyle = fg;
-  ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size * 0.09, 0, Math.PI * 2);
-  ctx.fill();
+  // Dot ~18% diameter (r ≈ 0.09·size) — keep that by sizing the mark so its
+  // dot resolves to the same radius: markSize = (0.09 / 0.218)·size.
+  drawMark(ctx, size / 2, size / 2, size * 0.413, {
+    dotColor: fg,
+    ringColor: fg,
+    ringOpacity: 0.25,
+  });
 
   return c.toBuffer('image/png');
 }
