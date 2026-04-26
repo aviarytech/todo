@@ -16,7 +16,7 @@ const PLAN_LABELS: Record<string, { label: string; className: string }> = {
 
 export function ProfileBadge() {
   const { logout } = useAuth();
-  const { did } = useCurrentUser();
+  const { did, displayName, email } = useCurrentUser();
   const { haptic } = useSettings();
   const { plan } = useBilling();
 
@@ -24,26 +24,25 @@ export function ProfileBadge() {
 
   const planBadge = PLAN_LABELS[plan] ?? null;
 
-  // Get first 8 and last 4 chars of DID for display
-  const shortDid = did.length > 16 
-    ? `${did.slice(0, 8)}...${did.slice(-4)}`
-    : did;
+  // Prefer name → email → DID for the visible label.
+  const label = displayName?.trim() || email || (did.length > 16 ? `${did.slice(0, 8)}…${did.slice(-4)}` : did);
+  const isMono = !displayName && !email;
 
   return (
     <div className="flex items-center gap-2">
-      {/* DID badge - now links to profile */}
+      {/* Identity badge — links to profile, shows name/email (DID on hover). */}
       <Link
         to="/profile"
         onClick={() => haptic('light')}
-        className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+        className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-stone-100 dark:bg-gray-800 hover:bg-stone-200 dark:hover:bg-gray-700 rounded-full transition-colors max-w-[14rem]"
         title={did}
       >
-        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-        <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
-          {shortDid}
+        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse flex-none" />
+        <span className={`text-xs ${isMono ? 'font-mono' : 'font-medium'} text-stone-700 dark:text-gray-300 truncate`}>
+          {label}
         </span>
         {planBadge && (
-          <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${planBadge.className}`}>
+          <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full flex-none ${planBadge.className}`}>
             {planBadge.label}
           </span>
         )}
