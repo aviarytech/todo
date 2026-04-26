@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-// Renders the three source images the @capacitor/assets CLI consumes.
+// Renders every brand icon the app ships with.
 //
 // The pipeline is:
-//   1. This script writes resources/icon.png, resources/splash.png,
-//      resources/splash-dark.png using @napi-rs/canvas + Nunito-Black.
-//   2. The `generate:assets` npm script then calls `capacitor-assets generate`
-//      which consumes these three files and installs the full iOS + Android
-//      size matrix into the native projects.
+//   1. This script writes:
+//      - resources/icon.png + resources/splash{,-dark}.png — sources for the
+//        @capacitor/assets CLI to install into the iOS + Android projects.
+//      - public/icons/icon-{72..512}.png — the PWA manifest icons used by the
+//        web install prompt and "Add to Home Screen".
+//   2. `bun run generate:assets` then runs `capacitor-assets generate` to push
+//      the resources/* sources through into ios/ and android/.
 
 import { createCanvas } from '@napi-rs/canvas';
 import { writeFileSync } from 'node:fs';
@@ -16,6 +18,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const RES = join(ROOT, 'resources');
+const PWA_ICONS = join(ROOT, 'public', 'icons');
+
+// PWA manifest icon sizes — keep in sync with public/manifest.json.
+const PWA_SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
 
 // Brand tokens (mirror src/pages/Landing.css and index.html theme-color).
 const VIOLET = '#6b3cff';
@@ -83,6 +89,23 @@ function renderSplash({ bg, fg }) {
   return c.toBuffer('image/png');
 }
 
+// PWA manifest icon — same treatment as the native app icon, sized per manifest.
+function renderPwaIcon(size) {
+  const c = createCanvas(size, size);
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = VIOLET;
+  ctx.fillRect(0, 0, size, size);
+
+  drawMark(ctx, size / 2, size / 2, size, {
+    dotColor: CREAM,
+    ringColor: CREAM,
+    ringOpacity: 0.4,
+  });
+
+  return c.toBuffer('image/png');
+}
+
 writeFileSync(join(RES, 'icon.png'), renderIcon());
 writeFileSync(join(RES, 'splash.png'), renderSplash({ bg: CREAM, fg: VIOLET }));
 writeFileSync(join(RES, 'splash-dark.png'), renderSplash({ bg: INK, fg: VIOLET }));
@@ -90,4 +113,10 @@ writeFileSync(join(RES, 'splash-dark.png'), renderSplash({ bg: INK, fg: VIOLET }
 console.log('✓ Wrote resources/icon.png (1024×1024)');
 console.log('✓ Wrote resources/splash.png (2732×2732)');
 console.log('✓ Wrote resources/splash-dark.png (2732×2732)');
+
+for (const size of PWA_SIZES) {
+  writeFileSync(join(PWA_ICONS, `icon-${size}.png`), renderPwaIcon(size));
+  console.log(`✓ Wrote public/icons/icon-${size}.png (${size}×${size})`);
+}
+
 console.log('Next: run `bun run generate:assets` to install into native projects.');

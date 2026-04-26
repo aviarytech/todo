@@ -32,13 +32,12 @@
 
 .boop-landing .nav { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(14px); background: rgba(250,250,247,0.75); border-bottom: 1px solid var(--lineSoft); }
 .boop-landing .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-.boop-landing .wordmark { display: inline-flex; align-items: center; gap: 8px; font-family: var(--rounded); font-weight: 800; font-size: 22px; letter-spacing: -0.8px; color: var(--ink); white-space: nowrap; }
-.boop-landing .wordmark .dot { position: relative; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-/* Soft ripple ring from the identity pack (ring-to-dot diameter ratio ≈ 1.71). */
-.boop-landing .wordmark .dot::after { content: ""; position: absolute; top: 50%; left: 50%; width: 27px; height: 27px; border-radius: 50%; border: 1.5px solid var(--accent); opacity: 0.25; transform: translate(-50%, -50%); pointer-events: none; }
-.boop-landing .wordmark-sm { font-size: 18px; gap: 6px; }
-.boop-landing .wordmark-sm .dot { width: 13px; height: 13px; }
-.boop-landing .wordmark-sm .dot::after { width: 22px; height: 22px; }
+.boop-landing .wordmark { display: inline-flex; align-items: center; gap: 0.45em; font-family: var(--rounded); font-weight: 800; font-size: 22px; letter-spacing: -0.8px; color: var(--ink); white-space: nowrap; }
+/* Mark: dot + soft ripple ring. Em-scaled so the mark sizing tracks the wordmark
+   font everywhere it's used. Matches the .boop-dot rule in src/index.css. */
+.boop-landing .wordmark .dot { position: relative; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.boop-landing .wordmark .dot::after { content: ""; position: absolute; top: 50%; left: 50%; width: 0.94em; height: 0.94em; border-radius: 50%; border: max(1.5px, 0.025em) solid var(--accent); opacity: 0.25; transform: translate(-50%, -50%); pointer-events: none; }
+.boop-landing .wordmark-sm { font-size: 18px; gap: 0.4em; }
 .boop-landing .nav-links { display: flex; gap: 28px; font-size: 14px; color: var(--muted); }
 .boop-landing .nav-links a:hover { color: var(--ink); }
 .boop-landing .nav-cta { display: flex; gap: 10px; align-items: center; }
@@ -51,8 +50,11 @@
 
 .boop-landing .hero { padding: 64px 0 60px; position: relative; }
 .boop-landing .hero h1 { display: flex; align-items: center; gap: clamp(14px, 1.4vw, 20px); flex-wrap: nowrap; font-family: var(--rounded); font-weight: 900; font-size: clamp(48px, 8vw, 108px); letter-spacing: -3px; line-height: 0.95; margin: 0 0 24px; max-width: 900px; }
-.boop-landing .hero h1 .mark { position: relative; display: block; width: clamp(40px, 7vw, 90px); height: clamp(40px, 7vw, 90px); border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-.boop-landing .hero h1 .mark::after { content: ""; position: absolute; top: 50%; left: 50%; width: clamp(68px, 11.97vw, 154px); height: clamp(68px, 11.97vw, 154px); border-radius: 50%; border: 2px solid var(--accent); opacity: 0.25; transform: translate(-50%, -50%); pointer-events: none; }
+/* Hero mark uses the same em-based ratios as the inline wordmark — the ring outer
+   matches font cap-height (~0.94em) so the mark sits in line with "boop." instead
+   of haloing past its ascenders/descenders. */
+.boop-landing .hero h1 .mark { position: relative; display: block; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.boop-landing .hero h1 .mark::after { content: ""; position: absolute; top: 50%; left: 50%; width: 0.94em; height: 0.94em; border-radius: 50%; border: max(1.5px, 0.025em) solid var(--accent); opacity: 0.25; transform: translate(-50%, -50%); pointer-events: none; }
 .boop-landing .hero-signin { margin-top: 20px; font-size: 14px; color: var(--muted); }
 .boop-landing .hero-signin a { color: var(--accent); font-weight: 600; }
 .boop-landing .hero-signin a:hover { text-decoration: underline; }

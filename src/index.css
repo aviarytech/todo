@@ -390,23 +390,27 @@ html {
   color: var(--boop-ink);
 }
 .dark .boop-wordmark { color: #f1eef9; }
+/* Identity-pack mark: dot + soft ripple ring.
+   Proportions: dot diameter = 0.584 × ring-outer (design's 0.436·s / 0.746·s),
+   stroke ≈ 0.025em (≈ 0.0136·ring-outer), opacity 0.25.
+   Ring outer ≈ font cap-height so the mark sits in line with the wordmark
+   instead of haloing past it. */
 .boop-dot {
   position: relative;
   display: inline-block;
-  width: 0.73em;
-  height: 0.73em;
+  width: 0.55em;
+  height: 0.55em;
   border-radius: 50%;
   background: var(--boop-accent);
   flex: none;
 }
-/* Soft ripple ring — the design's "01 · Original" mark. */
 .boop-dot::after {
   content: "";
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 1.25em;
-  height: 1.25em;
+  width: 0.94em;
+  height: 0.94em;
   border-radius: 50%;
   border: max(1.5px, 0.025em) solid var(--boop-accent);
   opacity: 0.25;
