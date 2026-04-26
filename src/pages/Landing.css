@@ -50,11 +50,12 @@
 
 .boop-landing .hero { padding: 64px 0 60px; position: relative; }
 .boop-landing .hero h1 { display: flex; align-items: center; gap: clamp(14px, 1.4vw, 20px); flex-wrap: nowrap; font-family: var(--rounded); font-weight: 900; font-size: clamp(48px, 8vw, 108px); letter-spacing: -3px; line-height: 0.95; margin: 0 0 24px; max-width: 900px; }
-/* Hero mark uses the same em-based ratios as the inline wordmark — the ring outer
-   matches font cap-height (~0.94em) so the mark sits in line with "boop." instead
-   of haloing past its ascenders/descenders. */
-.boop-landing .hero h1 .mark { position: relative; display: block; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-.boop-landing .hero h1 .mark::after { content: ""; position: absolute; top: 50%; left: 50%; width: 0.94em; height: 0.94em; border-radius: 50%; border: max(1.5px, 0.025em) solid var(--accent); opacity: 0.25; transform: translate(-50%, -50%); pointer-events: none; }
+/* Hero mark — same dot:ring ratio (0.584) as the inline wordmark, but tuned so
+   the ring outer sits below the cap-height of the giant h1 type. Keeps the
+   mark's footprint close to the original standalone dot without haloing the
+   "boop." ascenders/descenders. */
+.boop-landing .hero h1 .mark { position: relative; display: block; width: 0.5em; height: 0.5em; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.boop-landing .hero h1 .mark::after { content: ""; position: absolute; top: 50%; left: 50%; width: 0.85em; height: 0.85em; border-radius: 50%; border: max(1.5px, 0.022em) solid var(--accent); opacity: 0.25; transform: translate(-50%, -50%); pointer-events: none; }
 .boop-landing .hero-signin { margin-top: 20px; font-size: 14px; color: var(--muted); }
 .boop-landing .hero-signin a { color: var(--accent); font-weight: 600; }
 .boop-landing .hero-signin a:hover { text-decoration: underline; }
