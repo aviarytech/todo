@@ -5,13 +5,24 @@ const port = Number(process.env.PORT || 3000);
 const distDir = join(process.cwd(), "dist");
 const siteCacheControl = "public, max-age=300, s-maxage=86400";
 
+function normalizeBaseDomain(baseDomain: string): string {
+  return baseDomain
+    .replace(/^https?:\/\//i, "")
+    .split("/")[0]
+    .split(":")[0]
+    .trim()
+    .toLowerCase();
+}
+
 function configuredAppHostnames(): Set<string> {
   const explicit = process.env.APP_HOSTNAMES;
-  const baseDomain = process.env.SITE_BASE_DOMAIN || process.env.WEBVH_DOMAIN || "boop.ad";
+  const baseDomain = normalizeBaseDomain(
+    process.env.SITE_BASE_DOMAIN || process.env.WEBVH_DOMAIN || "boop.ad"
+  );
   const values = explicit
     ? explicit.split(",")
     : [baseDomain, `www.${baseDomain}`, "localhost", "127.0.0.1", "0.0.0.0"];
-  return new Set(values.map((value) => value.trim().toLowerCase()).filter(Boolean));
+  return new Set(values.map((value) => normalizeBaseDomain(value)).filter(Boolean));
 }
 
 const appHostnames = configuredAppHostnames();

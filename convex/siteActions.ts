@@ -109,6 +109,15 @@ function safeLabel(value: string): string {
     .replace(/-+/g, "-");
 }
 
+function normalizeBaseDomain(baseDomain: string): string {
+  return baseDomain
+    .replace(/^https?:\/\//i, "")
+    .split("/")[0]
+    .split(":")[0]
+    .trim()
+    .toLowerCase();
+}
+
 function randomChoice(values: string[]): string {
   return values[randomBytes(1)[0] % values.length];
 }
@@ -118,9 +127,10 @@ function randomDigits(): string {
 }
 
 function buildHostname(baseDomain: string): string {
+  const normalizedBaseDomain = normalizeBaseDomain(baseDomain);
   return `${safeLabel(randomChoice(ADJECTIVES))}-${safeLabel(
     randomChoice(NOUNS)
-  )}-${randomDigits()}.${baseDomain}`;
+  )}-${randomDigits()}.${normalizedBaseDomain}`;
 }
 
 function encryptionKey(secret: string): Buffer {

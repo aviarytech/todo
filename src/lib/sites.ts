@@ -41,6 +41,15 @@ function safeLabel(value: string): string {
     .replace(/-+/g, "-");
 }
 
+export function normalizeBaseDomain(baseDomain: string): string {
+  return baseDomain
+    .replace(/^https?:\/\//i, "")
+    .split("/")[0]
+    .split(":")[0]
+    .trim()
+    .toLowerCase();
+}
+
 export function buildBoopHostname(
   adjective: string,
   noun: string,
@@ -48,7 +57,7 @@ export function buildBoopHostname(
   baseDomain: string
 ): string {
   const suffix = String(Math.abs(digits) % 100).padStart(2, "0");
-  return `${safeLabel(adjective)}-${safeLabel(noun)}-${suffix}.${baseDomain}`;
+  return `${safeLabel(adjective)}-${safeLabel(noun)}-${suffix}.${normalizeBaseDomain(baseDomain)}`;
 }
 
 export async function generateMemorableHostname(
@@ -101,5 +110,6 @@ export async function sha256Hex(input: string): Promise<string> {
 }
 
 export function appHostnameSet(baseDomain: string): Set<string> {
-  return new Set([baseDomain, `www.${baseDomain}`]);
+  const normalized = normalizeBaseDomain(baseDomain);
+  return new Set([normalized, `www.${normalized}`]);
 }
