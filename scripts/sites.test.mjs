@@ -27,6 +27,11 @@ const sites = await loadSitesModule();
 }
 
 {
+  const hostname = sites.buildBoopHostname("tiny", "paper", 0, "https://trypoo.app");
+  assert.equal(hostname, "tiny-paper-00.trypoo.app");
+}
+
+{
   let calls = 0;
   const hostname = await sites.generateMemorableHostname({
     baseDomain: "boop.ad",
