@@ -9,6 +9,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import type { Id } from "../../convex/_generated/dataModel";
+import { buildReferralInviteUrl } from "../lib/inviteLinks";
 
 interface ReferralInviteProps {
   /** Convex user ID — caller resolves this from their context */
@@ -29,7 +30,7 @@ export function ReferralInvite({ userId, compact = false }: ReferralInviteProps)
   // Prefer already-existing code from query, fall back to locally generated one
   const activeCode = codeRecord?.code ?? code;
   const referralUrl = activeCode
-    ? `${window.location.origin}/invite/${activeCode}`
+    ? buildReferralInviteUrl(activeCode)
     : null;
 
   const referralProUntil = stats?.referralProUntil ?? null;

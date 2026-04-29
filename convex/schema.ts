@@ -290,6 +290,66 @@ export default defineSchema({
     .index("by_webvh_did", ["webvhDid"])
     .index("by_status", ["status"]),
 
+  // Single-file hosted sites. These are public, shareable HTML drops with
+  // portable did:webvh identity. Kept separate from todo/list publication.
+  siteFiles: defineTable({
+    storageId: v.id("_storage"),
+    contentType: v.string(),
+    sha256: v.string(),
+    byteLength: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_sha256", ["sha256"]),
+
+  sites: defineTable({
+    ownerDid: v.string(),
+    scid: v.string(),
+    did: v.string(),
+    primaryHostnameId: v.optional(v.id("siteHostnames")),
+    fileId: v.id("siteFiles"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerDid"])
+    .index("by_scid", ["scid"])
+    .index("by_file", ["fileId"]),
+
+  siteHostnames: defineTable({
+    siteId: v.id("sites"),
+    hostname: v.string(),
+    kind: v.union(v.literal("boop_sub"), v.literal("custom")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("active"),
+      v.literal("redirected")
+    ),
+    isPrimary: v.boolean(),
+    redirectTo: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_site", ["siteId"])
+    .index("by_hostname", ["hostname"])
+    .index("by_site_primary", ["siteId", "isPrimary"]),
+
+  siteDidLogEntries: defineTable({
+    siteId: v.id("sites"),
+    versionId: v.string(),
+    entryJsonl: v.string(),
+    signedAt: v.number(),
+  })
+    .index("by_site", ["siteId"])
+    .index("by_site_version", ["siteId", "versionId"]),
+
+  siteKeys: defineTable({
+    siteId: v.id("sites"),
+    keyType: v.union(v.literal("ed25519")),
+    publicKeyMultibase: v.string(),
+    encryptedPrivateKey: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_site", ["siteId"]),
+
   // Comments table - threaded discussions on items
   comments: defineTable({
     itemId: v.id("items"),

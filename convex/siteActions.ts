@@ -1,0 +1,383 @@
+"use node";
+
+import { action } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { v } from "convex/values";
+import { createHash, createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { sha512 } from "@noble/hashes/sha2.js";
+import { concatBytes, bytesToHex } from "@noble/hashes/utils.js";
+import * as ed25519 from "@noble/ed25519";
+import {
+  createDID,
+  updateDID,
+  MultibaseEncoding,
+  multibaseEncode,
+  prepareDataForSigning,
+} from "didwebvh-ts";
+
+const ADJECTIVES = [
+  "brisk",
+  "cosmic",
+  "dapper",
+  "fizzy",
+  "gentle",
+  "lucky",
+  "merry",
+  "tiny",
+];
+
+const NOUNS = [
+  "paper",
+  "button",
+  "garden",
+  "lantern",
+  "signal",
+  "window",
+  "studio",
+  "sketch",
+];
+
+const ED25519_MULTICODEC_PREFIX = new Uint8Array([0xed, 0x01]);
+// Convex Node action args support up to 5 MiB. Keep some headroom for
+// metadata and JSON encoding until the UI switches to direct upload URLs.
+const MAX_HTML_BYTES = 4 * 1024 * 1024;
+
+function configureEd25519Sha512() {
+  const sha512Fn = (...messages: Uint8Array[]) => sha512(concatBytes(...messages));
+  const module = ed25519 as unknown as {
+    utils?: { sha512Sync?: (...messages: Uint8Array[]) => Uint8Array };
+    etc?: { sha512Sync?: (...messages: Uint8Array[]) => Uint8Array };
+  };
+  if (module.utils) module.utils.sha512Sync = sha512Fn;
+  if (module.etc) module.etc.sha512Sync = sha512Fn;
+}
+
+class SiteWebVHSigner {
+  private readonly privateKey: Uint8Array;
+  private readonly publicKeyMultibase: string;
+
+  constructor(privateKey: Uint8Array, publicKeyMultibase: string) {
+    this.privateKey = privateKey;
+    this.publicKeyMultibase = publicKeyMultibase;
+  }
+
+  getVerificationMethodId() {
+    return `did:key:${this.publicKeyMultibase}`;
+  }
+
+  async sign(input: {
+    document: unknown;
+    proof: Record<string, unknown>;
+  }): Promise<{ proofValue: string }> {
+    const payload = await prepareDataForSigning(
+      input.document as Record<string, unknown>,
+      input.proof
+    );
+    const signature = await ed25519.signAsync(payload, this.privateKey);
+    return {
+      proofValue: multibaseEncode(signature, MultibaseEncoding.BASE58_BTC),
+    };
+  }
+
+  async verify(
+    signature: Uint8Array,
+    message: Uint8Array,
+    publicKey: Uint8Array
+  ): Promise<boolean> {
+    const key = publicKey.length === 33 ? publicKey.slice(1) : publicKey;
+    return ed25519.verifyAsync(signature, message, key);
+  }
+}
+
+function validateHtmlPayload(html: string): string {
+  const trimmed = html.trim();
+  if (!trimmed) {
+    throw new Error("Drop a little HTML first.");
+  }
+  const byteLength = new TextEncoder().encode(trimmed).byteLength;
+  if (byteLength > MAX_HTML_BYTES) {
+    throw new Error("That file is a bit too mighty for v1.");
+  }
+  return trimmed;
+}
+
+function safeLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
+}
+
+function randomChoice(values: string[]): string {
+  return values[randomBytes(1)[0] % values.length];
+}
+
+function randomDigits(): string {
+  return String(randomBytes(1)[0] % 100).padStart(2, "0");
+}
+
+function buildHostname(baseDomain: string): string {
+  return `${safeLabel(randomChoice(ADJECTIVES))}-${safeLabel(
+    randomChoice(NOUNS)
+  )}-${randomDigits()}.${baseDomain}`;
+}
+
+function encryptionKey(secret: string): Buffer {
+  return createHash("sha256").update(secret).digest();
+}
+
+function encryptPrivateKey(privateKey: Uint8Array, secret: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(secret), iv);
+  const ciphertext = Buffer.concat([
+    cipher.update(Buffer.from(bytesToHex(privateKey), "utf8")),
+    cipher.final(),
+  ]);
+  const tag = cipher.getAuthTag();
+  return [
+    iv.toString("base64url"),
+    tag.toString("base64url"),
+    ciphertext.toString("base64url"),
+  ].join(".");
+}
+
+function decryptPrivateKey(encryptedPrivateKey: string, secret: string): Uint8Array {
+  const [ivBase64, tagBase64, ciphertextBase64] = encryptedPrivateKey.split(".");
+  if (!ivBase64 || !tagBase64 || !ciphertextBase64) {
+    throw new Error("Stored site key is malformed");
+  }
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    encryptionKey(secret),
+    Buffer.from(ivBase64, "base64url")
+  );
+  decipher.setAuthTag(Buffer.from(tagBase64, "base64url"));
+  const plaintext = Buffer.concat([
+    decipher.update(Buffer.from(ciphertextBase64, "base64url")),
+    decipher.final(),
+  ]).toString("utf8");
+  return new Uint8Array(Buffer.from(plaintext, "hex"));
+}
+
+async function createSiteKey() {
+  const privateKey = ed25519.utils.randomPrivateKey();
+  const publicKey = await ed25519.getPublicKeyAsync(privateKey);
+  const prefixed = new Uint8Array(ED25519_MULTICODEC_PREFIX.length + publicKey.length);
+  prefixed.set(ED25519_MULTICODEC_PREFIX, 0);
+  prefixed.set(publicKey, ED25519_MULTICODEC_PREFIX.length);
+  const publicKeyMultibase = multibaseEncode(
+    prefixed,
+    MultibaseEncoding.BASE58_BTC
+  );
+  return { privateKey, publicKeyMultibase };
+}
+
+function serializeDidLogEntries(log: Array<{ versionId: string; versionTime: string }>) {
+  return log.map((entry) => ({
+    versionId: entry.versionId,
+    entryJsonl: JSON.stringify(entry),
+    signedAt: Date.parse(String(entry.versionTime)) || Date.now(),
+  }));
+}
+
+function normalizeCustomHostname(hostname: string): string {
+  const normalized = hostname
+    .replace(/^https?:\/\//i, "")
+    .split("/")[0]
+    .split(":")[0]
+    .trim()
+    .toLowerCase();
+
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(normalized)) {
+    throw new Error("Enter a real domain, like www.forexample.com.");
+  }
+
+  return normalized;
+}
+
+export const createSiteFromUpload = action({
+  args: {
+    ownerDid: v.string(),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args): Promise<{ siteId: string; hostname: string; url: string; did: string; scid: string }> => {
+    configureEd25519Sha512();
+
+    const baseDomain = process.env.SITE_BASE_DOMAIN || process.env.WEBVH_DOMAIN || "boop.ad";
+    const encryptionSecret = process.env.SITE_KEY_ENCRYPTION_SECRET;
+    if (!encryptionSecret) {
+      throw new Error("SITE_KEY_ENCRYPTION_SECRET is not configured");
+    }
+
+    const blob = await ctx.storage.get(args.storageId);
+    if (!blob) {
+      throw new Error("That uploaded file disappeared. Try dropping it again.");
+    }
+
+    const content = validateHtmlPayload(await blob.text());
+    const byteLength = new TextEncoder().encode(content).byteLength;
+    const metadata = await ctx.storage.getMetadata(args.storageId);
+    const sha256 = metadata?.sha256 ?? createHash("sha256").update(content).digest("hex");
+
+    let hostname = "";
+    for (let attempt = 0; attempt < 25; attempt += 1) {
+      const candidate = buildHostname(baseDomain);
+      const available = await ctx.runQuery(internal.siteInternals.isHostnameAvailable, {
+        hostname: candidate,
+      });
+      if (available) {
+        hostname = candidate;
+        break;
+      }
+    }
+    if (!hostname) {
+      throw new Error("Could not find an available boop link. Try again in a moment.");
+    }
+
+    const { privateKey, publicKeyMultibase } = await createSiteKey();
+    const signer = new SiteWebVHSigner(privateKey, publicKeyMultibase);
+    const verificationMethodId = signer.getVerificationMethodId();
+
+    const didResult = await createDID({
+      domain: hostname,
+      signer,
+      verifier: signer,
+      updateKeys: [verificationMethodId],
+      verificationMethods: [
+        {
+          id: "#key-0",
+          type: "Multikey",
+          controller: "",
+          publicKeyMultibase,
+        },
+      ],
+      portable: true,
+      authentication: ["#key-0"],
+      assertionMethod: ["#key-0"],
+    });
+
+    const scid = didResult.log[0]?.parameters?.scid;
+    if (!scid) {
+      throw new Error("DID creation did not return a SCID");
+    }
+
+    const createdAt = Date.now();
+    const record = await ctx.runMutation(internal.siteInternals.createSiteRecord, {
+      ownerDid: args.ownerDid,
+      storageId: args.storageId,
+      contentType: "text/html; charset=utf-8",
+      sha256,
+      byteLength,
+      hostname,
+      did: didResult.did,
+      scid,
+      publicKeyMultibase,
+      encryptedPrivateKey: encryptPrivateKey(privateKey, encryptionSecret),
+      didLogEntries: serializeDidLogEntries(didResult.log),
+      createdAt,
+    });
+
+    return {
+      siteId: record.siteId,
+      hostname,
+      url: `https://${hostname}`,
+      did: didResult.did,
+      scid,
+    };
+  },
+});
+
+export const createSite = action({
+  args: {
+    ownerDid: v.string(),
+    html: v.string(),
+  },
+  handler: async (): Promise<never> => {
+    throw new Error("Use direct upload for sites. Refresh and drop the file again.");
+  },
+});
+
+export const migrateVerifiedCustomDomain = action({
+  args: {
+    ownerDid: v.string(),
+    siteId: v.id("sites"),
+    hostname: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ siteId: string; hostname: string; did: string; scid: string }> => {
+    configureEd25519Sha512();
+
+    const encryptionSecret = process.env.SITE_KEY_ENCRYPTION_SECRET;
+    if (!encryptionSecret) {
+      throw new Error("SITE_KEY_ENCRYPTION_SECRET is not configured");
+    }
+
+    const hostname = normalizeCustomHostname(args.hostname);
+    const record = await ctx.runQuery(internal.siteInternals.getSiteIdentityForUpdate, {
+      siteId: args.siteId,
+      ownerDid: args.ownerDid,
+    });
+    if (!record) {
+      throw new Error("Site not found");
+    }
+
+    const privateKey = decryptPrivateKey(
+      record.key.encryptedPrivateKey,
+      encryptionSecret
+    );
+    const signer = new SiteWebVHSigner(privateKey, record.key.publicKeyMultibase);
+    const verificationMethodId = signer.getVerificationMethodId();
+    const migratedDid = `did:webvh:${record.site.scid}:${hostname}`;
+    const currentLog = record.didLogEntries.map((entry) => JSON.parse(entry.entryJsonl));
+
+    const migrated = await updateDID({
+      log: currentLog,
+      signer,
+      verifier: signer,
+      domain: hostname,
+      controller: migratedDid,
+      updateKeys: [verificationMethodId],
+      verificationMethods: [
+        {
+          id: "#key-0",
+          type: "Multikey",
+          controller: "",
+          publicKeyMultibase: record.key.publicKeyMultibase,
+        },
+      ],
+      portable: true,
+      authentication: ["#key-0"],
+      assertionMethod: ["#key-0"],
+      witnessProofs: [],
+    });
+
+    if (migrated.meta.scid !== record.site.scid) {
+      throw new Error("DID migration changed the SCID; refusing to continue.");
+    }
+
+    const latestEntry = migrated.log[migrated.log.length - 1];
+    if (!latestEntry) {
+      throw new Error("DID migration did not return a log entry.");
+    }
+
+    const updatedAt = Date.now();
+    await ctx.runMutation(internal.siteInternals.applyDomainMigration, {
+      siteId: args.siteId,
+      hostname,
+      did: migrated.did,
+      didLogEntry: {
+        versionId: latestEntry.versionId,
+        entryJsonl: JSON.stringify(latestEntry),
+        signedAt: Date.parse(latestEntry.versionTime) || updatedAt,
+      },
+      updatedAt,
+    });
+
+    return {
+      siteId: args.siteId,
+      hostname,
+      did: migrated.did,
+      scid: record.site.scid,
+    };
+  },
+});
