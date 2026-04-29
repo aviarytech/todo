@@ -15,7 +15,7 @@ export const isHostnameAvailable = internalQuery({
 export const createSiteRecord = internalMutation({
   args: {
     ownerDid: v.string(),
-    content: v.string(),
+    storageId: v.id("_storage"),
     contentType: v.string(),
     sha256: v.string(),
     byteLength: v.number(),
@@ -43,7 +43,7 @@ export const createSiteRecord = internalMutation({
     }
 
     const fileId = await ctx.db.insert("siteFiles", {
-      content: args.content,
+      storageId: args.storageId,
       contentType: args.contentType,
       sha256: args.sha256,
       byteLength: args.byteLength,
@@ -89,6 +89,13 @@ export const createSiteRecord = internalMutation({
     }
 
     return { siteId, hostnameId, fileId };
+  },
+});
+
+export const deleteUploadedFile = internalMutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    await ctx.storage.delete(args.storageId);
   },
 });
 

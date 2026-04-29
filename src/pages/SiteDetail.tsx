@@ -21,10 +21,7 @@ export function SiteDetail() {
 
   const hostname = site?.primaryHostname?.hostname ?? "";
   const url = hostname ? `https://${hostname}` : "";
-  const previewSrc = useMemo(() => {
-    if (!site?.file?.content) return "";
-    return `data:text/html;charset=utf-8,${encodeURIComponent(site.file.content)}`;
-  }, [site?.file?.content]);
+  const previewSrc = useMemo(() => site?.file?.storageUrl ?? "", [site?.file?.storageUrl]);
 
   const copyLink = async () => {
     if (!url) return;

@@ -1,5 +1,12 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+
+export const generateSiteUploadUrl = mutation({
+  args: { ownerDid: v.string() },
+  handler: async (ctx, _args) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
 
 export const listSites = query({
   args: { ownerDid: v.string() },
@@ -48,10 +55,11 @@ export const getSite = query({
 
     const primaryHostname =
       site.primaryHostnameId != null ? await ctx.db.get(site.primaryHostnameId) : null;
+    const storageUrl = file ? await ctx.storage.getUrl(file.storageId) : null;
 
     return {
       ...site,
-      file,
+      file: file ? { ...file, storageUrl } : null,
       publicKeyMultibase: key?.publicKeyMultibase ?? null,
       hostnames,
       primaryHostname,
@@ -90,7 +98,7 @@ export const getPublicSiteByHostname = query({
       hostname,
       primaryHostname,
       file: {
-        content: file.content,
+        storageId: file.storageId,
         contentType: file.contentType,
         sha256: file.sha256,
         byteLength: file.byteLength,

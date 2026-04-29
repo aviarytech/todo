@@ -293,7 +293,7 @@ export default defineSchema({
   // Single-file hosted sites. These are public, shareable HTML drops with
   // portable did:webvh identity. Kept separate from todo/list publication.
   siteFiles: defineTable({
-    content: v.string(),
+    storageId: v.id("_storage"),
     contentType: v.string(),
     sha256: v.string(),
     byteLength: v.number(),

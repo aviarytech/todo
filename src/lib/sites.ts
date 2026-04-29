@@ -78,7 +78,7 @@ export async function generateMemorableHostname(
   throw new Error("Could not find an available boop link. Try again in a moment.");
 }
 
-export function validateHtmlPayload(html: string, maxBytes = 1_000_000): string {
+export function validateHtmlPayload(html: string, maxBytes = 4 * 1024 * 1024): string {
   const trimmed = html.trim();
   if (!trimmed) {
     throw new Error("Drop a little HTML first.");

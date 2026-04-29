@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
@@ -11,10 +11,12 @@ export function Sites() {
   const { did, isLoading } = useCurrentUser();
   const { haptic } = useSettings();
   const { addToast } = useToast();
-  const createSite = useAction(api.siteActions.createSite);
+  const generateUploadUrl = useMutation(api.sites.generateSiteUploadUrl);
+  const createSiteFromUpload = useAction(api.siteActions.createSiteFromUpload);
   const sites = useQuery(api.sites.listSites, did ? { ownerDid: did } : "skip");
 
   const [html, setHtml] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +29,7 @@ export function Sites() {
       return;
     }
     setHtml(await file.text());
+    setSelectedFileName(file.name);
     setError(null);
   };
 
@@ -43,7 +46,19 @@ export function Sites() {
     haptic("medium");
 
     try {
-      const result = await createSite({ ownerDid: did, html });
+      const uploadUrl = await generateUploadUrl({ ownerDid: did });
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+        body: new Blob([html], { type: "text/html; charset=utf-8" }),
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("The file upload did not land. Try again.");
+      }
+
+      const { storageId } = await uploadResponse.json();
+      const result = await createSiteFromUpload({ ownerDid: did, storageId });
       addToast("Your link is ready.");
       haptic("success");
       navigate(`/sites/${result.siteId}`);
@@ -89,7 +104,7 @@ export function Sites() {
                 Drop your file
               </h2>
               <p className="text-xs text-stone-500 dark:text-stone-400">
-                Single-file HTML only for now.
+                Single-file HTML only for now. {selectedFileName ? `Loaded ${selectedFileName}.` : ""}
               </p>
             </div>
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-stone-100 dark:bg-gray-800 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200">

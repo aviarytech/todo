@@ -59,6 +59,11 @@ export const resolveSiteHost = httpAction(async (ctx, request) => {
     });
   }
 
+  const blob = await ctx.storage.get(record.file.storageId);
+  if (!blob) {
+    return json({ status: "missing", hostname }, 404);
+  }
+
   return json({
     status: "active",
     hostname,
@@ -66,7 +71,7 @@ export const resolveSiteHost = httpAction(async (ctx, request) => {
     did: record.site.did,
     scid: record.site.scid,
     primaryHostname: record.primaryHostname?.hostname ?? hostname,
-    html: record.file.content,
+    html: await blob.text(),
     contentType: record.file.contentType,
     sha256: record.file.sha256,
     didLogJsonl: record.didLogJsonl,

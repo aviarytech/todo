@@ -38,7 +38,9 @@ const NOUNS = [
 ];
 
 const ED25519_MULTICODEC_PREFIX = new Uint8Array([0xed, 0x01]);
-const MAX_HTML_BYTES = 1_000_000;
+// Convex Node action args support up to 5 MiB. Keep some headroom for
+// metadata and JSON encoding until the UI switches to direct upload URLs.
+const MAX_HTML_BYTES = 4 * 1024 * 1024;
 
 function configureEd25519Sha512() {
   const sha512Fn = (...messages: Uint8Array[]) => sha512(concatBytes(...messages));
@@ -97,10 +99,6 @@ function validateHtmlPayload(html: string): string {
     throw new Error("That file is a bit too mighty for v1.");
   }
   return trimmed;
-}
-
-function sha256Hex(input: string): string {
-  return createHash("sha256").update(input).digest("hex");
 }
 
 function safeLabel(value: string): string {
@@ -198,10 +196,10 @@ function normalizeCustomHostname(hostname: string): string {
   return normalized;
 }
 
-export const createSite = action({
+export const createSiteFromUpload = action({
   args: {
     ownerDid: v.string(),
-    html: v.string(),
+    storageId: v.id("_storage"),
   },
   handler: async (ctx, args): Promise<{ siteId: string; hostname: string; url: string; did: string; scid: string }> => {
     configureEd25519Sha512();
@@ -212,9 +210,15 @@ export const createSite = action({
       throw new Error("SITE_KEY_ENCRYPTION_SECRET is not configured");
     }
 
-    const content = validateHtmlPayload(args.html);
+    const blob = await ctx.storage.get(args.storageId);
+    if (!blob) {
+      throw new Error("That uploaded file disappeared. Try dropping it again.");
+    }
+
+    const content = validateHtmlPayload(await blob.text());
     const byteLength = new TextEncoder().encode(content).byteLength;
-    const sha256 = sha256Hex(content);
+    const metadata = await ctx.storage.getMetadata(args.storageId);
+    const sha256 = metadata?.sha256 ?? createHash("sha256").update(content).digest("hex");
 
     let hostname = "";
     for (let attempt = 0; attempt < 25; attempt += 1) {
@@ -261,7 +265,7 @@ export const createSite = action({
     const createdAt = Date.now();
     const record = await ctx.runMutation(internal.siteInternals.createSiteRecord, {
       ownerDid: args.ownerDid,
-      content,
+      storageId: args.storageId,
       contentType: "text/html; charset=utf-8",
       sha256,
       byteLength,
@@ -281,6 +285,16 @@ export const createSite = action({
       did: didResult.did,
       scid,
     };
+  },
+});
+
+export const createSite = action({
+  args: {
+    ownerDid: v.string(),
+    html: v.string(),
+  },
+  handler: async (): Promise<never> => {
+    throw new Error("Use direct upload for sites. Refresh and drop the file again.");
   },
 });
 
@@ -341,7 +355,7 @@ export const migrateVerifiedCustomDomain = action({
       throw new Error("DID migration changed the SCID; refusing to continue.");
     }
 
-    const latestEntry = migrated.log.at(-1);
+    const latestEntry = migrated.log[migrated.log.length - 1];
     if (!latestEntry) {
       throw new Error("DID migration did not return a log entry.");
     }
