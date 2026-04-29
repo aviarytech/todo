@@ -4,7 +4,7 @@
     "builder": "RAILPACK"
   },
   "deploy": {
-    "startCommand": "bunx serve dist -s -l $PORT",
+    "startCommand": "bun server.ts",
     "restartPolicyType": "ON_FAILURE"
   }
 }

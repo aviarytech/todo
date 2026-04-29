@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
-import { Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Link, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { useSettings } from './hooks/useSettings'
 import { AuthGuard } from './components/auth/AuthGuard'
@@ -19,6 +19,8 @@ import { incrementMetric } from './lib/observability'
 
 // Lazy-loaded routes for better code splitting
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })))
+const Sites = lazy(() => import('./pages/Sites').then(m => ({ default: m.Sites })))
+const SiteDetail = lazy(() => import('./pages/SiteDetail').then(m => ({ default: m.SiteDetail })))
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })))
 const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })))
 const ListView = lazy(() => import('./pages/ListView').then(m => ({ default: m.ListView })))
@@ -54,7 +56,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
       {/* Header */}
       <header className="flex-shrink-0 sticky top-0 z-40 bg-stone-50/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-stone-200 dark:border-gray-800 safe-area-inset-top">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <Link
             to="/d"
             onClick={() => haptic('light')}
@@ -64,6 +66,29 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
             <span className="boop-dot" aria-hidden="true" />
             <span>boop</span>
           </Link>
+
+          <nav className="flex items-center gap-1 rounded-full bg-stone-100 dark:bg-gray-900 p-1" aria-label="Primary">
+            {[
+              { to: "/d", label: "Todos" },
+              { to: "/sites", label: "Sites" },
+            ].map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => haptic('light')}
+                className={({ isActive }) =>
+                  [
+                    "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                    isActive
+                      ? "bg-white dark:bg-gray-800 text-stone-900 dark:text-stone-100 shadow-sm"
+                      : "text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200",
+                  ].join(" ")
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
           
           <div className="flex items-center gap-2">
             {/* Settings button */}
@@ -235,6 +260,8 @@ function App() {
 
           {/* Protected routes - require authentication */}
           <Route path="/d" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/sites" element={<ProtectedRoute><Sites /></ProtectedRoute>} />
+          <Route path="/sites/:siteId" element={<ProtectedRoute><SiteDetail /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
           <Route path="/priority" element={<ProtectedRoute><PriorityFocus /></ProtectedRoute>} />

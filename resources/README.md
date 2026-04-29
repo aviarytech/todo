@@ -7,12 +7,12 @@ Source images and fonts for the boop mobile app icons and splash screens.
 Three source images under `resources/` feed `@capacitor/assets`, which produces
 every size iOS and Android need and installs them into the native projects:
 
-- `icon.png` (1024×1024) — violet tile + cream `b`
+- `icon.png` (1024×1024) — cream tile + violet completed-item dot
 - `splash.png` (2732×2732) — cream + centred violet dot (light)
 - `splash-dark.png` (2732×2732) — ink + centred violet dot (dark)
 
 `scripts/generate-icons.mjs` regenerates the three source images using
-`@napi-rs/canvas` and the vendored `fonts/Nunito-Black.ttf`.
+`@napi-rs/canvas`.
 
 ## Regenerating
 

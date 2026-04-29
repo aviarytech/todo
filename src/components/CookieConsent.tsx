@@ -6,43 +6,26 @@
 
 import { useState, useEffect } from 'react';
 import { initAnalytics } from '../lib/analytics';
+import {
+  getStoredConsent,
+  isConsentPromptSnoozed,
+  snoozeConsentPrompt,
+  storeConsent,
+} from '../lib/analyticsConsent';
 
-const CONSENT_KEY = 'poo-cookie-consent';
-
-type ConsentState = 'accepted' | 'declined' | null;
-
-function getStoredConsent(): ConsentState {
-  try {
-    const val = localStorage.getItem(CONSENT_KEY);
-    if (val === 'accepted' || val === 'declined') return val;
-  } catch {
-    // ignore
-  }
-  return null;
-}
-
-function storeConsent(value: 'accepted' | 'declined') {
-  try {
-    localStorage.setItem(CONSENT_KEY, value);
-  } catch {
-    // ignore
-  }
-}
-
-/** Call this at startup to init analytics if the user previously accepted. */
-export function initAnalyticsIfConsented(): void {
-  if (getStoredConsent() === 'accepted') {
-    initAnalytics();
-  }
-}
+const DISPLAY_DELAY_MS = 1200;
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (getStoredConsent() === null) {
+    if (getStoredConsent() !== null || isConsentPromptSnoozed()) return;
+
+    const timeoutId = window.setTimeout(() => {
       setVisible(true);
-    }
+    }, DISPLAY_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   if (!visible) return null;
@@ -58,45 +41,52 @@ export function CookieConsent() {
     setVisible(false);
   };
 
+  const handleMaybeLater = () => {
+    snoozeConsentPrompt();
+    setVisible(false);
+  };
+
   return (
     <div
-      role="dialog"
+      role="region"
       aria-label="Cookie consent"
-      className="fixed bottom-0 left-0 right-0 z-50 p-4 safe-area-inset-bottom"
+      className="fixed bottom-3 left-3 right-3 z-50 safe-area-inset-bottom sm:left-auto sm:right-4 sm:w-[min(24rem,calc(100vw-2rem))]"
     >
-      <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-5">
-        <div className="flex items-start gap-3 mb-4">
-          <span className="text-2xl leading-none mt-0.5">🍪</span>
-          <div>
-            <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              Cookies & Analytics
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              We use PostHog to understand how you use boop so we can make it better.
-              No data is sold or shared with third parties.{' '}
-              <a
-                href="/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline text-amber-600 dark:text-amber-400 hover:text-amber-700"
-              >
-                Privacy policy
-              </a>
-            </p>
-          </div>
+      <div className="bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md p-3 backdrop-blur">
+        <div className="mb-3">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Analytics consent
+          </p>
+          <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-400">
+            We use PostHog to improve boop. No data is sold or shared.{' '}
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-amber-700 dark:text-amber-300 hover:text-amber-800"
+            >
+              Privacy
+            </a>
+          </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={handleMaybeLater}
+            className="px-2 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+          >
+            Maybe later
+          </button>
           <button
             onClick={handleDecline}
-            className="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="px-2.5 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            Decline
+            No thanks
           </button>
           <button
             onClick={handleAccept}
-            className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors"
+            className="px-3 py-1.5 rounded-md bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold transition-colors dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
           >
-            Accept
+            Allow
           </button>
         </div>
       </div>

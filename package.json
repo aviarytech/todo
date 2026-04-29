@@ -10,8 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "serve dist -s",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
+    "start:sites": "bun server.ts",
     "mission-control:validate-observability": "node scripts/validate-mission-control-observability.mjs",
     "env:dev": "bash -c 'export $(grep -v \"^#\" .env.local | grep -E \"^(TURNKEY_|JWT_SECRET|WEBVH_DOMAIN)\" | xargs) && for k in TURNKEY_API_PUBLIC_KEY TURNKEY_API_PRIVATE_KEY TURNKEY_ORGANIZATION_ID JWT_SECRET WEBVH_DOMAIN; do npx convex env set \"$k\" \"${!k}\"; done'",
     "env:prod": "bash -c 'export $(grep -v \"^#\" .env.local | grep -E \"^(TURNKEY_|JWT_SECRET|WEBVH_DOMAIN)\" | xargs) && for k in TURNKEY_API_PUBLIC_KEY TURNKEY_API_PRIVATE_KEY TURNKEY_ORGANIZATION_ID JWT_SECRET WEBVH_DOMAIN; do npx convex env set --prod \"$k\" \"${!k}\"; done'",
@@ -19,7 +18,7 @@
     "env:turnkey:prod": "bash ./scripts/sync-convex-turnkey-env.sh .env.local prod",
     "cap:sync": "npx cap sync",
     "cap:build": "npm run build && npx cap sync",
-    "generate:assets": "node scripts/generate-icons.mjs && npx capacitor-assets generate --iconBackgroundColor '#6b3cff' --iconBackgroundColorDark '#6b3cff' --splashBackgroundColor '#fafaf7' --splashBackgroundColorDark '#0c0b10' --ios --android",
+    "generate:assets": "node scripts/generate-icons.mjs && npx capacitor-assets generate --iconBackgroundColor '#fafaf7' --iconBackgroundColorDark '#fafaf7' --splashBackgroundColor '#fafaf7' --splashBackgroundColorDark '#0c0b10' --ios --android && node scripts/generate-icons.mjs --android-native-only",
     "mission-control:readiness-drill": "node scripts/mission-control-readiness-drill.mjs"
   },
   "dependencies": {
@@ -57,7 +56,6 @@
     "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.39.1",
     "@napi-rs/canvas": "^0.1.90",
-    "@playwright/test": "^1.57.0",
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",

@@ -19,9 +19,14 @@ Railway auto-deploys from `main`. No manual steps needed for normal pushes.
 bun install && bun run build
 ```
 
-**Start command:**
+**Start command without hosted Sites:**
 ```
 bunx serve dist -s -l $PORT
+```
+
+**Start command with hosted Sites:**
+```
+bun server.ts
 ```
 
 ---
@@ -74,6 +79,8 @@ These are injected at build time as `import.meta.env.*`.
 | `VITE_CONVEX_URL` | ✅ | Convex deployment URL (e.g. `https://effervescent-jay-955.convex.cloud`) |
 | `VITE_CONVEX_HTTP_URL` | ✅ | Convex HTTP actions URL (e.g. `https://effervescent-jay-955.convex.site`) |
 | `VITE_WEBVH_DOMAIN` | ✅ | Domain used for did:webvh identity creation (e.g. `boop.ad`) |
+| `VITE_SITE_BASE_DOMAIN` | ⚪ | Base domain for generated hosted-site links. Defaults to `VITE_WEBVH_DOMAIN`/`boop.ad` in server code. |
+| `VITE_CUSTOM_DOMAIN_CNAME_TARGET` | ⚪ | DNS target shown in the custom domain wizard, e.g. `sites.boop.ad`. |
 | `VITE_TURNKEY_AUTH_PROXY_CONFIG_ID` | ✅ | Turnkey auth proxy config ID (from Turnkey dashboard) |
 | `VITE_TURNKEY_ORGANIZATION_ID` | ✅ | Turnkey organization ID |
 | `VITE_STRIPE_PRO_MONTHLY_PRICE_ID` | ✅ | Stripe price ID for Pro monthly plan |
@@ -107,6 +114,28 @@ These are injected at build time as `import.meta.env.*`.
 | `APNS_PRIVATE_KEY` | ⚪ | Apple push notification private key (PEM string) |
 | `APNS_TEAM_ID` | ⚪ | Apple developer team ID |
 | `SIMULATE_BITCOIN_ANCHOR` | ⚪ | Set `"true"` to skip real Bitcoin anchoring in staging/dev |
+| `SITE_BASE_DOMAIN` | ⚪ | Server-side base domain for site creation. Defaults to `WEBVH_DOMAIN` or `boop.ad`. |
+| `SITE_KEY_ENCRYPTION_SECRET` | ✅ for Sites | Long random secret used to encrypt custodial site private keys at rest. Rotating this needs a key migration plan. |
+
+### Railway runtime variables for hosted Sites
+
+These are read by `server.ts`, which replaces static `serve dist -s` when Sites host routing is enabled.
+
+| Variable | Required | Description |
+|---|---|---|
+| `APP_HOSTNAMES` | ✅ | Comma-separated app hostnames that should serve the React app, e.g. `boop.ad,www.boop.ad`. Other hostnames are treated as hosted sites. |
+| `CONVEX_HTTP_URL` | ✅ | Convex HTTP actions URL used to resolve hosted-site hostnames. Can match `VITE_CONVEX_HTTP_URL`. |
+
+### Cloudflare for SaaS setup
+
+No Cloudflare for SaaS configuration was found in this repo during the Sites discovery pass. Before the custom-domain wizard can complete end-to-end, configure:
+
+- Wildcard DNS for `*.boop.ad` pointing at the Railway service through Cloudflare.
+- A CNAME target owned by boop, such as `sites.boop.ad`.
+- Cloudflare Custom Hostnames API credentials (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`).
+- Fallback origin for custom hostnames.
+
+Until that exists, the wizard should show CNAME instructions but remain in a "waiting on setup" state. Apex domains should default to `www.` as primary, with separate apex redirect instructions at the registrar unless the current Cloudflare plan clearly supports apex custom hostnames.
 
 ### CI/CD (GitHub Actions / Railway build)
 

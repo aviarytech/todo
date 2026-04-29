@@ -23,5 +23,17 @@ declare module "@originals/sdk" {
       resources?: unknown[],
       includeServices?: boolean
     ): Promise<{ didDocument: DIDDocument }>;
+    createDIDWebVH(options: Record<string, unknown>): Promise<{
+      did: string;
+      didDocument: DIDDocument;
+      log: unknown[];
+      keyPair: KeyPair;
+      logPath?: string;
+    }>;
+    updateDIDWebVH(options: Record<string, unknown>): Promise<{
+      didDocument: DIDDocument;
+      log: unknown[];
+      logPath?: string;
+    }>;
   }
 }

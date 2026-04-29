@@ -390,6 +390,7 @@ html {
   color: var(--boop-ink);
 }
 .dark .boop-wordmark { color: #f1eef9; }
+.dark .boop-wordmark.boop-wordmark-light { color: var(--boop-ink); }
 /* Identity-pack mark: dot + soft ripple ring.
    Proportions: dot diameter = 0.584 × ring-outer (design's 0.436·s / 0.746·s),
    stroke ≈ 0.025em (≈ 0.0136·ring-outer), opacity 0.25.

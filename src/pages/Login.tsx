@@ -117,7 +117,7 @@ export function Login({ embedded = false }: LoginProps) {
     <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'var(--boop-bg)' }}>
       {/* Brand header */}
       {!embedded && (
-        <Link to="/" className="boop-wordmark text-[26px] mb-8 hover:opacity-80 transition-opacity" aria-label="boop">
+        <Link to="/" className="boop-wordmark boop-wordmark-light text-[26px] mb-8 hover:opacity-80 transition-opacity" aria-label="boop">
           <span className="boop-dot" aria-hidden="true" />
           <span>boop</span>
         </Link>
