@@ -2,7 +2,9 @@
 
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
+import { createCustomHostname } from "./cloudflare";
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { sha512 } from "@noble/hashes/sha2.js";
 import { concatBytes, bytesToHex } from "@noble/hashes/utils.js";
@@ -389,5 +391,48 @@ export const migrateVerifiedCustomDomain = action({
       did: migrated.did,
       scid: record.site.scid,
     };
+  },
+});
+
+function normalizeRequestedHostname(input: string): string {
+  const lowered = input.trim().toLowerCase().replace(/\.$/, "");
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(lowered)) {
+    throw new Error("That doesn't look like a valid hostname. Try something like www.example.com.");
+  }
+  return lowered;
+}
+
+export const requestCustomHostname = action({
+  args: {
+    ownerDid: v.string(),
+    siteId: v.id("sites"),
+    hostname: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ hostnameId: Id<"siteHostnames">; cfHostnameId: string }> => {
+    const hostname = normalizeRequestedHostname(args.hostname);
+
+    const record = await ctx.runQuery(
+      internal.siteInternals.getSiteIdentityForUpdate,
+      { siteId: args.siteId, ownerDid: args.ownerDid }
+    );
+    if (!record) {
+      throw new Error("Site not found");
+    }
+
+    const cfRecord = await createCustomHostname(hostname);
+
+    const hostnameId: Id<"siteHostnames"> = await ctx.runMutation(
+      internal.siteInternals.recordCustomHostnameRequest,
+      {
+        siteId: args.siteId,
+        hostname,
+        cfHostnameId: cfRecord.id,
+        cfStatus: cfRecord.status,
+        cfSslStatus: cfRecord.ssl.status,
+        now: Date.now(),
+      }
+    );
+
+    return { hostnameId, cfHostnameId: cfRecord.id };
   },
 });
