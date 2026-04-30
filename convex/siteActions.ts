@@ -526,3 +526,33 @@ export const pollPendingCustomHostnames = internalAction({
     }
   },
 });
+
+export const retryCustomHostname = action({
+  args: {
+    ownerDid: v.string(),
+    hostnameId: v.id("siteHostnames"),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    const row = await ctx.runQuery(internal.siteInternals.getHostname, {
+      hostnameId: args.hostnameId,
+    });
+    if (!row) throw new Error("Hostname not found");
+
+    // Verify the caller owns the site this hostname belongs to.
+    const owner = await ctx.runQuery(internal.siteInternals.getSiteOwner, {
+      siteId: row.siteId,
+    });
+    if (!owner || owner.ownerDid !== args.ownerDid) {
+      throw new Error("Not authorized");
+    }
+
+    // Clear errors so the cron picks the row back up, and kick an immediate poll.
+    await ctx.runMutation(internal.siteInternals.clearHostnameErrors, {
+      hostnameId: args.hostnameId,
+      now: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.siteActions.pollCustomHostname, {
+      hostnameId: args.hostnameId,
+    });
+  },
+});
