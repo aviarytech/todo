@@ -527,6 +527,62 @@ export const pollPendingCustomHostnames = internalAction({
   },
 });
 
+const MAX_REPLACE_HTML_BYTES = 2 * 1024 * 1024; // 2 MB
+
+export const replaceSiteFile = action({
+  args: {
+    ownerDid: v.string(),
+    siteId: v.id("sites"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args): Promise<{ fileId: string }> => {
+    // Ownership check via the existing query.
+    const owned = await ctx.runQuery(internal.siteInternals.getSiteIdentityForUpdate, {
+      siteId: args.siteId,
+      ownerDid: args.ownerDid,
+    });
+    if (!owned) throw new Error("Site not found");
+
+    const url = await ctx.storage.getUrl(args.storageId);
+    if (!url) throw new Error("Uploaded file not found.");
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Could not read the uploaded file.");
+    }
+    const buffer = await response.arrayBuffer();
+    const byteLength = buffer.byteLength;
+    if (byteLength === 0) {
+      throw new Error("The uploaded file was empty.");
+    }
+    if (byteLength > MAX_REPLACE_HTML_BYTES) {
+      throw new Error("That file is bigger than the 2 MB limit.");
+    }
+
+    const contentType =
+      response.headers.get("content-type") ?? "text/html; charset=utf-8";
+
+    // SHA-256 hex
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    const sha256 = Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    const result: { fileId: string } = await ctx.runMutation(
+      internal.siteInternals.replaceSiteFileRecord,
+      {
+        siteId: args.siteId,
+        storageId: args.storageId,
+        contentType,
+        sha256,
+        byteLength,
+        now: Date.now(),
+      }
+    );
+    return result;
+  },
+});
+
 export const retryCustomHostname = action({
   args: {
     ownerDid: v.string(),

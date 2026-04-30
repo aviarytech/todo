@@ -1,18 +1,24 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useToast } from "../hooks/useToast";
+import { useSettings } from "../hooks/useSettings";
 import { ConnectDomainModal } from "../components/sites/ConnectDomainModal";
 
 export function SiteDetail() {
   const { siteId } = useParams();
   const { did } = useCurrentUser();
   const { addToast } = useToast();
+  const { haptic } = useSettings();
   const [showDomainModal, setShowDomainModal] = useState(false);
   const [showIdentity, setShowIdentity] = useState(false);
+  const generateUploadUrl = useMutation(api.sites.generateSiteUploadUrl);
+  const replaceSiteFile = useAction(api.siteActions.replaceSiteFile);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [replacing, setReplacing] = useState(false);
 
   const site = useQuery(
     api.sites.getSite,
@@ -27,6 +33,39 @@ export function SiteDetail() {
     if (!url) return;
     await navigator.clipboard.writeText(url);
     addToast("Copied your link.");
+  };
+
+  const handleReplaceFile = async (file: File) => {
+    if (!did || !site) return;
+    if (!file.name.toLowerCase().endsWith(".html") && file.type !== "text/html") {
+      addToast("Pick an .html file.", "error");
+      haptic("error");
+      return;
+    }
+    setReplacing(true);
+    haptic("medium");
+    try {
+      const uploadUrl = await generateUploadUrl({ ownerDid: did });
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+        body: file,
+      });
+      if (!uploadResponse.ok) {
+        throw new Error("The file upload did not land. Try again.");
+      }
+      const { storageId } = await uploadResponse.json();
+      await replaceSiteFile({ ownerDid: did, siteId: site._id, storageId });
+      addToast("Site updated.");
+      haptic("success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not update the site.";
+      addToast(message, "error");
+      haptic("error");
+    } finally {
+      setReplacing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   if (site === undefined) {
@@ -66,6 +105,23 @@ export function SiteDetail() {
           >
             Copy
           </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={replacing}
+            className="rounded-xl bg-stone-100 dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-60"
+          >
+            {replacing ? "Replacing…" : "Replace HTML"}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="text/html,.html,.htm"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) handleReplaceFile(file);
+            }}
+          />
           <button
             onClick={() => setShowDomainModal(true)}
             className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white"
