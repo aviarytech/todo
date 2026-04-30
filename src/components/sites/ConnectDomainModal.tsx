@@ -99,7 +99,13 @@ export function ConnectDomainModal({
             <ActivePanel hostname={phase.hostname} onClose={onClose} />
           )}
           {phase.kind === "failed" && customRow && (
-            <FailedPanel errors={phase.errors} hostname={customRow.hostname} onClose={onClose} />
+            <FailedPanel
+              errors={phase.errors}
+              hostname={customRow.hostname}
+              hostnameId={customRow._id}
+              ownerDid={ownerDid}
+              onClose={onClose}
+            />
           )}
           {phase.kind !== "active" && (
             <p className="text-xs text-stone-500 dark:text-stone-400">
@@ -281,12 +287,32 @@ function ActivePanel({ hostname, onClose }: { hostname: string; onClose: () => v
 function FailedPanel({
   errors,
   hostname,
+  hostnameId,
+  ownerDid,
   onClose,
 }: {
   errors: string[];
   hostname: string;
+  hostnameId: Id<"siteHostnames">;
+  ownerDid: string;
   onClose: () => void;
 }) {
+  const retry = useAction(api.siteActions.retryCustomHostname);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      await retry({ ownerDid, hostnameId });
+    } catch (error) {
+      setRetryError(error instanceof Error ? error.message : "Retry failed.");
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 p-4 text-sm text-rose-800 dark:text-rose-200 space-y-2">
@@ -297,13 +323,28 @@ function FailedPanel({
           ))}
         </ul>
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        className="w-full rounded-xl bg-stone-100 dark:bg-gray-800 px-4 py-3 text-sm font-semibold text-stone-700 dark:text-stone-200"
-      >
-        Close
-      </button>
+      {retryError && (
+        <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 p-3 text-sm text-rose-800 dark:text-rose-200">
+          {retryError}
+        </div>
+      )}
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-xl bg-stone-100 dark:bg-gray-800 px-4 py-3 text-sm font-semibold text-stone-700 dark:text-stone-200"
+        >
+          Close
+        </button>
+        <button
+          type="button"
+          onClick={handleRetry}
+          disabled={retrying}
+          className="flex-1 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {retrying ? "Retrying…" : "Try again"}
+        </button>
+      </div>
     </div>
   );
 }

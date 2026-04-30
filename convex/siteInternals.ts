@@ -321,3 +321,14 @@ export const getSiteOwner = internalQuery({
     return site ? { ownerDid: site.ownerDid } : null;
   },
 });
+
+export const clearHostnameErrors = internalMutation({
+  args: { hostnameId: v.id("siteHostnames"), now: v.number() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.hostnameId, {
+      verificationErrors: [],
+      lastCheckedAt: args.now,
+      updatedAt: args.now,
+    });
+  },
+});
