@@ -128,14 +128,26 @@ These are read by `server.ts`, which replaces static `serve dist -s` when Sites 
 
 ### Cloudflare for SaaS setup
 
-No Cloudflare for SaaS configuration was found in this repo during the Sites discovery pass. Before the custom-domain wizard can complete end-to-end, configure:
+Cloudflare for SaaS is now wired through `convex/cloudflare.ts` + `convex/siteActions.ts`. To enable in production:
 
-- Wildcard DNS for `*.boop.ad` pointing at the Railway service through Cloudflare.
-- A CNAME target owned by boop, such as `sites.boop.ad`.
-- Cloudflare Custom Hostnames API credentials (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`).
-- Fallback origin for custom hostnames.
+1. **Enable Cloudflare for SaaS on the `boop.ad` zone.** Cloudflare dashboard → boop.ad → SSL/TLS → Custom Hostnames. The product is available on every Cloudflare plan including Free; the first 100 hostnames are included, then $0.10/hostname/month up to 50,000.
 
-Until that exists, the wizard should show CNAME instructions but remain in a "waiting on setup" state. Apex domains should default to `www.` as primary, with separate apex redirect instructions at the registrar unless the current Cloudflare plan clearly supports apex custom hostnames.
+2. **Set the fallback origin to `boop.ad`.** In the Custom Hostnames settings, set "Fallback Origin" to `boop.ad`. Customer-domain traffic flows: customer → CF edge (TLS terminated with the per-hostname cert) → CF proxies to `boop.ad` (the existing Railway domain) with the original Host header preserved → `server.ts` Host-header-routes to `serveHostedSite()`.
+
+3. **Generate an API token.** Cloudflare dashboard → My Profile → API Tokens → Create Token. Custom token with these permissions, scoped to the `boop.ad` zone:
+   - `Zone:SSL and Certificates:Edit`
+   - `Zone:Custom Hostnames:Edit`
+
+4. **Set Convex env vars.**
+   ```bash
+   npx convex env set CLOUDFLARE_API_TOKEN "<token>"
+   npx convex env set CLOUDFLARE_ZONE_ID "<zone-id>"
+   ```
+   The zone ID is shown on the boop.ad zone overview page in the Cloudflare dashboard, right side panel.
+
+5. **Confirm `VITE_CUSTOM_DOMAIN_CNAME_TARGET` is set.** This is what the modal shows users as the CNAME target. Should be `boop.ad`. Set in Railway service env.
+
+The 60-second `pollPendingCustomHostnames` cron picks up new hostnames and walks them from `pending_dns` → `pending_ssl` → `active`, then triggers the WebVH migration automatically.
 
 ### CI/CD (GitHub Actions / Railway build)
 
