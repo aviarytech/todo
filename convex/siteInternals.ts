@@ -210,3 +210,106 @@ export const applyDomainMigration = internalMutation({
     return { siteId: args.siteId, hostnameId: customHostnameId };
   },
 });
+
+export const recordCustomHostnameRequest = internalMutation({
+  args: {
+    siteId: v.id("sites"),
+    hostname: v.string(),
+    cfHostnameId: v.string(),
+    cfStatus: v.union(
+      v.literal("pending"),
+      v.literal("active"),
+      v.literal("blocked"),
+      v.literal("moved"),
+      v.literal("deleted"),
+    ),
+    cfSslStatus: v.union(
+      v.literal("initializing"),
+      v.literal("pending_validation"),
+      v.literal("pending_issuance"),
+      v.literal("pending_deployment"),
+      v.literal("active"),
+      v.literal("expired"),
+      v.literal("deleted"),
+    ),
+    now: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("siteHostnames")
+      .withIndex("by_hostname", (q) => q.eq("hostname", args.hostname))
+      .first();
+    if (existing) {
+      throw new Error("That domain is already connected to another boop site.");
+    }
+    const id = await ctx.db.insert("siteHostnames", {
+      siteId: args.siteId,
+      hostname: args.hostname,
+      kind: "custom",
+      status: "pending",
+      isPrimary: false,
+      cfHostnameId: args.cfHostnameId,
+      cfStatus: args.cfStatus,
+      cfSslStatus: args.cfSslStatus,
+      verificationErrors: [],
+      lastCheckedAt: args.now,
+      createdAt: args.now,
+      updatedAt: args.now,
+    });
+    return id;
+  },
+});
+
+export const updateHostnameVerification = internalMutation({
+  args: {
+    hostnameId: v.id("siteHostnames"),
+    cfStatus: v.union(
+      v.literal("pending"),
+      v.literal("active"),
+      v.literal("blocked"),
+      v.literal("moved"),
+      v.literal("deleted"),
+    ),
+    cfSslStatus: v.union(
+      v.literal("initializing"),
+      v.literal("pending_validation"),
+      v.literal("pending_issuance"),
+      v.literal("pending_deployment"),
+      v.literal("active"),
+      v.literal("expired"),
+      v.literal("deleted"),
+    ),
+    verificationErrors: v.array(v.string()),
+    now: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.hostnameId, {
+      cfStatus: args.cfStatus,
+      cfSslStatus: args.cfSslStatus,
+      verificationErrors: args.verificationErrors,
+      lastCheckedAt: args.now,
+      updatedAt: args.now,
+    });
+  },
+});
+
+export const listPendingCustomHostnames = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("siteHostnames").collect();
+    return all.filter(
+      (h) =>
+        h.kind === "custom" &&
+        h.status === "pending" &&
+        h.cfHostnameId !== undefined &&
+        (h.verificationErrors === undefined || h.verificationErrors.length === 0),
+    );
+  },
+});
+
+export const getHostname = internalQuery({
+  args: { hostnameId: v.id("siteHostnames") },
+  handler: async (ctx, args) => {
+    return ctx.db.get(args.hostnameId);
+  },
+});
