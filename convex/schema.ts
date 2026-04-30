@@ -327,6 +327,26 @@ export default defineSchema({
     redirectTo: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    // Cloudflare-tracked fields (custom hostnames only)
+    cfHostnameId: v.optional(v.string()),
+    cfStatus: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("active"),
+      v.literal("blocked"),
+      v.literal("moved"),
+      v.literal("deleted"),
+    )),
+    cfSslStatus: v.optional(v.union(
+      v.literal("initializing"),
+      v.literal("pending_validation"),
+      v.literal("pending_issuance"),
+      v.literal("pending_deployment"),
+      v.literal("active"),
+      v.literal("expired"),
+      v.literal("deleted"),
+    )),
+    verificationErrors: v.optional(v.array(v.string())),
+    lastCheckedAt: v.optional(v.number()),
   })
     .index("by_site", ["siteId"])
     .index("by_hostname", ["hostname"])

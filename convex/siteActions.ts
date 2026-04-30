@@ -1,8 +1,10 @@
 "use node";
 
-import { action } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { action, internalAction } from "./_generated/server";
+import { internal, api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
+import { createCustomHostname, getCustomHostname } from "./cloudflare";
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { sha512 } from "@noble/hashes/sha2.js";
 import { concatBytes, bytesToHex } from "@noble/hashes/utils.js";
@@ -389,5 +391,138 @@ export const migrateVerifiedCustomDomain = action({
       did: migrated.did,
       scid: record.site.scid,
     };
+  },
+});
+
+function normalizeRequestedHostname(input: string): string {
+  const lowered = input.trim().toLowerCase().replace(/\.$/, "");
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(lowered)) {
+    throw new Error("That doesn't look like a valid hostname. Try something like www.example.com.");
+  }
+  return lowered;
+}
+
+export const requestCustomHostname = action({
+  args: {
+    ownerDid: v.string(),
+    siteId: v.id("sites"),
+    hostname: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ hostnameId: Id<"siteHostnames">; cfHostnameId: string }> => {
+    const hostname = normalizeRequestedHostname(args.hostname);
+
+    const record = await ctx.runQuery(
+      internal.siteInternals.getSiteIdentityForUpdate,
+      { siteId: args.siteId, ownerDid: args.ownerDid }
+    );
+    if (!record) {
+      throw new Error("Site not found");
+    }
+
+    const cfRecord = await createCustomHostname(hostname);
+
+    const hostnameId: Id<"siteHostnames"> = await ctx.runMutation(
+      internal.siteInternals.recordCustomHostnameRequest,
+      {
+        siteId: args.siteId,
+        hostname,
+        cfHostnameId: cfRecord.id,
+        cfStatus: cfRecord.status,
+        cfSslStatus: cfRecord.ssl.status,
+        now: Date.now(),
+      }
+    );
+
+    return { hostnameId, cfHostnameId: cfRecord.id };
+  },
+});
+
+const PENDING_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+export const pollCustomHostname = internalAction({
+  args: { hostnameId: v.id("siteHostnames") },
+  handler: async (ctx, args): Promise<void> => {
+    const row = await ctx.runQuery(internal.siteInternals.getHostname, {
+      hostnameId: args.hostnameId,
+    });
+    if (!row || row.kind !== "custom" || !row.cfHostnameId || row.status === "active") {
+      return;
+    }
+
+    let cfRecord;
+    try {
+      cfRecord = await getCustomHostname(row.cfHostnameId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Cloudflare poll failed";
+      await ctx.runMutation(internal.siteInternals.updateHostnameVerification, {
+        hostnameId: args.hostnameId,
+        cfStatus: row.cfStatus ?? "pending",
+        cfSslStatus: row.cfSslStatus ?? "initializing",
+        verificationErrors: [message],
+        now: Date.now(),
+      });
+      return;
+    }
+
+    const now = Date.now();
+    const errors: string[] = [];
+    if (cfRecord.verification_errors && cfRecord.verification_errors.length > 0) {
+      errors.push(...cfRecord.verification_errors);
+    }
+    if (
+      cfRecord.status === "pending" &&
+      now - row.createdAt > PENDING_TIMEOUT_MS
+    ) {
+      errors.push(
+        `Timed out waiting for DNS verification. Check the CNAME at ${row.hostname}.`
+      );
+    }
+
+    await ctx.runMutation(internal.siteInternals.updateHostnameVerification, {
+      hostnameId: args.hostnameId,
+      cfStatus: cfRecord.status,
+      cfSslStatus: cfRecord.ssl.status,
+      verificationErrors: errors,
+      now,
+    });
+
+    const verified = cfRecord.status === "active" && cfRecord.ssl.status === "active";
+    if (verified && row.status === "pending") {
+      const owner = await ctx.runQuery(internal.siteInternals.getSiteOwner, {
+        siteId: row.siteId,
+      });
+      if (!owner) return;
+      try {
+        await ctx.runAction(api.siteActions.migrateVerifiedCustomDomain, {
+          ownerDid: owner.ownerDid,
+          siteId: row.siteId,
+          hostname: row.hostname,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "DID migration failed";
+        await ctx.runMutation(internal.siteInternals.updateHostnameVerification, {
+          hostnameId: args.hostnameId,
+          cfStatus: cfRecord.status,
+          cfSslStatus: cfRecord.ssl.status,
+          verificationErrors: [...errors, message],
+          now: Date.now(),
+        });
+      }
+    }
+  },
+});
+
+export const pollPendingCustomHostnames = internalAction({
+  args: {},
+  handler: async (ctx): Promise<void> => {
+    const rows = await ctx.runQuery(
+      internal.siteInternals.listPendingCustomHostnames,
+      {}
+    );
+    for (const row of rows) {
+      await ctx.scheduler.runAfter(0, internal.siteActions.pollCustomHostname, {
+        hostnameId: row._id,
+      });
+    }
   },
 });

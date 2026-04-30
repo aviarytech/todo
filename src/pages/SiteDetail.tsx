@@ -114,7 +114,12 @@ export function SiteDetail() {
       </div>
 
       {showDomainModal && (
-        <ConnectDomainModal hostname={hostname} onClose={() => setShowDomainModal(false)} />
+        <ConnectDomainModal
+          siteId={siteId as Id<"sites">}
+          ownerDid={did!}
+          hostname={hostname}
+          onClose={() => setShowDomainModal(false)}
+        />
       )}
     </div>
   );
