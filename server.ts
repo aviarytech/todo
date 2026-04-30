@@ -28,6 +28,13 @@ function configuredAppHostnames(): Set<string> {
 const appHostnames = configuredAppHostnames();
 
 function hostnameFromRequest(request: Request): string {
+  // Cloudflare for SaaS proxies customer-domain traffic to the boop.ad
+  // Railway origin. Railway routes by Host header, so a Cloudflare Origin
+  // Rule rewrites Host -> boop.ad and a Transform Rule preserves the
+  // original customer hostname in X-Original-Host. Prefer that header so
+  // we know which hosted site to serve.
+  const original = request.headers.get("x-original-host");
+  if (original) return original.split(":")[0].toLowerCase();
   const host = request.headers.get("host") || "";
   return host.split(":")[0].toLowerCase();
 }
