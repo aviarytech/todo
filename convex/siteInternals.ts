@@ -313,3 +313,11 @@ export const getHostname = internalQuery({
     return ctx.db.get(args.hostnameId);
   },
 });
+
+export const getSiteOwner = internalQuery({
+  args: { siteId: v.id("sites") },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.get(args.siteId);
+    return site ? { ownerDid: site.ownerDid } : null;
+  },
+});
