@@ -332,3 +332,33 @@ export const clearHostnameErrors = internalMutation({
     });
   },
 });
+
+export const replaceSiteFileRecord = internalMutation({
+  args: {
+    siteId: v.id("sites"),
+    storageId: v.id("_storage"),
+    contentType: v.string(),
+    sha256: v.string(),
+    byteLength: v.number(),
+    now: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.get(args.siteId);
+    if (!site) throw new Error("Site not found");
+
+    const newFileId = await ctx.db.insert("siteFiles", {
+      storageId: args.storageId,
+      contentType: args.contentType,
+      sha256: args.sha256,
+      byteLength: args.byteLength,
+      createdAt: args.now,
+    });
+
+    await ctx.db.patch(args.siteId, {
+      fileId: newFileId,
+      updatedAt: args.now,
+    });
+
+    return { fileId: newFileId };
+  },
+});
