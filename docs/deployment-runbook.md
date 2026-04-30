@@ -134,9 +134,10 @@ Cloudflare for SaaS is now wired through `convex/cloudflare.ts` + `convex/siteAc
 
 2. **Set the fallback origin to `boop.ad`.** In the Custom Hostnames settings, set "Fallback Origin" to `boop.ad`. Customer-domain traffic flows: customer → CF edge (TLS terminated with the per-hostname cert) → CF proxies to `boop.ad` (the existing Railway domain) with the original Host header preserved → `server.ts` Host-header-routes to `serveHostedSite()`.
 
-3. **Generate an API token.** Cloudflare dashboard → My Profile → API Tokens → Create Token. Custom token with these permissions, scoped to the `boop.ad` zone:
+3. **Generate an API token.** Cloudflare dashboard → My Profile → API Tokens → Create Custom Token. The token only needs one permission, scoped to the `boop.ad` zone:
    - `Zone:SSL and Certificates:Edit`
-   - `Zone:Custom Hostnames:Edit`
+
+   The Custom Hostnames API endpoints are gated by this scope — there is no separate "Custom Hostnames" permission. `Zone:Zone:Read` is auto-included by Cloudflare when you save a zone-scoped token.
 
 4. **Set Convex env vars.**
    ```bash
