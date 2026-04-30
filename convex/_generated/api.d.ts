@@ -24,6 +24,7 @@ import type * as categories from "../categories.js";
 import type * as categoriesHttp from "../categoriesHttp.js";
 import type * as cloudflare from "../cloudflare.js";
 import type * as comments from "../comments.js";
+import type * as crons from "../crons.js";
 import type * as didCreation from "../didCreation.js";
 import type * as didLogs from "../didLogs.js";
 import type * as didLogsHttp from "../didLogsHttp.js";
@@ -84,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   categoriesHttp: typeof categoriesHttp;
   cloudflare: typeof cloudflare;
   comments: typeof comments;
+  crons: typeof crons;
   didCreation: typeof didCreation;
   didLogs: typeof didLogs;
   didLogsHttp: typeof didLogsHttp;
