@@ -18,6 +18,17 @@ Check that list for what needs to be built. Mark items done when you ship them.
 - **Credentials**: Verifiable Credentials (via @originals/sdk)
 - **Deploy**: Railway (frontend) + Convex Cloud (backend)
 
+## Sites
+
+boop also includes **Sites**, a public publishing surface alongside private and
+shared todo lists. Signed-in users can paste or upload a single HTML file,
+publish it to a generated `*.boop.ad` hostname, replace the HTML later, and
+connect a custom domain while preserving the site's portable `did:webvh`
+identity.
+
+See [`docs/sites.md`](docs/sites.md) for the product flow, architecture,
+identity model, deployment settings, and focused verification commands.
+
 ## Development
 
 ```bash
@@ -39,4 +50,3 @@ npx convex deploy
 - **Production**: https://boop.ad
 - **Railway**: https://pooapp-frontend-production.up.railway.app
 - **Convex HTTP**: https://pooapp-http.aviarytech.com
-
