@@ -8,6 +8,7 @@
 
 import { v } from "convex/values";
 import { query } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import {
   deriveExplorerRows,
   type DeriveInput,
@@ -29,7 +30,7 @@ export const listOwnedOriginals = query({
     ]);
 
     // Per-site joins: hostnames.
-    const hostnamesBySite = new Map<string, any[]>();
+    const hostnamesBySite = new Map<string, Doc<"siteHostnames">[]>();
     await Promise.all(
       sites.map(async (site) => {
         const hostnames = await ctx.db
@@ -41,8 +42,8 @@ export const listOwnedOriginals = query({
     );
 
     // Per-list joins: publication, anchors, latest activity, assignee count.
-    const publicationsByList = new Map<string, any>();
-    const anchorsByList = new Map<string, any[]>();
+    const publicationsByList = new Map<string, Doc<"publications">>();
+    const anchorsByList = new Map<string, Doc<"bitcoinAnchors">[]>();
     const activitiesByList = new Map<string, { createdAt: number }>();
     const assigneesByList = new Map<string, number>();
 
