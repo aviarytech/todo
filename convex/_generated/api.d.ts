@@ -45,6 +45,7 @@ import type * as lib_turnkeySigner from "../lib/turnkeySigner.js";
 import type * as lists from "../lists.js";
 import type * as listsHttp from "../listsHttp.js";
 import type * as notificationActions from "../notificationActions.js";
+import type * as originals from "../originals.js";
 import type * as notifications from "../notifications.js";
 import type * as presence from "../presence.js";
 import type * as presenceHttp from "../presenceHttp.js";
@@ -107,6 +108,7 @@ declare const fullApi: ApiFromModules<{
   listsHttp: typeof listsHttp;
   notificationActions: typeof notificationActions;
   notifications: typeof notifications;
+  originals: typeof originals;
   presence: typeof presence;
   presenceHttp: typeof presenceHttp;
   publication: typeof publication;
