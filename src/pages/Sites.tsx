@@ -61,7 +61,7 @@ export function Sites() {
       const result = await createSiteFromUpload({ ownerDid: did, storageId });
       addToast("Your link is ready.");
       haptic("success");
-      navigate(`/sites/${result.siteId}`);
+      navigate(`/s/${result.siteId}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not make that link yet.";
       setError(message);
@@ -150,7 +150,7 @@ export function Sites() {
             {sites.map((site) => (
               <Link
                 key={site._id}
-                to={`/sites/${site._id}`}
+                to={`/s/${site._id}`}
                 className="block rounded-2xl border border-stone-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 hover:border-amber-300 dark:hover:border-amber-700 transition-colors"
               >
                 <div className="font-semibold text-stone-900 dark:text-stone-100">

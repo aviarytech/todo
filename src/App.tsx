@@ -28,6 +28,7 @@ const JoinList = lazy(() => import('./pages/JoinList').then(m => ({ default: m.J
 const PublicList = lazy(() => import('./pages/PublicList').then(m => ({ default: m.PublicList })))
 const SharedListResource = lazy(() => import('./components/SharedListResource').then(m => ({ default: m.SharedListResource })))
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })))
+const Explorer = lazy(() => import('./pages/Explorer').then(m => ({ default: m.Explorer })))
 const Templates = lazy(() => import('./pages/Templates').then(m => ({ default: m.Templates })))
 const PriorityFocus = lazy(() => import('./pages/PriorityFocus').then(m => ({ default: m.PriorityFocus })))
 const Pricing = lazy(() => import('./pages/Pricing').then(m => ({ default: m.Pricing })))
@@ -70,7 +71,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           <nav className="flex items-center gap-1 rounded-full bg-stone-100 dark:bg-gray-900 p-1" aria-label="Primary">
             {[
               { to: "/d", label: "Todos" },
-              { to: "/sites", label: "Sites" },
+              { to: "/e", label: "Explorer" },
+              { to: "/s", label: "Sites" },
             ].map((item) => (
               <NavLink
                 key={item.to}
@@ -260,8 +262,9 @@ function App() {
 
           {/* Protected routes - require authentication */}
           <Route path="/d" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/sites" element={<ProtectedRoute><Sites /></ProtectedRoute>} />
-          <Route path="/sites/:siteId" element={<ProtectedRoute><SiteDetail /></ProtectedRoute>} />
+          <Route path="/e" element={<ProtectedRoute><Explorer /></ProtectedRoute>} />
+          <Route path="/s" element={<ProtectedRoute><Sites /></ProtectedRoute>} />
+          <Route path="/s/:siteId" element={<ProtectedRoute><SiteDetail /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
           <Route path="/priority" element={<ProtectedRoute><PriorityFocus /></ProtectedRoute>} />
