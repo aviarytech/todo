@@ -1,12 +1,13 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useToast } from "../hooks/useToast";
 import { useSettings } from "../hooks/useSettings";
 import { ConnectDomainModal } from "../components/sites/ConnectDomainModal";
+import { SiteImages } from "../components/sites/SiteImages";
 
 export function SiteDetail() {
   const { siteId } = useParams();
@@ -15,10 +16,12 @@ export function SiteDetail() {
   const { haptic } = useSettings();
   const [showDomainModal, setShowDomainModal] = useState(false);
   const [showIdentity, setShowIdentity] = useState(false);
-  const generateUploadUrl = useMutation(api.sites.generateSiteUploadUrl);
+  const generateUploadUrl = useAction(api.sites.generateSiteUploadUrl);
   const replaceSiteFile = useAction(api.siteActions.replaceSiteFile);
+  const getPreviewUrl = useAction(api.sites.getSitePreviewUrl);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [replacing, setReplacing] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState("");
 
   const site = useQuery(
     api.sites.getSite,
@@ -27,7 +30,25 @@ export function SiteDetail() {
 
   const hostname = site?.primaryHostname?.hostname ?? "";
   const url = hostname ? `https://${hostname}` : "";
-  const previewSrc = useMemo(() => site?.file?.storageUrl ?? "", [site?.file?.storageUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!did || !site?._id || !site.file?.bucketKey) {
+      setPreviewSrc("");
+      return;
+    }
+    (async () => {
+      try {
+        const url = await getPreviewUrl({ siteId: site._id, ownerDid: did });
+        if (!cancelled) setPreviewSrc(url ?? "");
+      } catch {
+        if (!cancelled) setPreviewSrc("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [did, site?._id, site?.file?.bucketKey, getPreviewUrl]);
 
   const copyLink = async () => {
     if (!url) return;
@@ -45,17 +66,16 @@ export function SiteDetail() {
     setReplacing(true);
     haptic("medium");
     try {
-      const uploadUrl = await generateUploadUrl({ ownerDid: did });
+      const { uploadUrl, bucketKey } = await generateUploadUrl({ ownerDid: did });
       const uploadResponse = await fetch(uploadUrl, {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "text/html; charset=utf-8" },
         body: file,
       });
       if (!uploadResponse.ok) {
         throw new Error("The file upload did not land. Try again.");
       }
-      const { storageId } = await uploadResponse.json();
-      await replaceSiteFile({ ownerDid: did, siteId: site._id, storageId });
+      await replaceSiteFile({ ownerDid: did, siteId: site._id, bucketKey });
       addToast("Site updated.");
       haptic("success");
     } catch (err) {
@@ -142,6 +162,10 @@ export function SiteDetail() {
           sandbox=""
         />
       </div>
+
+      {did && (
+        <SiteImages siteId={site._id} ownerDid={did} hostname={hostname} />
+      )}
 
       <div className="rounded-2xl border border-stone-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <button

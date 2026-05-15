@@ -36,3 +36,6 @@ app/test-results/*
 # Lighthouse CI results
 .lighthouseci/
 tmp/
+
+# Brainstorming visual companion
+.superpowers/

@@ -15,7 +15,7 @@ export const isHostnameAvailable = internalQuery({
 export const createSiteRecord = internalMutation({
   args: {
     ownerDid: v.string(),
-    storageId: v.id("_storage"),
+    bucketKey: v.string(),
     contentType: v.string(),
     sha256: v.string(),
     byteLength: v.number(),
@@ -43,7 +43,7 @@ export const createSiteRecord = internalMutation({
     }
 
     const fileId = await ctx.db.insert("siteFiles", {
-      storageId: args.storageId,
+      bucketKey: args.bucketKey,
       contentType: args.contentType,
       sha256: args.sha256,
       byteLength: args.byteLength,
@@ -92,12 +92,6 @@ export const createSiteRecord = internalMutation({
   },
 });
 
-export const deleteUploadedFile = internalMutation({
-  args: { storageId: v.id("_storage") },
-  handler: async (ctx, args) => {
-    await ctx.storage.delete(args.storageId);
-  },
-});
 
 export const getSiteIdentityForUpdate = internalQuery({
   args: {
@@ -336,7 +330,7 @@ export const clearHostnameErrors = internalMutation({
 export const replaceSiteFileRecord = internalMutation({
   args: {
     siteId: v.id("sites"),
-    storageId: v.id("_storage"),
+    bucketKey: v.string(),
     contentType: v.string(),
     sha256: v.string(),
     byteLength: v.number(),
@@ -347,7 +341,7 @@ export const replaceSiteFileRecord = internalMutation({
     if (!site) throw new Error("Site not found");
 
     const newFileId = await ctx.db.insert("siteFiles", {
-      storageId: args.storageId,
+      bucketKey: args.bucketKey,
       contentType: args.contentType,
       sha256: args.sha256,
       byteLength: args.byteLength,

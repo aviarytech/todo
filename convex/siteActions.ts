@@ -5,6 +5,7 @@ import { internal, api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { createCustomHostname, getCustomHostname } from "./cloudflare";
+import { getObjectBody, headObject } from "./lib/bucket";
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { sha512 } from "@noble/hashes/sha2.js";
 import { concatBytes, bytesToHex } from "@noble/hashes/utils.js";
@@ -211,7 +212,7 @@ function normalizeCustomHostname(hostname: string): string {
 export const createSiteFromUpload = action({
   args: {
     ownerDid: v.string(),
-    storageId: v.id("_storage"),
+    bucketKey: v.string(),
   },
   handler: async (ctx, args): Promise<{ siteId: string; hostname: string; url: string; did: string; scid: string }> => {
     configureEd25519Sha512();
@@ -222,15 +223,15 @@ export const createSiteFromUpload = action({
       throw new Error("SITE_KEY_ENCRYPTION_SECRET is not configured");
     }
 
-    const blob = await ctx.storage.get(args.storageId);
-    if (!blob) {
+    const head = await headObject(args.bucketKey);
+    if (!head.exists) {
       throw new Error("That uploaded file disappeared. Try dropping it again.");
     }
 
+    const blob = await getObjectBody(args.bucketKey);
     const content = validateHtmlPayload(await blob.text());
     const byteLength = new TextEncoder().encode(content).byteLength;
-    const metadata = await ctx.storage.getMetadata(args.storageId);
-    const sha256 = metadata?.sha256 ?? createHash("sha256").update(content).digest("hex");
+    const sha256 = createHash("sha256").update(content).digest("hex");
 
     let hostname = "";
     for (let attempt = 0; attempt < 25; attempt += 1) {
@@ -277,7 +278,7 @@ export const createSiteFromUpload = action({
     const createdAt = Date.now();
     const record = await ctx.runMutation(internal.siteInternals.createSiteRecord, {
       ownerDid: args.ownerDid,
-      storageId: args.storageId,
+      bucketKey: args.bucketKey,
       contentType: "text/html; charset=utf-8",
       sha256,
       byteLength,
@@ -533,7 +534,7 @@ export const replaceSiteFile = action({
   args: {
     ownerDid: v.string(),
     siteId: v.id("sites"),
-    storageId: v.id("_storage"),
+    bucketKey: v.string(),
   },
   handler: async (ctx, args): Promise<{ fileId: string }> => {
     // Ownership check via the existing query.
@@ -543,26 +544,20 @@ export const replaceSiteFile = action({
     });
     if (!owned) throw new Error("Site not found");
 
-    const url = await ctx.storage.getUrl(args.storageId);
-    if (!url) throw new Error("Uploaded file not found.");
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error("Could not read the uploaded file.");
-    }
-    const buffer = await response.arrayBuffer();
-    const byteLength = buffer.byteLength;
-    if (byteLength === 0) {
+    const head = await headObject(args.bucketKey);
+    if (!head.exists) throw new Error("Uploaded file not found.");
+    if (!head.contentLength || head.contentLength === 0) {
       throw new Error("The uploaded file was empty.");
     }
-    if (byteLength > MAX_REPLACE_HTML_BYTES) {
+    if (head.contentLength > MAX_REPLACE_HTML_BYTES) {
       throw new Error("That file is bigger than the 2 MB limit.");
     }
 
-    const contentType =
-      response.headers.get("content-type") ?? "text/html; charset=utf-8";
+    const blob = await getObjectBody(args.bucketKey);
+    const buffer = await blob.arrayBuffer();
+    const byteLength = buffer.byteLength;
+    const contentType = head.contentType ?? "text/html; charset=utf-8";
 
-    // SHA-256 hex
     const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
     const sha256 = Array.from(new Uint8Array(hashBuffer))
       .map((b) => b.toString(16).padStart(2, "0"))
@@ -572,7 +567,7 @@ export const replaceSiteFile = action({
       internal.siteInternals.replaceSiteFileRecord,
       {
         siteId: args.siteId,
-        storageId: args.storageId,
+        bucketKey: args.bucketKey,
         contentType,
         sha256,
         byteLength,
