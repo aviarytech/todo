@@ -7,7 +7,7 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useToast } from "../hooks/useToast";
 import { useSettings } from "../hooks/useSettings";
 import { ConnectDomainModal } from "../components/sites/ConnectDomainModal";
-import { SiteImages } from "../components/sites/SiteImages";
+import { SiteAssets } from "../components/sites/SiteAssets";
 
 export function SiteDetail() {
   const { siteId } = useParams();
@@ -164,7 +164,7 @@ export function SiteDetail() {
       </div>
 
       {did && (
-        <SiteImages siteId={site._id} ownerDid={did} hostname={hostname} />
+        <SiteAssets siteId={site._id} ownerDid={did} hostname={hostname} />
       )}
 
       <div className="rounded-2xl border border-stone-200 dark:border-gray-800 bg-white dark:bg-gray-900">

@@ -80,7 +80,7 @@ export const resolveSiteHost = httpAction(async (ctx, request) => {
   });
 });
 
-export const resolveSiteImage = httpAction(async (ctx, request) => {
+export const resolveSiteAsset = httpAction(async (ctx, request) => {
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -105,18 +105,18 @@ export const resolveSiteImage = httpAction(async (ctx, request) => {
     return json({ status: "pending" }, 404);
   }
 
-  const image = await ctx.runQuery(internal.siteImages.resolvePublicImage, {
+  const asset = await ctx.runQuery(internal.siteAssets.resolvePublicAsset, {
     siteId: record.site._id,
     fileName,
   });
-  if (!image) return json({ status: "missing" }, 404);
+  if (!asset) return json({ status: "missing" }, 404);
 
-  const presigned = await presignGet(image.bucketKey, { expiresSec: 300 });
+  const presigned = await presignGet(asset.bucketKey, { expiresSec: 300 });
   return json({
     status: "active",
-    contentType: image.contentType,
-    byteLength: image.byteLength,
-    sha256: image.sha256,
+    contentType: asset.contentType,
+    byteLength: asset.byteLength,
+    sha256: asset.sha256,
     url: presigned,
   });
 });

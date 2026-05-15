@@ -56,7 +56,7 @@ import type * as publication from "../publication.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as referrals from "../referrals.js";
 import type * as siteActions from "../siteActions.js";
-import type * as siteImages from "../siteImages.js";
+import type * as siteAssets from "../siteAssets.js";
 import type * as siteInternals from "../siteInternals.js";
 import type * as sites from "../sites.js";
 import type * as sitesHttp from "../sitesHttp.js";
@@ -122,7 +122,7 @@ declare const fullApi: ApiFromModules<{
   rateLimits: typeof rateLimits;
   referrals: typeof referrals;
   siteActions: typeof siteActions;
-  siteImages: typeof siteImages;
+  siteAssets: typeof siteAssets;
   siteInternals: typeof siteInternals;
   sites: typeof sites;
   sitesHttp: typeof sitesHttp;

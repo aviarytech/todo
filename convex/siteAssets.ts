@@ -14,16 +14,36 @@ import {
   presignPut,
 } from "./lib/bucket";
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_ASSET_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
+  // images
   "image/png",
   "image/jpeg",
   "image/gif",
   "image/webp",
   "image/svg+xml",
+  "image/avif",
   "image/x-icon",
   "image/vnd.microsoft.icon",
-  "image/avif",
+  // web content
+  "text/html",
+  "text/html; charset=utf-8",
+  "text/css",
+  "text/css; charset=utf-8",
+  "text/javascript",
+  "text/javascript; charset=utf-8",
+  "application/javascript",
+  "application/javascript; charset=utf-8",
+  "application/json",
+  "application/json; charset=utf-8",
+  "text/plain",
+  "text/plain; charset=utf-8",
+  "application/wasm",
+  // fonts
+  "font/woff",
+  "font/woff2",
+  "application/font-woff",
+  "application/font-woff2",
 ]);
 
 function sanitizeFileName(fileName: string): string {
@@ -39,14 +59,7 @@ function sanitizeFileName(fileName: string): string {
   return cleaned;
 }
 
-function imageKindOrAsset(value: string | undefined) {
-  if (value === "favicon" || value === "og" || value === "avatar" || value === "asset") {
-    return value;
-  }
-  return "asset" as const;
-}
-
-export const generateSiteImageUploadUrl = action({
+export const generateSiteAssetUploadUrl = action({
   args: {
     ownerDid: v.string(),
     siteId: v.id("sites"),
@@ -59,20 +72,20 @@ export const generateSiteImageUploadUrl = action({
     args
   ): Promise<{ uploadUrl: string; bucketKey: string; fileName: string }> => {
     if (!ALLOWED_TYPES.has(args.contentType)) {
-      throw new Error(`Unsupported image type: ${args.contentType}`);
+      throw new Error(`Unsupported asset type: ${args.contentType}`);
     }
-    if (args.byteLength <= 0 || args.byteLength > MAX_IMAGE_BYTES) {
-      throw new Error("Image is empty or exceeds the 10 MB limit.");
+    if (args.byteLength <= 0 || args.byteLength > MAX_ASSET_BYTES) {
+      throw new Error("Asset is empty or exceeds the 10 MB limit.");
     }
 
-    const owned = await ctx.runQuery(internal.siteImages.assertOwnsSite, {
+    const owned = await ctx.runQuery(internal.siteAssets.assertOwnsSite, {
       siteId: args.siteId,
       ownerDid: args.ownerDid,
     });
     if (!owned) throw new Error("Site not found");
 
     const fileName = sanitizeFileName(args.fileName);
-    const key = makeBucketKey("site-images", args.siteId, fileName);
+    const key = makeBucketKey("site-assets", args.siteId, fileName);
     const uploadUrl = await presignPut(key, {
       contentType: args.contentType,
       expiresSec: 600,
@@ -81,7 +94,7 @@ export const generateSiteImageUploadUrl = action({
   },
 });
 
-export const addSiteImage = mutation({
+export const addSiteAsset = mutation({
   args: {
     ownerDid: v.string(),
     siteId: v.id("sites"),
@@ -90,9 +103,8 @@ export const addSiteImage = mutation({
     contentType: v.string(),
     byteLength: v.number(),
     sha256: v.string(),
-    kind: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<{ imageId: Id<"siteImages"> }> => {
+  handler: async (ctx, args): Promise<{ assetId: Id<"siteAssets"> }> => {
     const site = await ctx.db.get(args.siteId);
     if (!site || site.ownerDid !== args.ownerDid) {
       throw new Error("Site not found");
@@ -101,7 +113,7 @@ export const addSiteImage = mutation({
     const fileName = sanitizeFileName(args.fileName);
     const now = Date.now();
     const existing = await ctx.db
-      .query("siteImages")
+      .query("siteAssets")
       .withIndex("by_site_filename", (q) =>
         q.eq("siteId", args.siteId).eq("fileName", fileName)
       )
@@ -113,55 +125,53 @@ export const addSiteImage = mutation({
         contentType: args.contentType,
         byteLength: args.byteLength,
         sha256: args.sha256,
-        kind: imageKindOrAsset(args.kind),
         updatedAt: now,
       });
-      return { imageId: existing._id };
+      return { assetId: existing._id };
     }
 
-    const imageId = await ctx.db.insert("siteImages", {
+    const assetId = await ctx.db.insert("siteAssets", {
       siteId: args.siteId,
       fileName,
       bucketKey: args.bucketKey,
       contentType: args.contentType,
       byteLength: args.byteLength,
       sha256: args.sha256,
-      kind: imageKindOrAsset(args.kind),
       createdAt: now,
     });
-    return { imageId };
+    return { assetId };
   },
 });
 
-export const listSiteImages = query({
+export const listSiteAssets = query({
   args: { ownerDid: v.string(), siteId: v.id("sites") },
   handler: async (ctx, args) => {
     const site = await ctx.db.get(args.siteId);
     if (!site || site.ownerDid !== args.ownerDid) return [];
 
     return await ctx.db
-      .query("siteImages")
+      .query("siteAssets")
       .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
       .order("desc")
       .collect();
   },
 });
 
-export const removeSiteImage = action({
+export const removeSiteAsset = action({
   args: {
     ownerDid: v.string(),
-    imageId: v.id("siteImages"),
+    assetId: v.id("siteAssets"),
   },
   handler: async (ctx, args): Promise<void> => {
-    const image = await ctx.runQuery(internal.siteImages.getOwnedImage, {
-      imageId: args.imageId,
+    const asset = await ctx.runQuery(internal.siteAssets.getOwnedAsset, {
+      assetId: args.assetId,
       ownerDid: args.ownerDid,
     });
-    if (!image) throw new Error("Image not found");
+    if (!asset) throw new Error("Asset not found");
 
-    await deleteObject(image.bucketKey);
-    await ctx.runMutation(internal.siteImages.deleteImageRow, {
-      imageId: args.imageId,
+    await deleteObject(asset.bucketKey);
+    await ctx.runMutation(internal.siteAssets.deleteAssetRow, {
+      assetId: args.assetId,
     });
   },
 });
@@ -175,29 +185,29 @@ export const assertOwnsSite = internalQuery({
   },
 });
 
-export const getOwnedImage = internalQuery({
-  args: { imageId: v.id("siteImages"), ownerDid: v.string() },
+export const getOwnedAsset = internalQuery({
+  args: { assetId: v.id("siteAssets"), ownerDid: v.string() },
   handler: async (ctx, args) => {
-    const image = await ctx.db.get(args.imageId);
-    if (!image) return null;
-    const site = await ctx.db.get(image.siteId);
+    const asset = await ctx.db.get(args.assetId);
+    if (!asset) return null;
+    const site = await ctx.db.get(asset.siteId);
     if (!site || site.ownerDid !== args.ownerDid) return null;
-    return image;
+    return asset;
   },
 });
 
-export const deleteImageRow = internalMutation({
-  args: { imageId: v.id("siteImages") },
+export const deleteAssetRow = internalMutation({
+  args: { assetId: v.id("siteAssets") },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.imageId);
+    await ctx.db.delete(args.assetId);
   },
 });
 
-export const resolvePublicImage = internalQuery({
+export const resolvePublicAsset = internalQuery({
   args: { siteId: v.id("sites"), fileName: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
-      .query("siteImages")
+      .query("siteAssets")
       .withIndex("by_site_filename", (q) =>
         q.eq("siteId", args.siteId).eq("fileName", args.fileName)
       )

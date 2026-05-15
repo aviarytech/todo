@@ -106,7 +106,7 @@ async function resolveHostedSite(hostname: string) {
   }>;
 }
 
-async function resolveSiteImageUrl(
+async function resolveSiteAssetUrl(
   hostname: string,
   fileName: string
 ): Promise<{ status: "active" | "missing" | "pending"; url?: string; contentType?: string }> {
@@ -114,10 +114,10 @@ async function resolveSiteImageUrl(
   if (!convexHttpUrl) return { status: "missing" };
 
   const response = await fetch(
-    `${convexHttpUrl}/api/sites/resolve-image?hostname=${encodeURIComponent(hostname)}&fileName=${encodeURIComponent(fileName)}`
+    `${convexHttpUrl}/api/sites/resolve-asset?hostname=${encodeURIComponent(hostname)}&fileName=${encodeURIComponent(fileName)}`
   );
   if (response.status === 404) return { status: "missing" };
-  if (!response.ok) throw new Error(`Image resolve failed with ${response.status}`);
+  if (!response.ok) throw new Error(`Asset resolve failed with ${response.status}`);
   return response.json() as Promise<{
     status: "active" | "missing" | "pending";
     url?: string;
@@ -135,13 +135,13 @@ function missingSitePage(hostname: string): Response {
   );
 }
 
-async function serveHostedSiteImage(
+async function serveHostedSiteAsset(
   hostname: string,
   fileName: string
 ): Promise<Response> {
-  const image = await resolveSiteImageUrl(hostname, fileName);
-  if (image.status === "active" && image.url) {
-    return Response.redirect(image.url, 302);
+  const asset = await resolveSiteAssetUrl(hostname, fileName);
+  if (asset.status === "active" && asset.url) {
+    return Response.redirect(asset.url, 302);
   }
   return missingSitePage(hostname);
 }
@@ -152,7 +152,7 @@ async function serveHostedSite(request: Request, hostname: string): Promise<Resp
   if (url.pathname.startsWith("/_assets/")) {
     const fileName = decodeURIComponent(url.pathname.slice("/_assets/".length));
     if (!fileName || fileName.includes("/")) return missingSitePage(hostname);
-    return serveHostedSiteImage(hostname, fileName);
+    return serveHostedSiteAsset(hostname, fileName);
   }
 
   const site = await resolveHostedSite(hostname);
