@@ -4,10 +4,17 @@
  */
 
 import { useState, useRef } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
+
+async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
+  const hash = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 interface AttachmentsProps {
   itemId: Id<"items">;
@@ -38,16 +45,15 @@ export function Attachments({ itemId, userDid, legacyDid, canEdit }: Attachments
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<Id<"_storage"> | null>(null);
-  const [failedPreviewIds, setFailedPreviewIds] = useState<Record<string, true>>({});
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
+  const [failedPreviewKeys, setFailedPreviewKeys] = useState<Record<string, true>>({});
 
   // Fetch attachment URLs
   const attachments = useQuery(api.attachments.getAttachmentUrls, { itemId });
 
-  // Mutations
-  const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
+  const generateUploadUrl = useAction(api.attachments.generateUploadUrl);
   const addAttachment = useMutation(api.attachments.addAttachment);
-  const removeAttachment = useMutation(api.attachments.removeAttachment);
+  const removeAttachment = useAction(api.attachments.removeAttachment);
 
   const handleUploadClick = () => {
     if (!canEdit) return;
@@ -56,32 +62,36 @@ export function Attachments({ itemId, userDid, legacyDid, canEdit }: Attachments
   };
 
   const uploadSingleFile = async (file: File) => {
-    // Step 1: Generate upload URL
-    const uploadUrl = await generateUploadUrl({
+    const buffer = await file.arrayBuffer();
+    const sha256 = await sha256Hex(buffer);
+    const contentType = file.type || "application/octet-stream";
+
+    const { uploadUrl, bucketKey } = await generateUploadUrl({
       itemId,
       userDid,
       legacyDid,
+      contentType,
+      byteLength: file.size,
     });
 
-    // Step 2: Upload to Convex storage
     const response = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
-      body: file,
+      method: "PUT",
+      headers: { "Content-Type": contentType },
+      body: buffer,
     });
 
     if (!response.ok) {
       throw new Error("Upload failed");
     }
 
-    const { storageId } = await response.json();
-
-    // Step 3: Add attachment to item
     await addAttachment({
       itemId,
-      storageId,
       userDid,
       legacyDid,
+      bucketKey,
+      contentType,
+      size: file.size,
+      sha256,
     });
   };
 
@@ -144,23 +154,23 @@ export function Attachments({ itemId, userDid, legacyDid, canEdit }: Attachments
     }
   };
 
-  const handleDelete = async (storageId: Id<"_storage">) => {
+  const handleDelete = async (bucketKey: string) => {
     if (!canEdit) return;
 
     haptic("medium");
-    setDeletingId(storageId);
+    setDeletingKey(bucketKey);
 
     try {
       await removeAttachment({
         itemId,
-        storageId,
+        bucketKey,
         userDid,
         legacyDid,
       });
-      setFailedPreviewIds((prev) => {
-        if (!prev[String(storageId)]) return prev;
+      setFailedPreviewKeys((prev) => {
+        if (!prev[bucketKey]) return prev;
         const clone = { ...prev };
-        delete clone[String(storageId)];
+        delete clone[bucketKey];
         return clone;
       });
       haptic("success");
@@ -168,7 +178,7 @@ export function Attachments({ itemId, userDid, legacyDid, canEdit }: Attachments
       console.error("Failed to remove attachment:", err);
       haptic("error");
     } finally {
-      setDeletingId(null);
+      setDeletingKey(null);
     }
   };
 
@@ -187,9 +197,9 @@ export function Attachments({ itemId, userDid, legacyDid, canEdit }: Attachments
       {/* Attachment grid */}
       {attachments && attachments.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
-          {attachments.map(({ storageId, url }) => (
+          {attachments.map(({ key, url }) => (
             <div
-              key={storageId}
+              key={key}
               className="relative group aspect-square bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden"
             >
               {url ? (
@@ -200,13 +210,13 @@ export function Attachments({ itemId, userDid, legacyDid, canEdit }: Attachments
                   className="block w-full h-full"
                   title="Open attachment"
                 >
-                  {!failedPreviewIds[String(storageId)] ? (
+                  {!failedPreviewKeys[key] ? (
                     <img
                       src={url}
                       alt="Attachment"
                       className="w-full h-full object-cover"
                       onError={() => {
-                        setFailedPreviewIds((prev) => ({ ...prev, [String(storageId)]: true }));
+                        setFailedPreviewKeys((prev) => ({ ...prev, [key]: true }));
                       }}
                     />
                   ) : (
@@ -228,11 +238,11 @@ export function Attachments({ itemId, userDid, legacyDid, canEdit }: Attachments
               {/* Delete button */}
               {canEdit && (
                 <button
-                  onClick={() => handleDelete(storageId)}
-                  disabled={deletingId === storageId}
+                  onClick={() => handleDelete(key)}
+                  disabled={deletingKey === key}
                   className="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
                 >
-                  {deletingId === storageId ? (
+                  {deletingKey === key ? (
                     <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />

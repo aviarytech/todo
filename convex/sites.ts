@@ -1,10 +1,32 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { action, internalQuery, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import {
+  bucketKey as makeBucketKey,
+  presignGet,
+  presignPut,
+} from "./lib/bucket";
 
-export const generateSiteUploadUrl = mutation({
+const UPLOAD_EXPIRY_SEC = 600;
+const PREVIEW_EXPIRY_SEC = 300;
+const SITE_HTML_CONTENT_TYPE = "text/html; charset=utf-8";
+
+function newSiteBucketKey(): string {
+  return makeBucketKey("siteFiles", `${crypto.randomUUID()}.html`);
+}
+
+export const generateSiteUploadUrl = action({
   args: { ownerDid: v.string() },
-  handler: async (ctx, _args) => {
-    return await ctx.storage.generateUploadUrl();
+  handler: async (
+    _ctx,
+    _args
+  ): Promise<{ uploadUrl: string; bucketKey: string }> => {
+    const key = newSiteBucketKey();
+    const uploadUrl = await presignPut(key, {
+      contentType: SITE_HTML_CONTENT_TYPE,
+      expiresSec: UPLOAD_EXPIRY_SEC,
+    });
+    return { uploadUrl, bucketKey: key };
   },
 });
 
@@ -55,11 +77,19 @@ export const getSite = query({
 
     const primaryHostname =
       site.primaryHostnameId != null ? await ctx.db.get(site.primaryHostnameId) : null;
-    const storageUrl = file ? await ctx.storage.getUrl(file.storageId) : null;
 
     return {
       ...site,
-      file: file ? { ...file, storageUrl } : null,
+      file: file
+        ? {
+            _id: file._id,
+            contentType: file.contentType,
+            sha256: file.sha256,
+            byteLength: file.byteLength,
+            bucketKey: file.bucketKey ?? null,
+            createdAt: file.createdAt,
+          }
+        : null,
       publicKeyMultibase: key?.publicKeyMultibase ?? null,
       hostnames,
       primaryHostname,
@@ -68,6 +98,29 @@ export const getSite = query({
         .map((entry) => entry.entryJsonl)
         .join("\n"),
     };
+  },
+});
+
+export const getSitePreviewUrl = action({
+  args: { siteId: v.id("sites"), ownerDid: v.string() },
+  handler: async (ctx, args): Promise<string | null> => {
+    const site = await ctx.runQuery(internal.sites.getSiteFileBucketKey, {
+      siteId: args.siteId,
+      ownerDid: args.ownerDid,
+    });
+    if (!site?.bucketKey) return null;
+    return await presignGet(site.bucketKey, { expiresSec: PREVIEW_EXPIRY_SEC });
+  },
+});
+
+export const getSiteFileBucketKey = internalQuery({
+  args: { siteId: v.id("sites"), ownerDid: v.string() },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.get(args.siteId);
+    if (!site || site.ownerDid !== args.ownerDid) return null;
+    const file = await ctx.db.get(site.fileId);
+    if (!file) return null;
+    return { bucketKey: file.bucketKey ?? null };
   },
 });
 
@@ -98,10 +151,10 @@ export const getPublicSiteByHostname = query({
       hostname,
       primaryHostname,
       file: {
-        storageId: file.storageId,
         contentType: file.contentType,
         sha256: file.sha256,
         byteLength: file.byteLength,
+        bucketKey: file.bucketKey ?? null,
       },
       didLogJsonl: didLogEntries
         .sort((a, b) => a.signedAt - b.signedAt)

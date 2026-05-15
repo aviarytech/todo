@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useSettings } from "../hooks/useSettings";
@@ -11,7 +11,7 @@ export function Sites() {
   const { did, isLoading } = useCurrentUser();
   const { haptic } = useSettings();
   const { addToast } = useToast();
-  const generateUploadUrl = useMutation(api.sites.generateSiteUploadUrl);
+  const generateUploadUrl = useAction(api.sites.generateSiteUploadUrl);
   const createSiteFromUpload = useAction(api.siteActions.createSiteFromUpload);
   const sites = useQuery(api.sites.listSites, did ? { ownerDid: did } : "skip");
 
@@ -46,9 +46,9 @@ export function Sites() {
     haptic("medium");
 
     try {
-      const uploadUrl = await generateUploadUrl({ ownerDid: did });
+      const { uploadUrl, bucketKey } = await generateUploadUrl({ ownerDid: did });
       const uploadResponse = await fetch(uploadUrl, {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "text/html; charset=utf-8" },
         body: new Blob([html], { type: "text/html; charset=utf-8" }),
       });
@@ -57,8 +57,7 @@ export function Sites() {
         throw new Error("The file upload did not land. Try again.");
       }
 
-      const { storageId } = await uploadResponse.json();
-      const result = await createSiteFromUpload({ ownerDid: did, storageId });
+      const result = await createSiteFromUpload({ ownerDid: did, bucketKey });
       addToast("Your link is ready.");
       haptic("success");
       navigate(`/s/${result.siteId}`);

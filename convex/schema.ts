@@ -148,8 +148,17 @@ export default defineSchema({
     parentId: v.optional(v.id("items")),
     // Optional assignee DID for Mission Control workflows
     assigneeDid: v.optional(v.string()),
-    // Attachments - stored file IDs
-    attachments: v.optional(v.array(v.id("_storage"))),
+    // Attachments — Railway Bucket objects. Legacy `v.id("_storage")` entries
+    // exist only until the bucketBackfill migration runs once on this deploy.
+    attachments: v.optional(v.array(v.union(
+      v.id("_storage"),
+      v.object({
+        key: v.string(),
+        contentType: v.string(),
+        size: v.number(),
+        sha256: v.string(),
+      }),
+    ))),
     // VC proofs for item actions (Phase 6 - Provenance Chain)
     vcProofs: v.optional(v.array(v.object({
       type: v.string(), // e.g., "ItemCreation", "ItemCompletion"
@@ -292,8 +301,11 @@ export default defineSchema({
 
   // Single-file hosted sites. These are public, shareable HTML drops with
   // portable did:webvh identity. Kept separate from todo/list publication.
+  // `storageId` is the legacy Convex-storage pointer, kept optional only until
+  // the bucketBackfill migration runs once on this deploy.
   siteFiles: defineTable({
-    storageId: v.id("_storage"),
+    storageId: v.optional(v.id("_storage")),
+    bucketKey: v.optional(v.string()),
     contentType: v.string(),
     sha256: v.string(),
     byteLength: v.number(),
@@ -369,6 +381,28 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_site", ["siteId"]),
+
+  // Image assets associated with a site. Served at https://<sitehost>/_assets/<fileName>
+  // and stored in Railway Bucket under "site-images/<siteId>/<fileName>".
+  // Filename is unique per site; re-uploads overwrite.
+  siteImages: defineTable({
+    siteId: v.id("sites"),
+    fileName: v.string(),
+    bucketKey: v.string(),
+    contentType: v.string(),
+    byteLength: v.number(),
+    sha256: v.string(),
+    kind: v.optional(v.union(
+      v.literal("favicon"),
+      v.literal("og"),
+      v.literal("avatar"),
+      v.literal("asset"),
+    )),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_site", ["siteId"])
+    .index("by_site_filename", ["siteId", "fileName"]),
 
   // Comments table - threaded discussions on items
   comments: defineTable({

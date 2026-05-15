@@ -100,9 +100,28 @@ async function resolveHostedSite(hostname: string) {
     status: "active" | "missing" | "pending" | "redirect" | "error";
     hostname: string;
     location?: string;
-    html?: string;
+    bucketUrl?: string;
     contentType?: string;
     didLogJsonl?: string;
+  }>;
+}
+
+async function resolveSiteImageUrl(
+  hostname: string,
+  fileName: string
+): Promise<{ status: "active" | "missing" | "pending"; url?: string; contentType?: string }> {
+  const convexHttpUrl = process.env.CONVEX_HTTP_URL || process.env.VITE_CONVEX_HTTP_URL;
+  if (!convexHttpUrl) return { status: "missing" };
+
+  const response = await fetch(
+    `${convexHttpUrl}/api/sites/resolve-image?hostname=${encodeURIComponent(hostname)}&fileName=${encodeURIComponent(fileName)}`
+  );
+  if (response.status === 404) return { status: "missing" };
+  if (!response.ok) throw new Error(`Image resolve failed with ${response.status}`);
+  return response.json() as Promise<{
+    status: "active" | "missing" | "pending";
+    url?: string;
+    contentType?: string;
   }>;
 }
 
@@ -116,8 +135,26 @@ function missingSitePage(hostname: string): Response {
   );
 }
 
+async function serveHostedSiteImage(
+  hostname: string,
+  fileName: string
+): Promise<Response> {
+  const image = await resolveSiteImageUrl(hostname, fileName);
+  if (image.status === "active" && image.url) {
+    return Response.redirect(image.url, 302);
+  }
+  return missingSitePage(hostname);
+}
+
 async function serveHostedSite(request: Request, hostname: string): Promise<Response> {
   const url = new URL(request.url);
+
+  if (url.pathname.startsWith("/_assets/")) {
+    const fileName = decodeURIComponent(url.pathname.slice("/_assets/".length));
+    if (!fileName || fileName.includes("/")) return missingSitePage(hostname);
+    return serveHostedSiteImage(hostname, fileName);
+  }
+
   const site = await resolveHostedSite(hostname);
 
   if (!site || site.status === "missing" || site.status === "error") {
@@ -145,7 +182,10 @@ async function serveHostedSite(request: Request, hostname: string): Promise<Resp
   }
 
   if (url.pathname === "/") {
-    return new Response(site.html || "", {
+    if (!site.bucketUrl) return missingSitePage(hostname);
+    const bucketResponse = await fetch(site.bucketUrl);
+    if (!bucketResponse.ok) return missingSitePage(hostname);
+    return new Response(bucketResponse.body, {
       headers: {
         "Content-Type": site.contentType || "text/html; charset=utf-8",
         "Cache-Control": siteCacheControl,

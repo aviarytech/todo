@@ -1,5 +1,6 @@
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
+import { presignGet } from "./lib/bucket";
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -59,10 +60,11 @@ export const resolveSiteHost = httpAction(async (ctx, request) => {
     });
   }
 
-  const blob = await ctx.storage.get(record.file.storageId);
-  if (!blob) {
+  if (!record.file.bucketKey) {
     return json({ status: "missing", hostname }, 404);
   }
+
+  const bucketUrl = await presignGet(record.file.bucketKey, { expiresSec: 300 });
 
   return json({
     status: "active",
@@ -71,9 +73,50 @@ export const resolveSiteHost = httpAction(async (ctx, request) => {
     did: record.site.did,
     scid: record.site.scid,
     primaryHostname: record.primaryHostname?.hostname ?? hostname,
-    html: await blob.text(),
+    bucketUrl,
     contentType: record.file.contentType,
     sha256: record.file.sha256,
     didLogJsonl: record.didLogJsonl,
+  });
+});
+
+export const resolveSiteImage = httpAction(async (ctx, request) => {
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  }
+
+  const url = new URL(request.url);
+  const hostname = normalizedHostname(url.searchParams.get("hostname"));
+  const fileName = url.searchParams.get("fileName");
+  if (!hostname || !fileName) {
+    return json({ status: "error", error: "hostname and fileName are required" }, 400);
+  }
+
+  const record = await ctx.runQuery(api.sites.getPublicSiteByHostname, { hostname });
+  if (!record) return json({ status: "missing" }, 404);
+  if (record.hostname.status !== "active") {
+    return json({ status: "pending" }, 404);
+  }
+
+  const image = await ctx.runQuery(internal.siteImages.resolvePublicImage, {
+    siteId: record.site._id,
+    fileName,
+  });
+  if (!image) return json({ status: "missing" }, 404);
+
+  const presigned = await presignGet(image.bucketKey, { expiresSec: 300 });
+  return json({
+    status: "active",
+    contentType: image.contentType,
+    byteLength: image.byteLength,
+    sha256: image.sha256,
+    url: presigned,
   });
 });
