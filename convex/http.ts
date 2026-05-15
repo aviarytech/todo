@@ -28,7 +28,7 @@ import { assignItem as assignItemHttp, unassignItem as unassignItemHttp, getItem
 import { heartbeat as presenceHeartbeatHttp, listPresence as listPresenceHttp } from "./presenceHttp";
 import { getListActivity as getListActivityHttp } from "./activityHttp";
 import { stripeWebhook, createCheckout, createPortal, getSubscription } from "./billingHttp";
-import { resolveSiteHost, resolveSiteImage } from "./sitesHttp";
+import { resolveSiteHost, resolveSiteAsset } from "./sitesHttp";
 const RATE_LIMITS = {
   initiate: { windowMs: 60000, maxAttempts: 5 },
   verify: { windowMs: 60000, maxAttempts: 5 },
@@ -407,8 +407,8 @@ http.route({ path: "/api/billing/subscription", method: "OPTIONS", handler: cors
 // --- Hosted site endpoints ---
 http.route({ path: "/api/sites/resolve-host", method: "GET", handler: resolveSiteHost });
 http.route({ path: "/api/sites/resolve-host", method: "OPTIONS", handler: resolveSiteHost });
-http.route({ path: "/api/sites/resolve-image", method: "GET", handler: resolveSiteImage });
-http.route({ path: "/api/sites/resolve-image", method: "OPTIONS", handler: resolveSiteImage });
+http.route({ path: "/api/sites/resolve-asset", method: "GET", handler: resolveSiteAsset });
+http.route({ path: "/api/sites/resolve-asset", method: "OPTIONS", handler: resolveSiteAsset });
 
 
 // ============================================================================

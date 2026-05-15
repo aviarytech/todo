@@ -382,22 +382,16 @@ export default defineSchema({
   })
     .index("by_site", ["siteId"]),
 
-  // Image assets associated with a site. Served at https://<sitehost>/_assets/<fileName>
-  // and stored in Railway Bucket under "site-images/<siteId>/<fileName>".
-  // Filename is unique per site; re-uploads overwrite.
-  siteImages: defineTable({
+  // Files associated with a site (images, sub-pages, CSS, JS, fonts, …).
+  // Served at https://<sitehost>/_assets/<fileName>; stored in Railway Bucket
+  // under "site-assets/<siteId>/<fileName>". Filename unique per site.
+  siteAssets: defineTable({
     siteId: v.id("sites"),
     fileName: v.string(),
     bucketKey: v.string(),
     contentType: v.string(),
     byteLength: v.number(),
     sha256: v.string(),
-    kind: v.optional(v.union(
-      v.literal("favicon"),
-      v.literal("og"),
-      v.literal("avatar"),
-      v.literal("asset"),
-    )),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })

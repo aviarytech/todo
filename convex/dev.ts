@@ -4,7 +4,7 @@
  */
 
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -114,3 +114,27 @@ export const revokeSubscription = internalMutation({
     return { action: "canceled" as const, subscriptionId: sub._id };
   },
 });
+
+export const inspectSites = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const sites = await ctx.db.query("sites").collect();
+    return await Promise.all(
+      sites.map(async (site) => {
+        const file = await ctx.db.get(site.fileId);
+        const primaryHostname = site.primaryHostnameId
+          ? await ctx.db.get(site.primaryHostnameId)
+          : null;
+        return {
+          siteId: site._id,
+          hostname: primaryHostname?.hostname ?? null,
+          fileId: site.fileId,
+          fileBucketKey: file?.bucketKey ?? null,
+          fileLegacyStorageId: file?.storageId ?? null,
+          fileSha256: file?.sha256 ?? null,
+        };
+      })
+    );
+  },
+});
+
