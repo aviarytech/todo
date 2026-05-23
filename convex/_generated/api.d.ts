@@ -35,6 +35,7 @@ import type * as feedback from "../feedback.js";
 import type * as http from "../http.js";
 import type * as items from "../items.js";
 import type * as itemsHttp from "../itemsHttp.js";
+import type * as lib_analytics from "../lib/analytics.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_authUser from "../lib/authUser.js";
 import type * as lib_bucket from "../lib/bucket.js";
@@ -101,6 +102,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   items: typeof items;
   itemsHttp: typeof itemsHttp;
+  "lib/analytics": typeof lib_analytics;
   "lib/auth": typeof lib_auth;
   "lib/authUser": typeof lib_authUser;
   "lib/bucket": typeof lib_bucket;
