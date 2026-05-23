@@ -114,6 +114,7 @@ export const resolveSiteAsset = httpAction(async (ctx, request) => {
   const presigned = await presignGet(asset.bucketKey, { expiresSec: 300 });
   return json({
     status: "active",
+    siteId: record.site._id,
     contentType: asset.contentType,
     byteLength: asset.byteLength,
     sha256: asset.sha256,

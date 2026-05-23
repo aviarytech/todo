@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join, normalize } from "node:path";
+import { anonDistinctId, captureEvent } from "./convex/lib/analytics";
 
 const port = Number(process.env.PORT || 3000);
 const distDir = join(process.cwd(), "dist");
@@ -103,7 +104,19 @@ async function resolveHostedSite(hostname: string) {
     bucketUrl?: string;
     contentType?: string;
     didLogJsonl?: string;
+    siteId?: string;
+    did?: string;
+    scid?: string;
   }>;
+}
+
+function clientIpFromRequest(request: Request): string {
+  return (
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-real-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown"
+  );
 }
 
 async function resolveSiteAssetUrl(
@@ -122,6 +135,7 @@ async function resolveSiteAssetUrl(
     status: "active" | "missing" | "pending";
     url?: string;
     contentType?: string;
+    siteId?: string;
   }>;
 }
 
@@ -136,14 +150,68 @@ function missingSitePage(hostname: string): Response {
 }
 
 async function serveHostedSiteAsset(
+  request: Request,
   hostname: string,
   fileName: string
 ): Promise<Response> {
   const asset = await resolveSiteAssetUrl(hostname, fileName);
   if (asset.status === "active" && asset.url) {
+    void trackAssetView(request, hostname, fileName, asset).catch(() => {});
     return Response.redirect(asset.url, 302);
   }
   return missingSitePage(hostname);
+}
+
+async function trackSiteView(
+  request: Request,
+  hostname: string,
+  site: { siteId?: string; did?: string; scid?: string; contentType?: string }
+): Promise<void> {
+  const ip = clientIpFromRequest(request);
+  const ua = request.headers.get("user-agent") ?? "";
+  const referrer = request.headers.get("referer") ?? "";
+  const distinctId = await anonDistinctId(ip, ua);
+  await captureEvent({
+    event: "site_view",
+    distinctId,
+    properties: {
+      $current_url: `https://${hostname}/`,
+      $referrer: referrer,
+      $ip: ip,
+      $useragent: ua,
+      site_id: site.siteId,
+      site_hostname: hostname,
+      site_did: site.did,
+      site_scid: site.scid,
+      content_type: site.contentType,
+    },
+  });
+}
+
+async function trackAssetView(
+  request: Request,
+  hostname: string,
+  fileName: string,
+  asset: { siteId?: string; contentType?: string }
+): Promise<void> {
+  const ip = clientIpFromRequest(request);
+  const ua = request.headers.get("user-agent") ?? "";
+  const referrer = request.headers.get("referer") ?? "";
+  const distinctId = await anonDistinctId(ip, ua);
+  await captureEvent({
+    event: "site_asset_view",
+    distinctId,
+    properties: {
+      $current_url: `https://${hostname}/_assets/${fileName}`,
+      $referrer: referrer,
+      $ip: ip,
+      $useragent: ua,
+      site_id: asset.siteId,
+      site_hostname: hostname,
+      file_name: fileName,
+      content_type: asset.contentType,
+    },
+  });
 }
 
 async function serveHostedSite(request: Request, hostname: string): Promise<Response> {
@@ -152,7 +220,7 @@ async function serveHostedSite(request: Request, hostname: string): Promise<Resp
   if (url.pathname.startsWith("/_assets/")) {
     const fileName = decodeURIComponent(url.pathname.slice("/_assets/".length));
     if (!fileName || fileName.includes("/")) return missingSitePage(hostname);
-    return serveHostedSiteAsset(hostname, fileName);
+    return serveHostedSiteAsset(request, hostname, fileName);
   }
 
   const site = await resolveHostedSite(hostname);
@@ -185,6 +253,7 @@ async function serveHostedSite(request: Request, hostname: string): Promise<Resp
     if (!site.bucketUrl) return missingSitePage(hostname);
     const bucketResponse = await fetch(site.bucketUrl);
     if (!bucketResponse.ok) return missingSitePage(hostname);
+    void trackSiteView(request, hostname, site).catch(() => {});
     return new Response(bucketResponse.body, {
       headers: {
         "Content-Type": site.contentType || "text/html; charset=utf-8",
