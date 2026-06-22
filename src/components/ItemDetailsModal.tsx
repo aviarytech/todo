@@ -6,6 +6,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
@@ -50,6 +53,7 @@ export function ItemDetailsModal({
   const { haptic } = useSettings();
   const { isOnline } = useOffline();
   const updateItem = useMutation(api.items.updateItem);
+  const navigate = useNavigate();
 
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? "");
@@ -264,14 +268,27 @@ export function ItemDetailsModal({
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
             📝 Notes
           </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            disabled={!canEdit}
-            rows={3}
-            placeholder={canEdit ? "Add notes or details..." : "No notes"}
-            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 resize-none"
-          />
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={() => { haptic("light"); navigate(`/note/${item._id}`); }}
+              className="w-full text-left px-3 py-2 min-h-[3.5rem] bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              {description.trim() ? (
+                <div className="prose prose-sm dark:prose-invert max-w-none line-clamp-3">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{description}</ReactMarkdown>
+                </div>
+              ) : (
+                <span className="text-gray-400">Add notes or details…</span>
+              )}
+            </button>
+          ) : description.trim() ? (
+            <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{description}</ReactMarkdown>
+            </div>
+          ) : (
+            <p className="px-3 py-2 text-sm text-gray-400">No notes</p>
+          )}
         </div>
 
         {/* URL/Link */}
