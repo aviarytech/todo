@@ -257,6 +257,9 @@ export const updateItem = mutation({
     clearAssigneeDid: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => withMutationObservability("items.updateItem", async () => {
+    if (args.description !== undefined && args.description.length > 50000) {
+      throw new Error("Description cannot exceed 50000 characters");
+    }
     const item = await ctx.db.get(args.itemId);
     if (!item) {
       throw new Error("Item not found");
@@ -598,6 +601,33 @@ export const getItemForSync = query({
   args: { itemId: v.id("items") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.itemId);
+  },
+});
+
+/**
+ * Load a single item for the full-page note editor.
+ * Returns null when the item does not exist OR the user cannot edit it
+ * (in the current permission model, no edit access == no access).
+ */
+export const getItemForEditor = query({
+  args: {
+    itemId: v.id("items"),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) return null;
+
+    const canEdit = await canUserEditList(ctx, item.listId, args.userDid, args.legacyDid);
+    if (!canEdit) return null;
+
+    return {
+      itemId: item._id,
+      name: item.name,
+      description: item.description ?? "",
+      canEdit,
+    };
   },
 });
 
