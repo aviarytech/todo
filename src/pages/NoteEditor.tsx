@@ -15,6 +15,11 @@ export function NoteEditor() {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
   const { haptic } = useSettings();
+  const goBack = () => {
+    haptic("light");
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/d");
+  };
   const { did, legacyDid } = useCurrentUser();
 
   const data = useQuery(
@@ -58,13 +63,15 @@ export function NoteEditor() {
           description: text,
         });
         savedRef.current = text;
-        setStatus("saved");
+        if (draftRef.current === text) setStatus("saved");
       } catch {
         setStatus("idle");
       }
     },
     [itemId, did, legacyDid, updateItem]
   );
+  const persistRef = useRef(persist);
+  persistRef.current = persist;
 
   // Debounced autosave.
   useEffect(() => {
@@ -81,10 +88,11 @@ export function NoteEditor() {
   useEffect(() => {
     return () => {
       if (canEditRef.current && draftRef.current !== savedRef.current) {
-        void persist(draftRef.current);
+        void persistRef.current(draftRef.current);
       }
     };
-  }, [persist]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onChange = (value: string) => {
     setDraft(clampNote(value));
@@ -107,7 +115,7 @@ export function NoteEditor() {
       <div className="min-h-screen-safe bg-stone-50 dark:bg-gray-950 flex flex-col items-center justify-center gap-4 p-6 text-center">
         <p className="text-stone-600 dark:text-stone-400">This note isn't available.</p>
         <button
-          onClick={() => { haptic("light"); navigate(-1); }}
+          onClick={goBack}
           className="rounded-full px-4 py-2 text-sm font-semibold bg-amber-500 text-white"
         >
           Go back
@@ -125,7 +133,7 @@ export function NoteEditor() {
       <header className="flex-shrink-0 sticky top-0 z-10 bg-stone-50/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-stone-200 dark:border-gray-800 safe-area-inset-top">
         <div className="px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => { haptic("light"); navigate(-1); }}
+            onClick={goBack}
             aria-label="Back"
             className="text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200"
           >
@@ -139,6 +147,7 @@ export function NoteEditor() {
           </span>
           <button
             onClick={() => { haptic("light"); setMode((mode) => (mode === "edit" ? "preview" : "edit")); }}
+            aria-pressed={mode === "preview"}
             className="rounded-full px-3 py-1.5 text-xs font-semibold bg-stone-100 dark:bg-gray-900 text-stone-700 dark:text-stone-200"
           >
             {mode === "edit" ? "Preview" : "Edit"}
