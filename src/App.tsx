@@ -36,6 +36,7 @@ const InviteLanding = lazy(() => import('./pages/InviteLanding').then(m => ({ de
 const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })))
 const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })))
 const Compare = lazy(() => import('./pages/Compare').then(m => ({ default: m.Compare })))
+const NoteEditor = lazy(() => import('./pages/NoteEditor').then(m => ({ default: m.NoteEditor })))
 
 /**
  * Authenticated layout wrapper with header and navigation.
@@ -269,6 +270,7 @@ function App() {
           <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
           <Route path="/priority" element={<ProtectedRoute><PriorityFocus /></ProtectedRoute>} />
           <Route path="/list/:id" element={<ProtectedRoute><ListView /></ProtectedRoute>} />
+          <Route path="/note/:itemId" element={<ProtectedRoute><NoteEditor /></ProtectedRoute>} />
 
           {/* Fallback - redirect to app (AuthGuard will handle login redirect if needed) */}
           <Route path="*" element={<ProtectedRoute><Navigate to="/d" replace /></ProtectedRoute>} />
