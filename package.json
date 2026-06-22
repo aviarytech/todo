@@ -46,7 +46,9 @@
     "posthog-js": "^1.359.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.12.0",
+    "remark-gfm": "^4.0.1",
     "serve": "^14.2.5",
     "stripe": "^20.4.0",
     "web-push": "^3.6.7"

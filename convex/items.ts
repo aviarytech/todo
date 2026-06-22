@@ -141,6 +141,8 @@ export const addItem = mutation({
     // Input validation
     if (args.name.trim().length === 0) throw new Error("Item name cannot be empty");
     if (args.name.length > 500) throw new Error("Item name cannot exceed 500 characters");
+    // addItem is the quick-entry form; the full markdown editor (NoteEditor) edits
+    // via updateItem, which allows up to 50000 chars. The caps differ on purpose.
     if (args.description && args.description.length > 2000) throw new Error("Description cannot exceed 2000 characters");
     if (args.url && args.url.length > 2000) throw new Error("URL cannot exceed 2000 characters");
 
@@ -257,6 +259,9 @@ export const updateItem = mutation({
     clearAssigneeDid: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => withMutationObservability("items.updateItem", async () => {
+    if (args.description !== undefined && args.description.length > 50000) {
+      throw new Error("Description cannot exceed 50000 characters");
+    }
     const item = await ctx.db.get(args.itemId);
     if (!item) {
       throw new Error("Item not found");
@@ -598,6 +603,33 @@ export const getItemForSync = query({
   args: { itemId: v.id("items") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.itemId);
+  },
+});
+
+/**
+ * Load a single item for the full-page note editor.
+ * Returns null when the item does not exist OR the user cannot edit it
+ * (in the current permission model, no edit access == no access).
+ */
+export const getItemForEditor = query({
+  args: {
+    itemId: v.id("items"),
+    userDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item) return null;
+
+    const canEdit = await canUserEditList(ctx, item.listId, args.userDid, args.legacyDid);
+    if (!canEdit) return null;
+
+    return {
+      itemId: item._id,
+      name: item.name,
+      description: item.description ?? "",
+      canEdit,
+    };
   },
 });
 
