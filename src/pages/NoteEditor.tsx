@@ -31,25 +31,19 @@ export function NoteEditor() {
   const updateItem = useMutation(api.items.updateItem);
 
   const [mode, setMode] = useState<"edit" | "preview">("edit");
-  const [draft, setDraft] = useState("");
+  // null means "no local edit yet — show the server value". Keeping the Convex
+  // query as the source of truth avoids seeding state in an effect, and lets a
+  // saved note resume tracking the server value instead of holding stale text.
+  const [draft, setDraft] = useState<string | null>(null);
   const [status, setStatus] = useState<SaveStatus>("idle");
 
-  const savedRef = useRef("");
-  const draftRef = useRef("");
-  const seededRef = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const canEditRef = useRef(false);
-  draftRef.current = draft;
-  canEditRef.current = !!data?.canEdit;
+  const value = draft ?? data?.description ?? "";
+  const dirty = !!data && shouldPersist({ draft: value, saved: data.description, canEdit: data.canEdit });
 
-  // Seed the draft once, when the item first loads.
-  useEffect(() => {
-    if (data && !seededRef.current) {
-      setDraft(data.description);
-      savedRef.current = data.description;
-      seededRef.current = true;
-    }
-  }, [data]);
+  // Latest value/dirty/persist for the unmount flush. Writing refs inside an
+  // effect is allowed; writing them during render is not.
+  const valueRef = useRef(value);
+  const dirtyRef = useRef(dirty);
 
   const persist = useCallback(
     async (text: string) => {
@@ -62,8 +56,11 @@ export function NoteEditor() {
           legacyDid: legacyDid ?? undefined,
           description: text,
         });
-        savedRef.current = text;
-        if (draftRef.current === text) setStatus("saved");
+        // Resume tracking the server value, unless the user typed something newer.
+        if (valueRef.current === text) {
+          setDraft(null);
+          setStatus("saved");
+        }
       } catch {
         setStatus("idle");
       }
@@ -71,31 +68,29 @@ export function NoteEditor() {
     [itemId, did, legacyDid, updateItem]
   );
   const persistRef = useRef(persist);
-  persistRef.current = persist;
+
+  useEffect(() => {
+    valueRef.current = value;
+    dirtyRef.current = dirty;
+    persistRef.current = persist;
+  });
 
   // Debounced autosave.
   useEffect(() => {
-    if (!data) return;
-    if (!shouldPersist({ draft, saved: savedRef.current, canEdit: data.canEdit })) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => void persist(draft), 600);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [draft, data, persist]);
+    if (!dirty) return;
+    const timer = setTimeout(() => void persist(value), 600);
+    return () => clearTimeout(timer);
+  }, [value, dirty, persist]);
 
   // Flush a pending edit if the user leaves before the debounce fires.
   useEffect(() => {
     return () => {
-      if (canEditRef.current && draftRef.current !== savedRef.current) {
-        void persistRef.current(draftRef.current);
-      }
+      if (dirtyRef.current) void persistRef.current(valueRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onChange = (value: string) => {
-    setDraft(clampNote(value));
+  const onChange = (next: string) => {
+    setDraft(clampNote(next));
     setStatus("idle");
   };
 
@@ -124,7 +119,7 @@ export function NoteEditor() {
     );
   }
 
-  const nearLimit = draft.length > MAX_NOTE_LENGTH - 500;
+  const nearLimit = value.length > MAX_NOTE_LENGTH - 500;
   const statusLabel = status === "saving" ? "Saving…" : status === "saved" ? "Saved" : "";
 
   // --- Editor
@@ -158,7 +153,7 @@ export function NoteEditor() {
       <main className="flex-1 flex flex-col px-4 py-3 safe-area-inset-bottom">
         {mode === "edit" ? (
           <textarea
-            value={draft}
+            value={value}
             onChange={(e) => onChange(e.target.value)}
             autoFocus
             placeholder="Start writing…  (markdown supported)"
@@ -166,8 +161,8 @@ export function NoteEditor() {
           />
         ) : (
           <div className="flex-1 w-full prose prose-stone dark:prose-invert max-w-none overflow-auto">
-            {draft.trim() ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{draft}</ReactMarkdown>
+            {value.trim() ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
             ) : (
               <p className="text-stone-400">Nothing to preview yet.</p>
             )}
@@ -175,7 +170,7 @@ export function NoteEditor() {
         )}
         {nearLimit && (
           <p className="flex-shrink-0 pt-2 text-xs text-stone-400 text-right">
-            {draft.length} / {MAX_NOTE_LENGTH}
+            {value.length} / {MAX_NOTE_LENGTH}
           </p>
         )}
       </main>
