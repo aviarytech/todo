@@ -141,6 +141,8 @@ export const addItem = mutation({
     // Input validation
     if (args.name.trim().length === 0) throw new Error("Item name cannot be empty");
     if (args.name.length > 500) throw new Error("Item name cannot exceed 500 characters");
+    // addItem is the quick-entry form; the full markdown editor (NoteEditor) edits
+    // via updateItem, which allows up to 50000 chars. The caps differ on purpose.
     if (args.description && args.description.length > 2000) throw new Error("Description cannot exceed 2000 characters");
     if (args.url && args.url.length > 2000) throw new Error("URL cannot exceed 2000 characters");
 
