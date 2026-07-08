@@ -222,10 +222,14 @@ Goal: make the differentiated product legible before spending any attention.
    audience paths: *For you* (lists), *For your team*, *For your agents* —
    with a live demo list showing an agent checking items off in realtime.
 2. **Docs as product.** Publish Mission Control docs (quickstart: "agent
-   completing a task in 5 minutes with curl"), an OpenAPI spec, and an **MCP
-   server** so Claude/other agents can use boop natively. The MCP server is
-   likely the single highest-leverage build item in this plan: it makes boop
-   installable into the tools ICP 1 already uses, in one line.
+   completing a task in 5 minutes with curl"), an OpenAPI spec, and a **boop
+   Agent Skill** so Claude Code / Agent SDK agents can use boop natively. The
+   skill is likely the single highest-leverage build item in this plan: it
+   makes boop installable into the tools ICP 1 already uses, in one line —
+   with zero hosting — and it encodes the Mission Control *workflow*
+   (pull task → run → heartbeat → artifacts → check off), not just API
+   plumbing. Decision: skill over MCP server — ICP 1's environments all have
+   a shell and can drive the REST API directly; we are not building MCP.
 3. **Instrument the funnel.** PostHog events exist; define the north-star
    (weekly lists with ≥2 active collaborators — human or agent) and the
    activation event (first shared list *or* first successful agent API call).
@@ -240,7 +244,7 @@ Goal: 1,000 agent-connected workspaces; establish the category association
 - **Launch sequence:** Show HN ("boop – a todo list your AI agents can use, built by AI agents using it") → Product Hunt a week later → X/dev-YouTube
   demo clips of an agent working a list live. The meta-story is the hook; the
   5-minute quickstart is the retention.
-- **Integration beachheads:** MCP server (Claude Code / Claude Tag), OpenClaw
+- **Integration beachheads:** Agent Skill (Claude Code / Agent SDK), OpenClaw
   memory-sync (already built — co-announce), GitHub Action ("file CI failures
   to a boop list"), CrewAI/LangChain tool wrappers. Each integration is a
   durable distribution channel, not a feature.
@@ -288,7 +292,7 @@ Goal: first $20k+/yr accounts; defensible category position.
 
 ### 7.1 Channels ranked by expected CAC
 1. Product-led viral (invite links, shared lists, `*.boop.ad` footer) — $0
-2. Integrations/marketplaces (MCP registry, GitHub marketplace) — near $0, compounding
+2. Integrations/marketplaces (skills/plugin marketplaces, GitHub Marketplace) — near $0, compounding
 3. Launch spikes (HN/PH) + meta-story PR — $0, one-shot but category-defining
 4. SEO via templates + docs — slow burn, durable
 5. Dev-community sponsorships (newsletters, agent-framework podcasts) — first paid channel, only after organic conversion is proven
@@ -324,11 +328,11 @@ tracked publicly (status page on a boop Site, naturally).
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| "Agent task queue" gets commoditized by Linear/GitHub/Notion adding agent APIs | High | Speed + provenance moat + consumer-grade simplicity; win the MCP/integration shelf space first |
+| "Agent task queue" gets commoditized by Linear/GitHub/Notion adding agent APIs | High | Speed + provenance moat + consumer-grade simplicity; win the skill/integration shelf space first |
 | Crypto/DID branding scares mainstream users | Medium | Outcome-first messaging; mechanism opt-in and invisible by default |
 | Convex bundle-size and platform limits (already hit: ModulesTooLarge) | Medium | Keep heavy signing server-side and modular (in progress per IMPLEMENTATION_PLAN); budget for a signing microservice if needed |
 | Two-sided cold start (agents need lists worth working) | Medium | Templates + GitHub Action seed real work into new workspaces on day one |
-| Solo/small-team execution bandwidth | High | The agent loop is the mitigation — and the marketing. Scope Phase 1 to MCP server + docs + launch, nothing else |
+| Solo/small-team execution bandwidth | High | The agent loop is the mitigation — and the marketing. Scope Phase 1 to Agent Skill + docs + launch, nothing else |
 | Turnkey/Stripe/Cloudflare dependency pricing changes | Low | All are usage-priced and swappable at current scale |
 
 ---
@@ -338,7 +342,7 @@ tracked publicly (status page on a boop Site, naturally).
 **Weeks 1–2** — Landing page rewrite (three-audience story + live agent demo);
 define activation events in PostHog; write the meta-story post.
 
-**Weeks 3–4** — Ship MCP server; publish OpenAPI spec + 5-minute agent
+**Weeks 3–4** — Ship the boop Agent Skill; publish OpenAPI spec + 5-minute agent
 quickstart; finalize Agent tier pricing and Stripe products.
 
 **Weeks 5–6** — Show HN launch; Discord open; respond-everywhere week;
