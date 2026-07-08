@@ -2,7 +2,7 @@
  * Analytics module — PostHog-backed funnel tracking.
  *
  * Events tracked:
- *   Acquisition:  landing_viewed
+ *   Acquisition:  landing_viewed, landing_cta_clicked, api_quickstart_viewed
  *   Activation:   signup_started, signup_completed, first_list_created
  *   Engagement:   list_created, list_shared, invite_sent
  *   Revenue:      upgrade_page_viewed, upgrade_clicked, upgrade_completed
@@ -57,6 +57,23 @@ function capture(event: string, props?: Record<string, string | number | boolean
 /** Visitor hit the marketing landing page. */
 export function trackLandingViewed(): void {
   capture('landing_viewed');
+}
+
+/**
+ * Visitor clicked a CTA on the marketing landing page.
+ * `cta` is what the button leads to; `section` is where on the page it lives
+ * (hero, path_you, path_team, path_agents, pricing, cta_band, nav, footer).
+ */
+export function trackLandingCtaClicked(
+  cta: 'signup' | 'signin' | 'quickstart' | 'pricing',
+  section: string
+): void {
+  capture('landing_cta_clicked', { cta, section });
+}
+
+/** Visitor viewed the API quickstart docs page. */
+export function trackQuickstartViewed(): void {
+  capture('api_quickstart_viewed');
 }
 
 /** User submitted their email to start OTP flow. */
