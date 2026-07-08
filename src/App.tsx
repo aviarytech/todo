@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
-import { Routes, Route, Link, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Link, NavLink, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { useSettings } from './hooks/useSettings'
 import { AuthGuard } from './components/auth/AuthGuard'
@@ -242,45 +242,47 @@ function App() {
   }, [location.pathname])
 
   return (
-    <AppLockGuard>
+    <>
       <OfflineIndicator />
       <Suspense fallback={<PageLoadingFallback />}>
         <Routes>
-          {/* Public routes - accessible without authentication */}
-          <Route path="/invite/:code" element={<InviteLanding />} />
-          <Route path="/login" element={isAuthenticated ? <Navigate to="/d" replace /> : <Login />} />
-          <Route path="/join/:listId/:token" element={<JoinList />} />
-          <Route path="/public/:did" element={<PublicList />} />
-          <Route path="/:userPath/resources/:resourceId" element={<SharedListResource />} />
-
-          {/* Landing page for unauthenticated, redirect to app if logged in */}
+          {/* Static marketing/docs pages — no user data, reachable without app unlock */}
           <Route path="/" element={isAuthenticated ? <Navigate to="/d" replace /> : <Landing />} />
-
-          {/* Pricing - accessible to all, authenticated or not */}
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/compare/:competitor" element={<Compare />} />
           <Route path="/docs/quickstart" element={<ApiQuickstart />} />
 
-          {/* Protected routes - require authentication */}
-          <Route path="/d" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/e" element={<ProtectedRoute><Explorer /></ProtectedRoute>} />
-          <Route path="/s" element={<ProtectedRoute><Sites /></ProtectedRoute>} />
-          <Route path="/s/:siteId" element={<ProtectedRoute><SiteDetail /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
-          <Route path="/priority" element={<ProtectedRoute><PriorityFocus /></ProtectedRoute>} />
-          <Route path="/list/:id" element={<ProtectedRoute><ListView /></ProtectedRoute>} />
-          <Route path="/note/:itemId" element={<ProtectedRoute><NoteEditor /></ProtectedRoute>} />
+          {/* Everything below stays behind the (opt-in) biometric app lock,
+              including content-bearing public routes like invites and shared lists. */}
+          <Route element={<AppLockGuard><Outlet /></AppLockGuard>}>
+            {/* Public routes - accessible without authentication */}
+            <Route path="/invite/:code" element={<InviteLanding />} />
+            <Route path="/login" element={isAuthenticated ? <Navigate to="/d" replace /> : <Login />} />
+            <Route path="/join/:listId/:token" element={<JoinList />} />
+            <Route path="/public/:did" element={<PublicList />} />
+            <Route path="/:userPath/resources/:resourceId" element={<SharedListResource />} />
 
-          {/* Fallback - redirect to app (AuthGuard will handle login redirect if needed) */}
-          <Route path="*" element={<ProtectedRoute><Navigate to="/d" replace /></ProtectedRoute>} />
+            {/* Protected routes - require authentication */}
+            <Route path="/d" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/e" element={<ProtectedRoute><Explorer /></ProtectedRoute>} />
+            <Route path="/s" element={<ProtectedRoute><Sites /></ProtectedRoute>} />
+            <Route path="/s/:siteId" element={<ProtectedRoute><SiteDetail /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
+            <Route path="/priority" element={<ProtectedRoute><PriorityFocus /></ProtectedRoute>} />
+            <Route path="/list/:id" element={<ProtectedRoute><ListView /></ProtectedRoute>} />
+            <Route path="/note/:itemId" element={<ProtectedRoute><NoteEditor /></ProtectedRoute>} />
+
+            {/* Fallback - redirect to app (AuthGuard will handle login redirect if needed) */}
+            <Route path="*" element={<ProtectedRoute><Navigate to="/d" replace /></ProtectedRoute>} />
+          </Route>
         </Routes>
       </Suspense>
       <ToastContainer />
       <CookieConsent />
-    </AppLockGuard>
+    </>
   )
 }
 
