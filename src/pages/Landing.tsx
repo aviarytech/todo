@@ -142,14 +142,24 @@ function AgentDemo() {
 // ---------------------------------------------------------------------------
 
 export function Landing() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const appHref = isAuthenticated ? '/' : '/login';
+  const viewTracked = useRef(false);
 
   useEffect(() => {
     document.body.classList.add('scrollable-page');
-    trackLandingViewed();
     return () => document.body.classList.remove('scrollable-page');
   }, []);
+
+  // Session restoration is async, so authenticated users briefly mount Landing
+  // before the "/" route redirects them to the app. Only count the view once
+  // auth has resolved to a genuinely signed-out visitor.
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !viewTracked.current) {
+      viewTracked.current = true;
+      trackLandingViewed();
+    }
+  }, [isLoading, isAuthenticated]);
 
   const cta = (name: 'signup' | 'signin' | 'quickstart' | 'pricing', section: string) => () =>
     trackLandingCtaClicked(name, section);
