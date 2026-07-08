@@ -243,7 +243,6 @@ function App() {
 
   return (
     <>
-      <OfflineIndicator />
       <Suspense fallback={<PageLoadingFallback />}>
         <Routes>
           {/* Static marketing/docs pages — no user data, reachable without app unlock */}
@@ -255,8 +254,18 @@ function App() {
           <Route path="/docs/quickstart" element={<ApiQuickstart />} />
 
           {/* Everything below stays behind the (opt-in) biometric app lock,
-              including content-bearing public routes like invites and shared lists. */}
-          <Route element={<AppLockGuard><Outlet /></AppLockGuard>}>
+              including content-bearing public routes like invites and shared lists.
+              The offline indicator and toasts can surface list data (queued-change
+              counts, item names), so they live inside the guard too. */}
+          <Route
+            element={
+              <AppLockGuard>
+                <OfflineIndicator />
+                <Outlet />
+                <ToastContainer />
+              </AppLockGuard>
+            }
+          >
             {/* Public routes - accessible without authentication */}
             <Route path="/invite/:code" element={<InviteLanding />} />
             <Route path="/login" element={isAuthenticated ? <Navigate to="/d" replace /> : <Login />} />
@@ -280,7 +289,6 @@ function App() {
           </Route>
         </Routes>
       </Suspense>
-      <ToastContainer />
       <CookieConsent />
     </>
   )
