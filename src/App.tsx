@@ -36,6 +36,7 @@ const InviteLanding = lazy(() => import('./pages/InviteLanding').then(m => ({ de
 const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })))
 const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })))
 const Compare = lazy(() => import('./pages/Compare').then(m => ({ default: m.Compare })))
+const ApiQuickstart = lazy(() => import('./pages/ApiQuickstart').then(m => ({ default: m.ApiQuickstart })))
 const NoteEditor = lazy(() => import('./pages/NoteEditor').then(m => ({ default: m.NoteEditor })))
 
 /**
@@ -260,6 +261,7 @@ function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/compare/:competitor" element={<Compare />} />
+          <Route path="/docs/quickstart" element={<ApiQuickstart />} />
 
           {/* Protected routes - require authentication */}
           <Route path="/d" element={<ProtectedRoute><Home /></ProtectedRoute>} />
