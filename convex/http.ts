@@ -29,6 +29,8 @@ import { heartbeat as presenceHeartbeatHttp, listPresence as listPresenceHttp } 
 import { getListActivity as getListActivityHttp } from "./activityHttp";
 import { stripeWebhook, createCheckout, createPortal, getSubscription } from "./billingHttp";
 import { resolveSiteHost, resolveSiteAsset } from "./sitesHttp";
+import { createApiKey, listApiKeys, revokeApiKey } from "./apiKeysHttp";
+import { getLists, getListWithItems } from "./agentReadHttp";
 const RATE_LIMITS = {
   initiate: { windowMs: 60000, maxAttempts: 5 },
   verify: { windowMs: 60000, maxAttempts: 5 },
@@ -410,6 +412,21 @@ http.route({ path: "/api/sites/resolve-host", method: "OPTIONS", handler: resolv
 http.route({ path: "/api/sites/resolve-asset", method: "GET", handler: resolveSiteAsset });
 http.route({ path: "/api/sites/resolve-asset", method: "OPTIONS", handler: resolveSiteAsset });
 
+
+// ============================================================================
+// Agent API v1 (Plan 001)
+// API-key management (JWT-only) + agent read/write over HTTP (JWT or X-API-Key).
+// Note: keyId/listId are query params — the Convex router has no :param segments.
+// ============================================================================
+http.route({ path: "/api/v1/keys", method: "POST", handler: createApiKey });
+http.route({ path: "/api/v1/keys", method: "GET", handler: listApiKeys });
+http.route({ path: "/api/v1/keys", method: "DELETE", handler: revokeApiKey });
+http.route({ path: "/api/v1/keys", method: "OPTIONS", handler: corsHandler });
+
+http.route({ path: "/api/v1/lists", method: "GET", handler: getLists });
+http.route({ path: "/api/v1/lists", method: "OPTIONS", handler: corsHandler });
+http.route({ path: "/api/v1/lists/items", method: "GET", handler: getListWithItems });
+http.route({ path: "/api/v1/lists/items", method: "OPTIONS", handler: corsHandler });
 
 // ============================================================================
 // Health check endpoint (public, no auth)
