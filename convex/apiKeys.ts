@@ -1,18 +1,21 @@
 /**
  * Convex queries/mutations for API-key CRUD.
  *
- * Keys are minted and revoked only via JWT-authed HTTP handlers (apiKeysHttp.ts).
- * These functions never accept or return raw keys — only hashes/prefixes.
+ * Keys are minted and revoked only via JWT-authed HTTP handlers (apiKeysHttp.ts)
+ * and looked up only by the server-side actor resolver. All functions are
+ * INTERNAL — they take an owner DID as a plain arg with no auth of their own, so
+ * exposing them publicly would let any client mint/revoke keys for any user or
+ * probe key existence. They never accept or return raw keys — only hashes.
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 
 /**
  * Look up a key record by its hash. Returns the row (including revokedAt) or null.
  * Callers must check revokedAt before trusting the key.
  */
-export const getByHash = query({
+export const getByHash = internalQuery({
   args: { keyHash: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -25,7 +28,7 @@ export const getByHash = query({
 /**
  * List an owner's active keys. Never returns keyHash.
  */
-export const listForOwner = query({
+export const listForOwner = internalQuery({
   args: { ownerDid: v.string() },
   handler: async (ctx, args) => {
     const rows = await ctx.db
@@ -48,7 +51,7 @@ export const listForOwner = query({
 /**
  * Insert a new key record. Only the hash/prefix are stored, never the raw key.
  */
-export const createKey = mutation({
+export const createKey = internalMutation({
   args: {
     ownerDid: v.string(),
     keyHash: v.string(),
@@ -73,7 +76,7 @@ export const createKey = mutation({
 /**
  * Revoke a key, but only if it belongs to the requesting owner.
  */
-export const revokeKey = mutation({
+export const revokeKey = internalMutation({
   args: { keyId: v.id("apiKeys"), ownerDid: v.string() },
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.keyId);

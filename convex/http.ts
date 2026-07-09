@@ -66,8 +66,9 @@ function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin") || "*";
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    // GET/DELETE + X-API-Key added for the agent v1 routes (keys, lists).
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
     "Access-Control-Allow-Credentials": "true",
   };
 }
@@ -83,8 +84,8 @@ function jsonResponse(
 ): Response {
   const corsHeaders = request ? getCorsHeaders(request) : {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
   };
   return new Response(JSON.stringify(data), {
     status,
@@ -432,7 +433,7 @@ http.route({ path: "/api/v1/lists/items", method: "OPTIONS", handler: corsHandle
 // Health check endpoint (public, no auth)
 // Returns 200 OK with JSON body for Railway health checks and uptime monitoring.
 // ============================================================================
-const healthCheck = httpAction(async (_ctx, _request) => {
+const healthCheck = httpAction(async () => {
   return new Response(JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }), {
     status: 200,
     headers: { "Content-Type": "application/json" },

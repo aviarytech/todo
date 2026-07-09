@@ -9,7 +9,7 @@
 
 import { httpAction } from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
   requireAuth,
@@ -81,7 +81,7 @@ export const createApiKey = httpAction(async (ctx, request) => {
     const keyHash = await hashApiKey(rawKey);
     const prefix = formatKeyPrefix(rawKey);
 
-    const id = await ctx.runMutation(api.apiKeys.createKey, {
+    const id = await ctx.runMutation(internal.apiKeys.createKey, {
       ownerDid,
       keyHash,
       prefix,
@@ -117,7 +117,7 @@ export const listApiKeys = httpAction(async (ctx, request) => {
       return errorResponse(request, "User not found", 404);
     }
 
-    const keys = await ctx.runQuery(api.apiKeys.listForOwner, { ownerDid });
+    const keys = await ctx.runQuery(internal.apiKeys.listForOwner, { ownerDid });
     return jsonResponse(request, { keys });
   } catch (error) {
     if (error instanceof AuthError) {
@@ -151,7 +151,7 @@ export const revokeApiKey = httpAction(async (ctx, request) => {
       return errorResponse(request, "keyId query parameter is required");
     }
 
-    await ctx.runMutation(api.apiKeys.revokeKey, {
+    await ctx.runMutation(internal.apiKeys.revokeKey, {
       keyId: keyId as Id<"apiKeys">,
       ownerDid,
     });

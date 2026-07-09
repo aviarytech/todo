@@ -43,7 +43,7 @@ export const createList = httpAction(async (ctx, request) => {
     const listId = await ctx.runMutation(api.lists.createList, {
       assetDid,
       name,
-      ownerDid: actor.actorDid,
+      ownerDid: actor.did,
       categoryId: categoryId as unknown as undefined, // Optional category ID
       createdAt: Date.now(),
     });
@@ -87,7 +87,7 @@ export const deleteList = httpAction(async (ctx, request) => {
     // Call the mutation with server-verified DID
     await ctx.runMutation(api.lists.deleteList, {
       listId: listId as Id<"lists">,
-      userDid: actor.actorDid,
+      userDid: actor.did,
       legacyDid: actor.legacyDid,
     });
 

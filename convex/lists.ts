@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { withMutationObservability } from "./lib/observability";
 import { canUserViewList } from "./lib/permissions";
@@ -213,8 +213,10 @@ export const getList = query({
  * by current or legacy DID, or an actively published list). Returns null when
  * the list is missing OR access is denied — callers should surface null as a
  * 404 so a caller can't probe which list IDs exist. Used by the agent read API.
+ * Internal: only the server-side agent read handler may call it, so the viewer
+ * DID it trusts always comes from an authenticated actor, never a raw client.
  */
-export const getListWithItemsForViewer = query({
+export const getListWithItemsForViewer = internalQuery({
   args: {
     listId: v.id("lists"),
     viewerDid: v.string(),

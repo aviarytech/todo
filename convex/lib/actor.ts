@@ -7,13 +7,16 @@
  */
 
 import type { ActionCtx } from "../_generated/server";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { requireAuth, AuthError } from "./auth";
 import { hasScope, hashApiKey } from "./apiKeyHelpers";
 
 export type ResolvedActor = {
-  did: string; // owner DID — the authorization identity
-  actorDid: string; // who acted: agentDid if the key carries one, else did
+  // Authorization identity. Everything downstream (ownership, canUserEditList)
+  // keys off this. For an API key it's the key owner's DID, not the agent's —
+  // so a key always acts *as its owner*. Distinct agent attribution is Step 5
+  // and requires splitting authz-vs-attribution in the mutations first.
+  did: string;
   // Legacy DID of a migrated Turnkey user, forwarded so the existing
   // canUserEditList/ownerDid checks still match lists owned under the old DID.
   // Only ever set on the JWT path; API keys are a clean, legacy-free surface.
@@ -35,13 +38,12 @@ export async function resolveActor(
   const apiKey = request.headers.get("X-API-Key");
   if (apiKey) {
     const keyHash = await hashApiKey(apiKey);
-    const rec = await ctx.runQuery(api.apiKeys.getByHash, { keyHash });
+    const rec = await ctx.runQuery(internal.apiKeys.getByHash, { keyHash });
     if (!rec || rec.revokedAt) {
       throw new AuthError("Invalid API key", "INVALID_TOKEN");
     }
     return {
       did: rec.ownerDid,
-      actorDid: rec.agentDid ?? rec.ownerDid,
       scopes: rec.scopes,
       viaApiKey: true,
     };
@@ -56,7 +58,6 @@ export async function resolveActor(
   }
   return {
     did: user.did,
-    actorDid: user.did,
     legacyDid: user.legacyDid,
     scopes: ["*"],
     viaApiKey: false,

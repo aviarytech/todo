@@ -39,7 +39,7 @@ export const addItem = httpAction(async (ctx, request) => {
     const itemId = await ctx.runMutation(api.items.addItem, {
       listId: listId as Id<"lists">,
       name,
-      createdByDid: actor.actorDid,
+      createdByDid: actor.did,
       legacyDid: actor.legacyDid,
       createdAt: Date.now(),
     });
@@ -83,7 +83,7 @@ export const checkItem = httpAction(async (ctx, request) => {
     // Call the mutation with server-verified acting DID
     await ctx.runMutation(api.items.checkItem, {
       itemId: itemId as Id<"items">,
-      checkedByDid: actor.actorDid,
+      checkedByDid: actor.did,
       legacyDid: actor.legacyDid,
       checkedAt: Date.now(),
     });
@@ -127,7 +127,7 @@ export const uncheckItem = httpAction(async (ctx, request) => {
     // Call the mutation with server-verified acting DID
     await ctx.runMutation(api.items.uncheckItem, {
       itemId: itemId as Id<"items">,
-      userDid: actor.actorDid,
+      userDid: actor.did,
       legacyDid: actor.legacyDid,
     });
 
@@ -170,7 +170,7 @@ export const removeItem = httpAction(async (ctx, request) => {
     // Call the mutation with server-verified acting DID
     await ctx.runMutation(api.items.removeItem, {
       itemId: itemId as Id<"items">,
-      userDid: actor.actorDid,
+      userDid: actor.did,
       legacyDid: actor.legacyDid,
     });
 
@@ -214,7 +214,7 @@ export const reorderItems = httpAction(async (ctx, request) => {
     await ctx.runMutation(api.items.reorderItems, {
       listId: listId as Id<"lists">,
       itemIds: itemIds as Id<"items">[],
-      userDid: actor.actorDid,
+      userDid: actor.did,
       legacyDid: actor.legacyDid,
     });
 

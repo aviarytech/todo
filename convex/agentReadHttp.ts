@@ -7,7 +7,7 @@
  */
 
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { AuthError, unauthorizedResponseWithCors } from "./lib/auth";
 import { resolveActor, requireScope } from "./lib/actor";
@@ -61,7 +61,7 @@ export const getListWithItems = httpAction(async (ctx, request) => {
 
     // Authorized combined fetch: returns null if the list is missing OR the
     // caller may not view it, so an items:read key can't read arbitrary lists.
-    const result = await ctx.runQuery(api.lists.getListWithItemsForViewer, {
+    const result = await ctx.runQuery(internal.lists.getListWithItemsForViewer, {
       listId: listId as Id<"lists">,
       viewerDid: actor.did,
       legacyDid: actor.legacyDid,

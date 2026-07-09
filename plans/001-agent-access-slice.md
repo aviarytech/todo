@@ -41,8 +41,23 @@ in a follow-up commit. If you re-run this plan, apply these from the start:
 3. **Scope validation (Step 2c).** `createApiKey` trusted caller-supplied
    `scopes`, so a user could mint a `"*"` key. Fixed: `sanitizeScopes()` strips
    `"*"`/unknown scopes before persisting; empty → 400.
-4. **CORS (Step 2d).** `getCorsHeaders` now advertises `GET, POST, DELETE, OPTIONS`
-   and `X-API-Key` so browser clients can call the new routes.
+4. **CORS (Step 2d).** The OPTIONS routes use `convex/http.ts`'s *own* local
+   `getCorsHeaders` (not `lib/httpResponses.ts`) — that one now advertises
+   `GET, POST, DELETE, OPTIONS` and `X-API-Key`.
+
+A second review round flagged more:
+
+5. **API-key store must be internal.** `convex/apiKeys.ts` functions were public
+   `query`/`mutation` — so any client could call `createKey` directly with an
+   arbitrary `ownerDid` (mint a key for any user → account takeover) or probe
+   `getByHash`. Fixed: all four are `internalQuery`/`internalMutation`, reached
+   only from the JWT-authed HTTP layer via `internal.apiKeys.*`. Same for the new
+   `getListWithItemsForViewer` (server-only → `internalQuery`).
+6. **Ownership must use `did`, not the agent DID.** Writes and `createList` used
+   `actor.actorDid`, which would own/authorize against the *agent* once Step 5
+   lands. Removed `actorDid` from `ResolvedActor`; handlers use `actor.did`
+   (owner) for all authorization/ownership. Distinct agent attribution is Step 5
+   and must split authz-vs-attribution inside the mutations themselves.
 
 ## Why this matters
 
