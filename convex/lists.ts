@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { withMutationObservability } from "./lib/observability";
+import { canUserViewList } from "./lib/permissions";
 
 /**
  * Creates a placeholder Verifiable Credential for list ownership.
@@ -204,6 +205,42 @@ export const getList = query({
   args: { listId: v.id("lists") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.listId);
+  },
+});
+
+/**
+ * Get a list plus its items, but only if the viewer may access it (list owner
+ * by current or legacy DID, or an actively published list). Returns null when
+ * the list is missing OR access is denied — callers should surface null as a
+ * 404 so a caller can't probe which list IDs exist. Used by the agent read API.
+ */
+export const getListWithItemsForViewer = query({
+  args: {
+    listId: v.id("lists"),
+    viewerDid: v.string(),
+    legacyDid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const list = await ctx.db.get(args.listId);
+    if (!list) return null;
+
+    const canView = await canUserViewList(
+      ctx,
+      args.listId,
+      args.viewerDid,
+      args.legacyDid
+    );
+    if (!canView) return null;
+
+    const items = await ctx.db
+      .query("items")
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
+      .collect();
+    items.sort(
+      (a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt)
+    );
+
+    return { list, items };
   },
 });
 

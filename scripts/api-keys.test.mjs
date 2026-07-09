@@ -66,5 +66,19 @@ const apiKeys = await loadApiKeysModule();
   ]);
 }
 
+// sanitizeScopes: strips "*" and unknown scopes, keeps valid ones
+{
+  assert.deepEqual(
+    apiKeys.sanitizeScopes(["items:read", "bogus", "*", "items:write"]),
+    ["items:read", "items:write"],
+    "should drop wildcard and unknown scopes"
+  );
+  assert.deepEqual(apiKeys.sanitizeScopes(["*"]), [], "wildcard alone yields nothing");
+  assert.deepEqual(
+    apiKeys.sanitizeScopes([...apiKeys.AGENT_SCOPES]),
+    ["lists:read", "items:read", "items:write"]
+  );
+}
+
 await rm(outdir, { recursive: true, force: true });
 console.log("api-keys helper tests passed");

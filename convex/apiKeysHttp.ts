@@ -21,6 +21,7 @@ import {
   generateApiKey,
   hashApiKey,
   formatKeyPrefix,
+  sanitizeScopes,
   AGENT_SCOPES,
 } from "./lib/apiKeyHelpers";
 
@@ -63,10 +64,18 @@ export const createApiKey = httpAction(async (ctx, request) => {
     if (!label) {
       return errorResponse(request, "label is required");
     }
+    // Never trust caller-supplied scopes: strip "*"/unknown so a key can't be
+    // minted with more authority than the agent surface grants.
     const scopes =
       Array.isArray(body.scopes) && body.scopes.length > 0
-        ? body.scopes
+        ? sanitizeScopes(body.scopes)
         : [...AGENT_SCOPES];
+    if (scopes.length === 0) {
+      return errorResponse(
+        request,
+        `scopes must be a non-empty subset of: ${AGENT_SCOPES.join(", ")}`
+      );
+    }
 
     const rawKey = generateApiKey();
     const keyHash = await hashApiKey(rawKey);

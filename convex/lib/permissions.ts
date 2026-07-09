@@ -24,3 +24,17 @@ export async function canUserEditList(
 
   return !!pub && pub.status === "active";
 }
+
+/**
+ * Check if a user can view a list. In the current model view access equals
+ * edit access — a list is either private (owner only) or actively published
+ * (public). Kept separate so read/write rules can diverge later.
+ */
+export async function canUserViewList(
+  ctx: MutationCtx | QueryCtx,
+  listId: Id<"lists">,
+  userDid: string,
+  legacyDid?: string
+): Promise<boolean> {
+  return canUserEditList(ctx, listId, userDid, legacyDid);
+}

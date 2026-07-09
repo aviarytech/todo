@@ -24,6 +24,26 @@
   (`markdown-editor` tip; identical to `origin/main` for every in-scope
   `convex/*` file — verified. Execute against `origin/main`.)
 
+## Corrections applied after code review
+
+A Macroscope review of the first implementation flagged four issues, all fixed
+in a follow-up commit. If you re-run this plan, apply these from the start:
+
+1. **Read authorization (Step 4).** Wrapping `getList` + `getListItems` directly
+   is an IDOR — any `items:read` key could read any list by ID. Fixed: the read
+   endpoint calls a new authorized query `api.lists.getListWithItemsForViewer`
+   (owner-by-DID/legacy or actively-published check via `canUserViewList`),
+   returning `null` → 404 when access is denied.
+2. **legacyDid (Step 3b).** Dropping `legacyDid` entirely regressed migrated
+   users (mutations still authorize via `canUserEditList(..., legacyDid)`).
+   Fixed: `resolveActor` carries `legacyDid` on the **JWT path only** and write
+   handlers forward it; API keys remain legacy-free (`legacyDid` undefined).
+3. **Scope validation (Step 2c).** `createApiKey` trusted caller-supplied
+   `scopes`, so a user could mint a `"*"` key. Fixed: `sanitizeScopes()` strips
+   `"*"`/unknown scopes before persisting; empty → 400.
+4. **CORS (Step 2d).** `getCorsHeaders` now advertises `GET, POST, DELETE, OPTIONS`
+   and `X-API-Key` so browser clients can call the new routes.
+
 ## Why this matters
 
 boop just repositioned around an **agent-first** GTM (see `docs/business-plan.md`

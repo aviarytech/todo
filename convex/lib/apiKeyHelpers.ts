@@ -47,3 +47,11 @@ export async function hashApiKey(rawKey: string): Promise<string> {
 export function hasScope(granted: string[], required: string): boolean {
   return granted.includes("*") || granted.includes(required);
 }
+
+/**
+ * Keep only recognized agent scopes. Drops "*" and any unknown/privileged
+ * scope so a caller can never mint a wildcard key via the create endpoint.
+ */
+export function sanitizeScopes(scopes: string[]): string[] {
+  return scopes.filter((s) => (AGENT_SCOPES as readonly string[]).includes(s));
+}

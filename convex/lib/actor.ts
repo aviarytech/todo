@@ -14,11 +14,15 @@ import { hasScope, hashApiKey } from "./apiKeyHelpers";
 export type ResolvedActor = {
   did: string; // owner DID — the authorization identity
   actorDid: string; // who acted: agentDid if the key carries one, else did
+  // Legacy DID of a migrated Turnkey user, forwarded so the existing
+  // canUserEditList/ownerDid checks still match lists owned under the old DID.
+  // Only ever set on the JWT path; API keys are a clean, legacy-free surface.
+  legacyDid?: string;
   scopes: string[]; // ["*"] for JWT sessions; the key's scopes otherwise
   viaApiKey: boolean;
 };
 
-type UserInfo = { did?: string } | null;
+type UserInfo = { did?: string; legacyDid?: string } | null;
 
 /**
  * Resolve the actor behind a request. Prefers an API key; falls back to JWT.
@@ -53,6 +57,7 @@ export async function resolveActor(
   return {
     did: user.did,
     actorDid: user.did,
+    legacyDid: user.legacyDid,
     scopes: ["*"],
     viaApiKey: false,
   };

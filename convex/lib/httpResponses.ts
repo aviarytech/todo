@@ -20,9 +20,9 @@ export function getCorsHeaders(request: Request): HeaderMap {
 
   const headers: HeaderMap = {
     "Access-Control-Allow-Origin": origin ?? "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers":
-      requestedHeaders ?? "Content-Type, Authorization",
+      requestedHeaders ?? "Content-Type, Authorization, X-API-Key",
   };
 
   // Only allow credentials when we can echo a concrete Origin.

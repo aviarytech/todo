@@ -40,6 +40,7 @@ export const addItem = httpAction(async (ctx, request) => {
       listId: listId as Id<"lists">,
       name,
       createdByDid: actor.actorDid,
+      legacyDid: actor.legacyDid,
       createdAt: Date.now(),
     });
 
@@ -83,6 +84,7 @@ export const checkItem = httpAction(async (ctx, request) => {
     await ctx.runMutation(api.items.checkItem, {
       itemId: itemId as Id<"items">,
       checkedByDid: actor.actorDid,
+      legacyDid: actor.legacyDid,
       checkedAt: Date.now(),
     });
 
@@ -126,6 +128,7 @@ export const uncheckItem = httpAction(async (ctx, request) => {
     await ctx.runMutation(api.items.uncheckItem, {
       itemId: itemId as Id<"items">,
       userDid: actor.actorDid,
+      legacyDid: actor.legacyDid,
     });
 
     return jsonResponse(request, { success: true });
@@ -168,6 +171,7 @@ export const removeItem = httpAction(async (ctx, request) => {
     await ctx.runMutation(api.items.removeItem, {
       itemId: itemId as Id<"items">,
       userDid: actor.actorDid,
+      legacyDid: actor.legacyDid,
     });
 
     return jsonResponse(request, { success: true });
@@ -211,6 +215,7 @@ export const reorderItems = httpAction(async (ctx, request) => {
       listId: listId as Id<"lists">,
       itemIds: itemIds as Id<"items">[],
       userDid: actor.actorDid,
+      legacyDid: actor.legacyDid,
     });
 
     return jsonResponse(request, { success: true });

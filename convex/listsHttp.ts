@@ -88,6 +88,7 @@ export const deleteList = httpAction(async (ctx, request) => {
     await ctx.runMutation(api.lists.deleteList, {
       listId: listId as Id<"lists">,
       userDid: actor.actorDid,
+      legacyDid: actor.legacyDid,
     });
 
     return jsonResponse(request, { success: true });

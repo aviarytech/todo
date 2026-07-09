@@ -26,6 +26,7 @@ export const getLists = httpAction(async (ctx, request) => {
 
     const lists = await ctx.runQuery(api.lists.getUserLists, {
       userDid: actor.did,
+      legacyDid: actor.legacyDid,
     });
     return jsonResponse(request, { lists });
   } catch (error) {
@@ -58,13 +59,17 @@ export const getListWithItems = httpAction(async (ctx, request) => {
       return errorResponse(request, "listId query parameter is required");
     }
 
-    const list = await ctx.runQuery(api.lists.getList, {
+    // Authorized combined fetch: returns null if the list is missing OR the
+    // caller may not view it, so an items:read key can't read arbitrary lists.
+    const result = await ctx.runQuery(api.lists.getListWithItemsForViewer, {
       listId: listId as Id<"lists">,
+      viewerDid: actor.did,
+      legacyDid: actor.legacyDid,
     });
-    const items = await ctx.runQuery(api.items.getListItems, {
-      listId: listId as Id<"lists">,
-    });
-    return jsonResponse(request, { list, items });
+    if (!result) {
+      return errorResponse(request, "List not found", 404);
+    }
+    return jsonResponse(request, result);
   } catch (error) {
     if (error instanceof AuthError) {
       return unauthorizedResponseWithCors(request, error.message);
