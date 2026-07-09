@@ -1,0 +1,162 @@
+/**
+ * HTTP action handlers for API-key management.
+ *
+ * These endpoints are JWT-only: you cannot mint or revoke keys with a key.
+ * They use the existing requireAuth + getUserByTurnkeyId pattern (not resolveActor).
+ *
+ * The raw key is returned exactly once, on creation. Only its hash is stored.
+ */
+
+import { httpAction } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
+import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import {
+  requireAuth,
+  AuthError,
+  unauthorizedResponseWithCors,
+} from "./lib/auth";
+import { jsonResponse, errorResponse } from "./lib/httpResponses";
+import {
+  generateApiKey,
+  hashApiKey,
+  formatKeyPrefix,
+  AGENT_SCOPES,
+} from "./lib/apiKeyHelpers";
+
+type UserInfo = { did?: string } | null;
+
+/**
+ * Resolve the JWT-authenticated user's DID, or null if unauthenticated/not found.
+ * Throws AuthError on missing/invalid token (handled by callers' catch).
+ */
+async function requireUserDid(
+  ctx: ActionCtx,
+  request: Request
+): Promise<string | null> {
+  const auth = await requireAuth(request);
+  const user = (await ctx.runQuery(api.auth.getUserByTurnkeyId, {
+    turnkeySubOrgId: auth.turnkeySubOrgId,
+  })) as UserInfo;
+  return user?.did ?? null;
+}
+
+/**
+ * POST /api/v1/keys
+ *
+ * Create a new API key. Requires JWT auth.
+ * Request: { "label": "...", "scopes"?: ["..."] }
+ * Response: { "id": "...", "key": "<RAW KEY - shown once>", "prefix": "..." }
+ */
+export const createApiKey = httpAction(async (ctx, request) => {
+  try {
+    const ownerDid = await requireUserDid(ctx, request);
+    if (!ownerDid) {
+      return errorResponse(request, "User not found", 404);
+    }
+
+    const body = (await request.json()) as {
+      label?: string;
+      scopes?: string[];
+    };
+    const label = body.label?.trim();
+    if (!label) {
+      return errorResponse(request, "label is required");
+    }
+    const scopes =
+      Array.isArray(body.scopes) && body.scopes.length > 0
+        ? body.scopes
+        : [...AGENT_SCOPES];
+
+    const rawKey = generateApiKey();
+    const keyHash = await hashApiKey(rawKey);
+    const prefix = formatKeyPrefix(rawKey);
+
+    const id = await ctx.runMutation(api.apiKeys.createKey, {
+      ownerDid,
+      keyHash,
+      prefix,
+      label,
+      scopes,
+    });
+
+    // Raw key is returned exactly once and never stored.
+    return jsonResponse(request, { id, key: rawKey, prefix });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return unauthorizedResponseWithCors(request, error.message);
+    }
+    console.error("[apiKeysHttp] createApiKey error:", error);
+    return errorResponse(
+      request,
+      error instanceof Error ? error.message : "Failed to create API key",
+      500
+    );
+  }
+});
+
+/**
+ * GET /api/v1/keys
+ *
+ * List the caller's active keys (no hashes, no raw keys). Requires JWT auth.
+ * Response: { "keys": [{ id, prefix, label, scopes, createdAt }] }
+ */
+export const listApiKeys = httpAction(async (ctx, request) => {
+  try {
+    const ownerDid = await requireUserDid(ctx, request);
+    if (!ownerDid) {
+      return errorResponse(request, "User not found", 404);
+    }
+
+    const keys = await ctx.runQuery(api.apiKeys.listForOwner, { ownerDid });
+    return jsonResponse(request, { keys });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return unauthorizedResponseWithCors(request, error.message);
+    }
+    console.error("[apiKeysHttp] listApiKeys error:", error);
+    return errorResponse(
+      request,
+      error instanceof Error ? error.message : "Failed to list API keys",
+      500
+    );
+  }
+});
+
+/**
+ * DELETE /api/v1/keys?keyId=<id>
+ *
+ * Revoke a key the caller owns. Requires JWT auth.
+ * The Convex router has no :param path segments, so keyId is a query param.
+ * Response: { "success": true }
+ */
+export const revokeApiKey = httpAction(async (ctx, request) => {
+  try {
+    const ownerDid = await requireUserDid(ctx, request);
+    if (!ownerDid) {
+      return errorResponse(request, "User not found", 404);
+    }
+
+    const keyId = new URL(request.url).searchParams.get("keyId");
+    if (!keyId) {
+      return errorResponse(request, "keyId query parameter is required");
+    }
+
+    await ctx.runMutation(api.apiKeys.revokeKey, {
+      keyId: keyId as Id<"apiKeys">,
+      ownerDid,
+    });
+
+    return jsonResponse(request, { success: true });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return unauthorizedResponseWithCors(request, error.message);
+    }
+    console.error("[apiKeysHttp] revokeApiKey error:", error);
+    return errorResponse(
+      request,
+      error instanceof Error ? error.message : "Failed to revoke API key",
+      500
+    );
+  }
+});
