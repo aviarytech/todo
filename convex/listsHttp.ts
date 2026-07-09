@@ -1,24 +1,17 @@
 /**
  * HTTP action handlers for protected list mutations.
  *
- * These endpoints require JWT authentication via requireAuth().
- * The user's DID is looked up server-side from their turnkeySubOrgId.
+ * These endpoints authenticate via resolveActor(), which accepts either a JWT
+ * session or an agent API key (X-API-Key). Writes require the "items:write" scope
+ * (there is no lists:write scope yet).
  */
 
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import {
-  requireAuth,
-  AuthError,
-  unauthorizedResponseWithCors,
-} from "./lib/auth";
+import { AuthError, unauthorizedResponseWithCors } from "./lib/auth";
+import { resolveActor, requireScope } from "./lib/actor";
 import { jsonResponse, errorResponse } from "./lib/httpResponses";
-
-/**
- * Helper type for user info.
- */
-type UserInfo = { did: string; legacyDid?: string } | null;
 
 /**
  * POST /api/lists/create
@@ -30,16 +23,9 @@ type UserInfo = { did: string; legacyDid?: string } | null;
  */
 export const createList = httpAction(async (ctx, request) => {
   try {
-    // Require authentication
-    const auth = await requireAuth(request);
-
-    // Get user's DID from their turnkeySubOrgId
-    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
-      turnkeySubOrgId: auth.turnkeySubOrgId,
-    }) as UserInfo;
-    if (!user) {
-      return errorResponse(request, "User not found", 404);
-    }
+    // Accept a JWT session or an agent API key with items:write scope.
+    const actor = await resolveActor(ctx, request);
+    requireScope(actor, "items:write");
 
     // Parse request body
     const body = await request.json();
@@ -57,7 +43,7 @@ export const createList = httpAction(async (ctx, request) => {
     const listId = await ctx.runMutation(api.lists.createList, {
       assetDid,
       name,
-      ownerDid: user.did,
+      ownerDid: actor.actorDid,
       categoryId: categoryId as unknown as undefined, // Optional category ID
       createdAt: Date.now(),
     });
@@ -86,16 +72,9 @@ export const createList = httpAction(async (ctx, request) => {
  */
 export const deleteList = httpAction(async (ctx, request) => {
   try {
-    // Require authentication
-    const auth = await requireAuth(request);
-
-    // Get user's DID from their turnkeySubOrgId
-    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
-      turnkeySubOrgId: auth.turnkeySubOrgId,
-    }) as UserInfo;
-    if (!user) {
-      return errorResponse(request, "User not found", 404);
-    }
+    // Accept a JWT session or an agent API key with items:write scope.
+    const actor = await resolveActor(ctx, request);
+    requireScope(actor, "items:write");
 
     // Parse request body
     const body = await request.json();
@@ -108,8 +87,7 @@ export const deleteList = httpAction(async (ctx, request) => {
     // Call the mutation with server-verified DID
     await ctx.runMutation(api.lists.deleteList, {
       listId: listId as Id<"lists">,
-      userDid: user.did,
-      legacyDid: user.legacyDid,
+      userDid: actor.actorDid,
     });
 
     return jsonResponse(request, { success: true });

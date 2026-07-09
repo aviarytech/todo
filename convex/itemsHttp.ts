@@ -1,24 +1,17 @@
 /**
  * HTTP action handlers for protected item mutations.
  *
- * These endpoints require JWT authentication via requireAuth().
- * The user's DID is looked up server-side from their turnkeySubOrgId.
+ * These endpoints authenticate via resolveActor(), which accepts either a JWT
+ * session or an agent API key (X-API-Key). Writes require the "items:write" scope.
+ * The acting DID is resolved server-side and passed to the mutations.
  */
 
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import {
-  requireAuth,
-  AuthError,
-  unauthorizedResponseWithCors,
-} from "./lib/auth";
+import { AuthError, unauthorizedResponseWithCors } from "./lib/auth";
+import { resolveActor, requireScope } from "./lib/actor";
 import { jsonResponse, errorResponse } from "./lib/httpResponses";
-
-/**
- * Helper type for user info.
- */
-type UserInfo = { did: string; legacyDid?: string } | null;
 
 /**
  * POST /api/items/add
@@ -30,16 +23,9 @@ type UserInfo = { did: string; legacyDid?: string } | null;
  */
 export const addItem = httpAction(async (ctx, request) => {
   try {
-    // Require authentication
-    const auth = await requireAuth(request);
-
-    // Get user's DID from their turnkeySubOrgId
-    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
-      turnkeySubOrgId: auth.turnkeySubOrgId,
-    }) as UserInfo;
-    if (!user) {
-      return errorResponse(request, "User not found", 404);
-    }
+    // Accept a JWT session or an agent API key with items:write scope.
+    const actor = await resolveActor(ctx, request);
+    requireScope(actor, "items:write");
 
     // Parse request body
     const body = await request.json();
@@ -49,12 +35,11 @@ export const addItem = httpAction(async (ctx, request) => {
       return errorResponse(request, "listId and name are required");
     }
 
-    // Call the mutation with server-verified DID
+    // Call the mutation with server-verified acting DID
     const itemId = await ctx.runMutation(api.items.addItem, {
       listId: listId as Id<"lists">,
       name,
-      createdByDid: user.did,
-      legacyDid: user.legacyDid,
+      createdByDid: actor.actorDid,
       createdAt: Date.now(),
     });
 
@@ -82,16 +67,9 @@ export const addItem = httpAction(async (ctx, request) => {
  */
 export const checkItem = httpAction(async (ctx, request) => {
   try {
-    // Require authentication
-    const auth = await requireAuth(request);
-
-    // Get user's DID from their turnkeySubOrgId
-    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
-      turnkeySubOrgId: auth.turnkeySubOrgId,
-    }) as UserInfo;
-    if (!user) {
-      return errorResponse(request, "User not found", 404);
-    }
+    // Accept a JWT session or an agent API key with items:write scope.
+    const actor = await resolveActor(ctx, request);
+    requireScope(actor, "items:write");
 
     // Parse request body
     const body = await request.json();
@@ -101,11 +79,10 @@ export const checkItem = httpAction(async (ctx, request) => {
       return errorResponse(request, "itemId is required");
     }
 
-    // Call the mutation with server-verified DID
+    // Call the mutation with server-verified acting DID
     await ctx.runMutation(api.items.checkItem, {
       itemId: itemId as Id<"items">,
-      checkedByDid: user.did,
-      legacyDid: user.legacyDid,
+      checkedByDid: actor.actorDid,
       checkedAt: Date.now(),
     });
 
@@ -133,16 +110,9 @@ export const checkItem = httpAction(async (ctx, request) => {
  */
 export const uncheckItem = httpAction(async (ctx, request) => {
   try {
-    // Require authentication
-    const auth = await requireAuth(request);
-
-    // Get user's DID from their turnkeySubOrgId
-    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
-      turnkeySubOrgId: auth.turnkeySubOrgId,
-    }) as UserInfo;
-    if (!user) {
-      return errorResponse(request, "User not found", 404);
-    }
+    // Accept a JWT session or an agent API key with items:write scope.
+    const actor = await resolveActor(ctx, request);
+    requireScope(actor, "items:write");
 
     // Parse request body
     const body = await request.json();
@@ -152,11 +122,10 @@ export const uncheckItem = httpAction(async (ctx, request) => {
       return errorResponse(request, "itemId is required");
     }
 
-    // Call the mutation with server-verified DID
+    // Call the mutation with server-verified acting DID
     await ctx.runMutation(api.items.uncheckItem, {
       itemId: itemId as Id<"items">,
-      userDid: user.did,
-      legacyDid: user.legacyDid,
+      userDid: actor.actorDid,
     });
 
     return jsonResponse(request, { success: true });
@@ -183,16 +152,9 @@ export const uncheckItem = httpAction(async (ctx, request) => {
  */
 export const removeItem = httpAction(async (ctx, request) => {
   try {
-    // Require authentication
-    const auth = await requireAuth(request);
-
-    // Get user's DID from their turnkeySubOrgId
-    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
-      turnkeySubOrgId: auth.turnkeySubOrgId,
-    }) as UserInfo;
-    if (!user) {
-      return errorResponse(request, "User not found", 404);
-    }
+    // Accept a JWT session or an agent API key with items:write scope.
+    const actor = await resolveActor(ctx, request);
+    requireScope(actor, "items:write");
 
     // Parse request body
     const body = await request.json();
@@ -202,11 +164,10 @@ export const removeItem = httpAction(async (ctx, request) => {
       return errorResponse(request, "itemId is required");
     }
 
-    // Call the mutation with server-verified DID
+    // Call the mutation with server-verified acting DID
     await ctx.runMutation(api.items.removeItem, {
       itemId: itemId as Id<"items">,
-      userDid: user.did,
-      legacyDid: user.legacyDid,
+      userDid: actor.actorDid,
     });
 
     return jsonResponse(request, { success: true });
@@ -233,16 +194,9 @@ export const removeItem = httpAction(async (ctx, request) => {
  */
 export const reorderItems = httpAction(async (ctx, request) => {
   try {
-    // Require authentication
-    const auth = await requireAuth(request);
-
-    // Get user's DID from their turnkeySubOrgId
-    const user = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
-      turnkeySubOrgId: auth.turnkeySubOrgId,
-    }) as UserInfo;
-    if (!user) {
-      return errorResponse(request, "User not found", 404);
-    }
+    // Accept a JWT session or an agent API key with items:write scope.
+    const actor = await resolveActor(ctx, request);
+    requireScope(actor, "items:write");
 
     // Parse request body
     const body = await request.json();
@@ -252,12 +206,11 @@ export const reorderItems = httpAction(async (ctx, request) => {
       return errorResponse(request, "listId and itemIds array are required");
     }
 
-    // Call the mutation with server-verified DID
+    // Call the mutation with server-verified acting DID
     await ctx.runMutation(api.items.reorderItems, {
       listId: listId as Id<"lists">,
       itemIds: itemIds as Id<"items">[],
-      userDid: user.did,
-      legacyDid: user.legacyDid,
+      userDid: actor.actorDid,
     });
 
     return jsonResponse(request, { success: true });
