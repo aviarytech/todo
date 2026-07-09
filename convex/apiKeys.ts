@@ -75,14 +75,17 @@ export const createKey = internalMutation({
 
 /**
  * Revoke a key, but only if it belongs to the requesting owner.
+ * Returns false when the key is missing or not owned by the caller, so the HTTP
+ * layer can answer 404 rather than treating a normal client error as a 500.
  */
 export const revokeKey = internalMutation({
   args: { keyId: v.id("apiKeys"), ownerDid: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<boolean> => {
     const row = await ctx.db.get(args.keyId);
     if (!row || row.ownerDid !== args.ownerDid) {
-      throw new Error("API key not found");
+      return false;
     }
     await ctx.db.patch(args.keyId, { revokedAt: Date.now() });
+    return true;
   },
 });

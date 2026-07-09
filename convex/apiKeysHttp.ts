@@ -151,10 +151,13 @@ export const revokeApiKey = httpAction(async (ctx, request) => {
       return errorResponse(request, "keyId query parameter is required");
     }
 
-    await ctx.runMutation(internal.apiKeys.revokeKey, {
+    const revoked = await ctx.runMutation(internal.apiKeys.revokeKey, {
       keyId: keyId as Id<"apiKeys">,
       ownerDid,
     });
+    if (!revoked) {
+      return errorResponse(request, "API key not found", 404);
+    }
 
     return jsonResponse(request, { success: true });
   } catch (error) {

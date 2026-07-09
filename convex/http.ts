@@ -318,16 +318,13 @@ http.route({
   handler: logout,
 });
 
-// CORS preflight handler
+// CORS preflight handler. Reuses getCorsHeaders so the allowed methods/headers
+// (incl. GET/DELETE + X-API-Key for the agent v1 routes) stay in one place.
 const corsHandler = httpAction(async (_ctx, request) => {
-  const origin = request.headers.get("Origin") || "*";
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Credentials": "true",
+      ...getCorsHeaders(request),
       "Access-Control-Max-Age": "86400",
     },
   });
