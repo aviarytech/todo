@@ -10,7 +10,9 @@ https://<convex-deployment>.convex.site
 
 ## Authentication
 
-All endpoints require JWT authentication via the `Authorization` header:
+Two auth modes are supported:
+
+**JWT session** (for interactive/browser use) via the `Authorization` header:
 
 ```
 Authorization: Bearer <your-jwt-token>
@@ -20,6 +22,18 @@ To obtain a JWT token, use the standard auth flow:
 1. `POST /auth/initiate` with `{ "email": "your@email.com" }`
 2. `POST /auth/verify` with `{ "sessionId": "...", "code": "..." }` (OTP from email)
 3. Use the returned `token` in subsequent requests
+
+**API key** (for unattended agents) via the `X-API-Key` header:
+
+```
+X-API-Key: pa_live_...
+```
+
+API keys are long-lived credentials scoped to specific actions. Mint one with a
+JWT session (see [Agent API v1](#agent-api-v1)). When an `X-API-Key` header is
+present it takes precedence over the `Authorization` header. Keys carry scopes
+(`lists:read`, `items:read`, `items:write`); a request missing the required
+scope returns `401`. JWT sessions have full access.
 
 ## Endpoints
 
@@ -188,68 +202,54 @@ DELETE /api/agent/items/:itemId
 | `editor` | Read and write access |
 | `viewer` | Read-only access |
 
-## Mission Control REST v1 (P1)
+## Agent API v1
 
-New endpoints for Agent Mission Control with scoped API keys.
+Endpoints for unattended agents: mint API keys (JWT-only), then read and write
+boop lists using either a JWT session or an `X-API-Key`.
 
-### Auth Modes
-- JWT bearer token (`Authorization: Bearer ...`)
-- API key (`X-API-Key: pa_xxx...`) for `/api/v1/*` endpoints
+> Note: the Convex router has no `:param` path segments, so identifiers are
+> passed as query parameters (`?keyId=`, `?listId=`) rather than path segments.
 
-### API Keys
-- `GET /api/v1/auth/keys` — list keys + recent rotation events (JWT only)
-- `POST /api/v1/auth/keys` — create key (JWT only)
-  - body: `{ "label": "CI Agent", "scopes": ["tasks:read","memory:write"] }`
-- `POST /api/v1/auth/keys/:keyId/rotate` — zero-downtime rotation (JWT only)
-  - creates a new key, keeps old key active for grace period
-  - body: `{ "gracePeriodHours": 24, "label": "CI Agent v2" }`
-- `POST /api/v1/auth/keys/:keyId/finalize-rotation` — revoke old key after cutover (JWT only)
-- `DELETE /api/v1/auth/keys/:keyId` — revoke key immediately (JWT only)
+### API Keys (JWT only)
 
-### Agent Registration / Profiles
-- `GET /api/v1/agents` — list agent profiles (`agents:read`)
-- `POST /api/v1/agents` — create/update profile (`agents:write`)
+Key management always requires a JWT session — you cannot mint or revoke a key
+with a key.
 
-### Tasks
-- `GET /api/v1/tasks?listId=<listId>&limit=100` (`tasks:read`)
-- `GET /api/v1/tasks/:taskId` (`tasks:read`)
+- `POST /api/v1/keys` — create a key.
+  - body: `{ "label": "CI Agent", "scopes": ["lists:read","items:read","items:write"] }`
+  - `scopes` is optional and defaults to `["lists:read","items:read","items:write"]`.
+  - response: `{ "id": "...", "key": "pa_live_...", "prefix": "pa_live_..." }`
+  - The raw `key` is returned **once** and never stored — save it immediately.
+- `GET /api/v1/keys` — list your active keys.
+  - response: `{ "keys": [{ "id", "prefix", "label", "scopes", "createdAt" }] }` (never the hash or raw key)
+- `DELETE /api/v1/keys?keyId=<id>` — revoke a key you own.
+  - response: `{ "success": true }`
 
-### Activity
-- `GET /api/v1/activity?listId=<listId>&limit=100` (`activity:read`)
+### Reads (JWT or `X-API-Key`)
 
-### Memory
-- `GET /api/v1/memory?agentSlug=<slug>[&key=<key>]` (`memory:read`)
-- `POST /api/v1/memory` (`memory:write`)
-- `GET /api/v1/memory/sync?since=<ms>&limit=<n>` (`memory:read`) — pull Convex memory changes for OpenClaw
-- `POST /api/v1/memory/sync` (`memory:write`) — push OpenClaw memory entries into Convex with conflict policy (`lww` or `preserve_both`)
-  - body: `{ "agentSlug": "platform", "key": "runbook", "value": "...", "listId": "...optional..." }`
+- `GET /api/v1/lists` — list the caller's lists (`lists:read`).
+  - response: `{ "lists": [...] }`
+- `GET /api/v1/lists/items?listId=<id>` — get a list and its items (`items:read`).
+  - response: `{ "list": {...} | null, "items": [...] }`
 
-### Mission Runs (P0-6 hardening)
-- `GET /api/v1/runs?[listId=<id>&itemId=<id>&status=<status>&limit=100]` (`runs:read`)
-- `POST /api/v1/runs` (`runs:write`)
-  - body: `{ "listId": "...", "itemId": "...optional...", "agentSlug": "planner", "provider": "openclaw", "computerId": "orgo-1", "parentRunId": "...optional..." }`
-- `POST /api/v1/runs/:runId/heartbeat` (`runs:write`)
-- `POST /api/v1/runs/:runId/transition` (`runs:control`)
-  - body: `{ "nextStatus": "running|degraded|blocked|failed|finished", "terminalReason": "completed|killed|timeout|error|escalated" }`
-- `POST /api/v1/runs/:runId/retry` (`runs:control`)
-- `POST /api/v1/runs/:runId/artifacts` (`runs:write`)
-  - body: `{ "type": "screenshot|log|diff|file|url", "ref": "...", "label": "...optional..." }`
-- `POST /api/v1/runs/monitor` (`runs:control`) — applies heartbeat timeout state updates for all owner runs
-- `GET /api/v1/runs/retention` (JWT only) — retention config + recent deletion logs
-- `PUT /api/v1/runs/retention` (JWT only) — set artifact retention days (default 30)
-- `POST /api/v1/runs/retention` (JWT only) — run retention job (`dryRun` defaults to `true`)
+### Writes (JWT or `X-API-Key`)
 
-### Run Dashboard
-- `GET /api/v1/dashboard/runs?[windowMs=86400000]` (`dashboard:read`)
-  - returns success/intervention/timeout rates plus active/degraded run visibility
+The existing mutation endpoints now also accept an `X-API-Key`. All require the
+`items:write` scope (there is no `lists:write` scope yet):
+
+- `POST /api/lists/create`, `POST /api/lists/delete`
+- `POST /api/items/add`, `POST /api/items/check`, `POST /api/items/uncheck`,
+  `POST /api/items/remove`, `POST /api/items/reorder`
+
+Item writes made via an API key are attributed to the key's owner DID (or its
+`agentDid`, if set). The item-authorship credential remains an unsigned
+placeholder — cryptographic signing is out of scope for now.
 
 ### Scopes
-- `tasks:read`, `tasks:write`
-- `activity:read`
-- `memory:read`, `memory:write`
-- `agents:read`, `agents:write`
-- `runs:read`, `runs:write`, `runs:control`
-- `dashboard:read`
+
+- `lists:read` — read lists
+- `items:read` — read items
+- `items:write` — create/modify/delete lists and items
 
 ## Error Responses
 
