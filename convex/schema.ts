@@ -65,6 +65,24 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_legacy_did", ["legacyDid"]),
 
+  // API keys - long-lived credentials for agents to authenticate over HTTP.
+  // Only the SHA-256 hash of a key is stored; the raw key is shown once on creation.
+  // Named `agentApiKeys`, not `apiKeys`: deployments still hold orphaned rows
+  // from the removed Mission Control `apiKeys` table (different shape), which
+  // would fail schema validation on deploy.
+  agentApiKeys: defineTable({
+    ownerDid: v.string(), // Owner's DID — the authorization identity
+    keyHash: v.string(), // Lowercase hex SHA-256 of the raw key
+    prefix: v.string(), // First 12 chars of the raw key, for display/identification
+    label: v.string(), // Human-readable label
+    scopes: v.array(v.string()), // Granted scopes, e.g. ["lists:read", "items:write"]
+    agentDid: v.optional(v.string()), // Optional acting agent DID (attribution)
+    createdAt: v.number(),
+    revokedAt: v.optional(v.number()), // Set when revoked; unset means active
+  })
+    .index("by_hash", ["keyHash"])
+    .index("by_owner", ["ownerDid"]),
+
   // Categories table - user-specific list organization (Phase 2)
   categories: defineTable({
     ownerDid: v.string(), // User who owns this category

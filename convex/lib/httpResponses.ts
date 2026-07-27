@@ -20,9 +20,9 @@ export function getCorsHeaders(request: Request): HeaderMap {
 
   const headers: HeaderMap = {
     "Access-Control-Allow-Origin": origin ?? "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers":
-      requestedHeaders ?? "Content-Type, Authorization",
+      requestedHeaders ?? "Content-Type, Authorization, X-API-Key",
   };
 
   // Only allow credentials when we can echo a concrete Origin.
@@ -58,6 +58,25 @@ export function errorResponse(
   extraHeaders: HeaderMap = {}
 ): Response {
   return jsonResponse(request, { error: message }, status, extraHeaders);
+}
+
+/**
+ * Turn a thrown mutation/query error into a client response.
+ *
+ * Convex wraps handler throws with a stack trace naming internal source files,
+ * so never echo the raw message to an API client: authorization failures become
+ * a clean 403, everything else a generic 500 (details go to the server log).
+ */
+export function handlerErrorResponse(
+  request: Request,
+  error: unknown,
+  fallbackMessage: string
+): Response {
+  const message = error instanceof Error ? error.message : "";
+  if (/not authorized/i.test(message)) {
+    return errorResponse(request, "Not authorized", 403);
+  }
+  return errorResponse(request, fallbackMessage, 500);
 }
 
 export function emptyResponse(

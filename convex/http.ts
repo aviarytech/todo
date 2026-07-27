@@ -29,6 +29,8 @@ import { heartbeat as presenceHeartbeatHttp, listPresence as listPresenceHttp } 
 import { getListActivity as getListActivityHttp } from "./activityHttp";
 import { stripeWebhook, createCheckout, createPortal, getSubscription } from "./billingHttp";
 import { resolveSiteHost, resolveSiteAsset } from "./sitesHttp";
+import { createApiKey, listApiKeys, revokeApiKey } from "./apiKeysHttp";
+import { getLists, getListWithItems } from "./agentReadHttp";
 const RATE_LIMITS = {
   initiate: { windowMs: 60000, maxAttempts: 5 },
   verify: { windowMs: 60000, maxAttempts: 5 },
@@ -64,8 +66,9 @@ function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin") || "*";
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    // GET/DELETE + X-API-Key added for the agent v1 routes (keys, lists).
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
     "Access-Control-Allow-Credentials": "true",
   };
 }
@@ -81,8 +84,8 @@ function jsonResponse(
 ): Response {
   const corsHeaders = request ? getCorsHeaders(request) : {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
   };
   return new Response(JSON.stringify(data), {
     status,
@@ -315,16 +318,13 @@ http.route({
   handler: logout,
 });
 
-// CORS preflight handler
+// CORS preflight handler. Reuses getCorsHeaders so the allowed methods/headers
+// (incl. GET/DELETE + X-API-Key for the agent v1 routes) stay in one place.
 const corsHandler = httpAction(async (_ctx, request) => {
-  const origin = request.headers.get("Origin") || "*";
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Credentials": "true",
+      ...getCorsHeaders(request),
       "Access-Control-Max-Age": "86400",
     },
   });
@@ -412,10 +412,25 @@ http.route({ path: "/api/sites/resolve-asset", method: "OPTIONS", handler: resol
 
 
 // ============================================================================
+// Agent API v1 (Plan 001)
+// API-key management (JWT-only) + agent read/write over HTTP (JWT or X-API-Key).
+// Note: keyId/listId are query params — the Convex router has no :param segments.
+// ============================================================================
+http.route({ path: "/api/v1/keys", method: "POST", handler: createApiKey });
+http.route({ path: "/api/v1/keys", method: "GET", handler: listApiKeys });
+http.route({ path: "/api/v1/keys", method: "DELETE", handler: revokeApiKey });
+http.route({ path: "/api/v1/keys", method: "OPTIONS", handler: corsHandler });
+
+http.route({ path: "/api/v1/lists", method: "GET", handler: getLists });
+http.route({ path: "/api/v1/lists", method: "OPTIONS", handler: corsHandler });
+http.route({ path: "/api/v1/lists/items", method: "GET", handler: getListWithItems });
+http.route({ path: "/api/v1/lists/items", method: "OPTIONS", handler: corsHandler });
+
+// ============================================================================
 // Health check endpoint (public, no auth)
 // Returns 200 OK with JSON body for Railway health checks and uptime monitoring.
 // ============================================================================
-const healthCheck = httpAction(async (_ctx, _request) => {
+const healthCheck = httpAction(async () => {
   return new Response(JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }), {
     status: 200,
     headers: { "Content-Type": "application/json" },

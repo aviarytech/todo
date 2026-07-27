@@ -10,6 +10,9 @@
 
 import type * as activity from "../activity.js";
 import type * as activityHttp from "../activityHttp.js";
+import type * as agentReadHttp from "../agentReadHttp.js";
+import type * as apiKeys from "../apiKeys.js";
+import type * as apiKeysHttp from "../apiKeysHttp.js";
 import type * as assignees from "../assignees.js";
 import type * as assigneesHttp from "../assigneesHttp.js";
 import type * as attachments from "../attachments.js";
@@ -35,7 +38,9 @@ import type * as feedback from "../feedback.js";
 import type * as http from "../http.js";
 import type * as items from "../items.js";
 import type * as itemsHttp from "../itemsHttp.js";
+import type * as lib_actor from "../lib/actor.js";
 import type * as lib_analytics from "../lib/analytics.js";
+import type * as lib_apiKeyHelpers from "../lib/apiKeyHelpers.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_authUser from "../lib/authUser.js";
 import type * as lib_bucket from "../lib/bucket.js";
@@ -77,6 +82,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   activity: typeof activity;
   activityHttp: typeof activityHttp;
+  agentReadHttp: typeof agentReadHttp;
+  apiKeys: typeof apiKeys;
+  apiKeysHttp: typeof apiKeysHttp;
   assignees: typeof assignees;
   assigneesHttp: typeof assigneesHttp;
   attachments: typeof attachments;
@@ -102,7 +110,9 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   items: typeof items;
   itemsHttp: typeof itemsHttp;
+  "lib/actor": typeof lib_actor;
   "lib/analytics": typeof lib_analytics;
+  "lib/apiKeyHelpers": typeof lib_apiKeyHelpers;
   "lib/auth": typeof lib_auth;
   "lib/authUser": typeof lib_authUser;
   "lib/bucket": typeof lib_bucket;
