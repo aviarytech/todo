@@ -60,6 +60,25 @@ export function errorResponse(
   return jsonResponse(request, { error: message }, status, extraHeaders);
 }
 
+/**
+ * Turn a thrown mutation/query error into a client response.
+ *
+ * Convex wraps handler throws with a stack trace naming internal source files,
+ * so never echo the raw message to an API client: authorization failures become
+ * a clean 403, everything else a generic 500 (details go to the server log).
+ */
+export function handlerErrorResponse(
+  request: Request,
+  error: unknown,
+  fallbackMessage: string
+): Response {
+  const message = error instanceof Error ? error.message : "";
+  if (/not authorized/i.test(message)) {
+    return errorResponse(request, "Not authorized", 403);
+  }
+  return errorResponse(request, fallbackMessage, 500);
+}
+
 export function emptyResponse(
   request: Request,
   status = 204,

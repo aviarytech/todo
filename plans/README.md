@@ -19,7 +19,7 @@ lets agents genuinely use the current stack.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001 | Agent access slice: API keys + read/write over HTTP | P1 | L | — | DONE (steps 0–4,6 on branch `feat/agent-api-keys`; step 5 attribution deferred; `tsc`/build green pending Convex codegen in a credentialed env) |
+| 001 | Agent access slice: API keys + read/write over HTTP | P1 | L | — | DONE (steps 0–4,6 on branch `feat/agent-api-keys`; step 5 attribution deferred). `tsc`/`bun test`/`bun run build` green; smoke-tested end-to-end on `dev:basic-bloodhound-21`. |
 
 ## Dependency notes
 

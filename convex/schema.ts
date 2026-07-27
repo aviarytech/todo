@@ -67,7 +67,10 @@ export default defineSchema({
 
   // API keys - long-lived credentials for agents to authenticate over HTTP.
   // Only the SHA-256 hash of a key is stored; the raw key is shown once on creation.
-  apiKeys: defineTable({
+  // Named `agentApiKeys`, not `apiKeys`: deployments still hold orphaned rows
+  // from the removed Mission Control `apiKeys` table (different shape), which
+  // would fail schema validation on deploy.
+  agentApiKeys: defineTable({
     ownerDid: v.string(), // Owner's DID — the authorization identity
     keyHash: v.string(), // Lowercase hex SHA-256 of the raw key
     prefix: v.string(), // First 12 chars of the raw key, for display/identification

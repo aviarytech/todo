@@ -16,7 +16,7 @@ import {
   AuthError,
   unauthorizedResponseWithCors,
 } from "./lib/auth";
-import { jsonResponse, errorResponse } from "./lib/httpResponses";
+import { jsonResponse, errorResponse, handlerErrorResponse } from "./lib/httpResponses";
 import {
   generateApiKey,
   hashApiKey,
@@ -96,10 +96,10 @@ export const createApiKey = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[apiKeysHttp] createApiKey error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to create API key",
-      500
+      error,
+      "Failed to create API key"
     );
   }
 });
@@ -124,10 +124,10 @@ export const listApiKeys = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[apiKeysHttp] listApiKeys error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to list API keys",
-      500
+      error,
+      "Failed to list API keys"
     );
   }
 });
@@ -152,7 +152,7 @@ export const revokeApiKey = httpAction(async (ctx, request) => {
     }
 
     const revoked = await ctx.runMutation(internal.apiKeys.revokeKey, {
-      keyId: keyId as Id<"apiKeys">,
+      keyId: keyId as Id<"agentApiKeys">,
       ownerDid,
     });
     if (!revoked) {
@@ -165,10 +165,10 @@ export const revokeApiKey = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[apiKeysHttp] revokeApiKey error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to revoke API key",
-      500
+      error,
+      "Failed to revoke API key"
     );
   }
 });

@@ -11,7 +11,7 @@ import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { AuthError, unauthorizedResponseWithCors } from "./lib/auth";
 import { resolveActor, requireScope } from "./lib/actor";
-import { jsonResponse, errorResponse } from "./lib/httpResponses";
+import { jsonResponse, errorResponse, handlerErrorResponse } from "./lib/httpResponses";
 
 /**
  * POST /api/lists/create
@@ -54,10 +54,10 @@ export const createList = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[listsHttp] createList error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to create list",
-      500
+      error,
+      "Failed to create list"
     );
   }
 });
@@ -97,10 +97,10 @@ export const deleteList = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[listsHttp] deleteList error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to delete list",
-      500
+      error,
+      "Failed to delete list"
     );
   }
 });

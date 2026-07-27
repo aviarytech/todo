@@ -19,7 +19,7 @@ export const getByHash = internalQuery({
   args: { keyHash: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
-      .query("apiKeys")
+      .query("agentApiKeys")
       .withIndex("by_hash", (q) => q.eq("keyHash", args.keyHash))
       .first();
   },
@@ -32,7 +32,7 @@ export const listForOwner = internalQuery({
   args: { ownerDid: v.string() },
   handler: async (ctx, args) => {
     const rows = await ctx.db
-      .query("apiKeys")
+      .query("agentApiKeys")
       .withIndex("by_owner", (q) => q.eq("ownerDid", args.ownerDid))
       .collect();
 
@@ -61,7 +61,7 @@ export const createKey = internalMutation({
     agentDid: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("apiKeys", {
+    return await ctx.db.insert("agentApiKeys", {
       ownerDid: args.ownerDid,
       keyHash: args.keyHash,
       prefix: args.prefix,
@@ -79,7 +79,7 @@ export const createKey = internalMutation({
  * layer can answer 404 rather than treating a normal client error as a 500.
  */
 export const revokeKey = internalMutation({
-  args: { keyId: v.id("apiKeys"), ownerDid: v.string() },
+  args: { keyId: v.id("agentApiKeys"), ownerDid: v.string() },
   handler: async (ctx, args): Promise<boolean> => {
     const row = await ctx.db.get(args.keyId);
     if (!row || row.ownerDid !== args.ownerDid) {

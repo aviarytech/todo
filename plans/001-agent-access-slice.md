@@ -53,6 +53,20 @@ A second review round flagged more:
    `getByHash`. Fixed: all four are `internalQuery`/`internalMutation`, reached
    only from the JWT-authed HTTP layer via `internal.apiKeys.*`. Same for the new
    `getListWithItemsForViewer` (server-only → `internalQuery`).
+A landing pass found two more:
+
+7. **Table name collides with dead Mission Control data.** Deployments still
+   hold orphaned rows from the `apiKeys` table removed in `90b6d7b` (old shape:
+   `keyPrefix`, rotation fields). Re-defining `apiKeys` fails schema validation
+   at `convex deploy`, blocking the whole deploy. Fixed: the new table is
+   `agentApiKeys`. The orphaned `apiKeys` rows stay unvalidated (no schema entry)
+   and can be dropped separately.
+8. **Handlers leaked Convex stack traces.** Every `*Http.ts` catch echoed
+   `error.message`, so a mutation authorization throw returned 500 with internal
+   file paths and line numbers. Fixed: `handlerErrorResponse()` in
+   `lib/httpResponses.ts` maps "not authorized" throws to a clean 403 and
+   everything else to a generic 500 (details still logged server-side).
+
 6. **Ownership must use `did`, not the agent DID.** Writes and `createList` used
    `actor.actorDid`, which would own/authorize against the *agent* once Step 5
    lands. Removed `actorDid` from `ResolvedActor`; handlers use `actor.did`

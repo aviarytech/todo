@@ -11,7 +11,7 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { AuthError, unauthorizedResponseWithCors } from "./lib/auth";
 import { resolveActor, requireScope } from "./lib/actor";
-import { jsonResponse, errorResponse } from "./lib/httpResponses";
+import { jsonResponse, errorResponse, handlerErrorResponse } from "./lib/httpResponses";
 
 /**
  * GET /api/v1/lists
@@ -34,10 +34,10 @@ export const getLists = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[agentReadHttp] getLists error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to get lists",
-      500
+      error,
+      "Failed to get lists"
     );
   }
 });
@@ -75,10 +75,10 @@ export const getListWithItems = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[agentReadHttp] getListWithItems error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to get list items",
-      500
+      error,
+      "Failed to get list items"
     );
   }
 });

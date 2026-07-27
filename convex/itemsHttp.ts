@@ -11,7 +11,7 @@ import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { AuthError, unauthorizedResponseWithCors } from "./lib/auth";
 import { resolveActor, requireScope } from "./lib/actor";
-import { jsonResponse, errorResponse } from "./lib/httpResponses";
+import { jsonResponse, errorResponse, handlerErrorResponse } from "./lib/httpResponses";
 
 /**
  * POST /api/items/add
@@ -50,10 +50,10 @@ export const addItem = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[itemsHttp] addItem error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to add item",
-      500
+      error,
+      "Failed to add item"
     );
   }
 });
@@ -94,10 +94,10 @@ export const checkItem = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[itemsHttp] checkItem error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to check item",
-      500
+      error,
+      "Failed to check item"
     );
   }
 });
@@ -137,10 +137,10 @@ export const uncheckItem = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[itemsHttp] uncheckItem error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to uncheck item",
-      500
+      error,
+      "Failed to uncheck item"
     );
   }
 });
@@ -180,10 +180,10 @@ export const removeItem = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[itemsHttp] removeItem error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to remove item",
-      500
+      error,
+      "Failed to remove item"
     );
   }
 });
@@ -224,10 +224,10 @@ export const reorderItems = httpAction(async (ctx, request) => {
       return unauthorizedResponseWithCors(request, error.message);
     }
     console.error("[itemsHttp] reorderItems error:", error);
-    return errorResponse(
+    return handlerErrorResponse(
       request,
-      error instanceof Error ? error.message : "Failed to reorder items",
-      500
+      error,
+      "Failed to reorder items"
     );
   }
 });
