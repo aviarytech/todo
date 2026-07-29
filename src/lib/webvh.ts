@@ -177,7 +177,11 @@ export async function createUserWebVHDid(params: {
     domain,
     signer,
     verifier: signer,
-    updateKeys: [signer.getVerificationMethodId()],
+    // Bare multibase, NOT the did:key URI. didwebvh-ts 2.8's isKeyAuthorized
+    // parses the proof's verificationMethod down to its keyMultibase and
+    // compares by exact equality, so a `did:key:z6Mk…` entry never matches and
+    // every mint fails with "Key … is not authorized to update".
+    updateKeys: [publicKeyMultibase],
     verificationMethods: [
       {
         id: "#key-0",

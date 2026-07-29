@@ -65,7 +65,6 @@ import type * as presenceHttp from "../presenceHttp.js";
 import type * as publication from "../publication.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as referrals from "../referrals.js";
-import type * as remintDid from "../remintDid.js";
 import type * as siteActions from "../siteActions.js";
 import type * as siteAssets from "../siteAssets.js";
 import type * as siteInternals from "../siteInternals.js";
@@ -142,7 +141,6 @@ declare const fullApi: ApiFromModules<{
   publication: typeof publication;
   rateLimits: typeof rateLimits;
   referrals: typeof referrals;
-  remintDid: typeof remintDid;
   siteActions: typeof siteActions;
   siteAssets: typeof siteAssets;
   siteInternals: typeof siteInternals;

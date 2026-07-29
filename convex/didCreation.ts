@@ -38,7 +38,9 @@ async function createDIDRecord(
     domain,
     signer,
     verifier: signer,
-    updateKeys: [verificationMethodId],
+    // Bare multibase, not the did:key URI — see lib/webvh.ts (didwebvh-ts 2.8
+    // compares updateKeys against the parsed keyMultibase by exact equality).
+    updateKeys: [address],
     verificationMethods: [
       {
         id: "#key-0",
