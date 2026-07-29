@@ -28,6 +28,7 @@ import {
 } from "react";
 import { createUserWebVHDid } from "../lib/webvh";
 import { useDidDomainRemint } from "./useDidDomainRemint";
+import { getConvexHttpUrl } from "../lib/convexUrls";
 import { storageAdapter } from "../lib/storageAdapter";
 import { identifyUser, resetAnalytics } from "../lib/analytics";
 
@@ -37,17 +38,6 @@ import { identifyUser, resetAnalytics } from "../lib/analytics";
  * Convex Cloud: https://xxx.convex.cloud -> https://xxx.convex.site
  * Local dev: http://127.0.0.1:3210 -> http://127.0.0.1:3211
  */
-function getConvexHttpUrl(): string {
-  const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
-
-  // Local development
-  if (convexUrl.includes("127.0.0.1") || convexUrl.includes("localhost")) {
-    return convexUrl.replace(":3210", ":3211");
-  }
-
-  // Convex cloud deployment
-  return convexUrl.replace(".convex.cloud", ".convex.site");
-}
 
 const JWT_STORAGE_KEY = "lisa-jwt-token";
 
@@ -404,7 +394,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   // Repairs identities minted on a domain we no longer serve. Temporary.
-  useDidDomainRemint(user);
+  useDidDomainRemint(user, token);
 
   const value: AuthContextValue = {
     isAuthenticated: user !== null,

@@ -116,6 +116,18 @@ export const findUserByEmail = internalQuery({
   },
 });
 
+/** Resolves the account from a JWT-verified Turnkey sub-org, never from a body field. */
+export const findUserBySubOrg = internalQuery({
+  args: { turnkeySubOrgId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_turnkey_id", (q) => q.eq("turnkeySubOrgId", args.turnkeySubOrgId))
+      .first();
+    return user ? { _id: user._id, did: user.did ?? null, email: user.email } : null;
+  },
+});
+
 export const findUserByDid = internalQuery({
   args: { did: v.string() },
   handler: async (ctx, args) => {

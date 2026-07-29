@@ -21,7 +21,7 @@ import {
   removeItem,
   reorderItems,
 } from "./itemsHttp";
-import { updateUserDID } from "./userHttp";
+import { updateUserDID, remintUserDID } from "./userHttp";
 import { storeDidLog, getDidLog } from "./didLogsHttp";
 import { didResourceHandler } from "./didResourcesHttp";
 import { assignItem as assignItemHttp, unassignItem as unassignItemHttp, getItemAssignees as getItemAssigneesHttp } from "./assigneesHttp";
@@ -370,6 +370,8 @@ http.route({ path: "/api/items/reorder", method: "OPTIONS", handler: corsHandler
 
 // --- User endpoints ---
 http.route({ path: "/api/user/updateDID", method: "POST", handler: updateUserDID });
+http.route({ path: "/api/user/remintDid", method: "POST", handler: remintUserDID });
+http.route({ path: "/api/user/remintDid", method: "OPTIONS", handler: corsHandler });
 http.route({ path: "/api/user/updateDID", method: "OPTIONS", handler: corsHandler });
 
 // --- DID log endpoints ---
