@@ -5,7 +5,7 @@
  */
 
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import {
   requireAuth,
   AuthError,
@@ -64,6 +64,81 @@ export const updateUserDID = httpAction(async (ctx, request) => {
     return errorResponse(
       request,
       err instanceof Error ? err.message : "Failed to update DID",
+      500
+    );
+  }
+});
+
+/**
+ * POST /api/user/remintDid
+ *
+ * Point the authenticated user at a freshly minted DID and move every row that
+ * referenced the old one.
+ *
+ * Authorized by the JWT, not by key continuity. An earlier design required the
+ * new DID log to be signed by the key controlling the old DID; that is
+ * unsatisfiable for an identity whose original controller key was lost with the
+ * origin it was minted on — didwebvh-ts rejects those with "Key ... is not
+ * authorized to update". The JWT proves account ownership, which is the right
+ * authorization for "reassign my own rows to my own new identifier".
+ *
+ * Strictly safer than the status quo: /api/user/updateDID already lets an
+ * authenticated user change their DID, and today that silently strands every
+ * row on the old value.
+ *
+ * Request: { "did": "did:webvh:...", "didLog": "<jsonl>", "path": "user-..." }
+ * Response: { "success": true, "newDid": "...", "rewritten": n }
+ */
+export const remintUserDID = httpAction(async (ctx, request) => {
+  try {
+    const auth = await requireAuth(request);
+    const body = await request.json();
+    const { did: newDid, didLog, path } = body as {
+      did: string;
+      didLog?: string;
+      path?: string;
+    };
+
+    if (!newDid || !newDid.startsWith("did:webvh:")) {
+      return errorResponse(request, "did must be a did:webvh");
+    }
+
+    // The identity comes from the verified token, never the request body.
+    const user = await ctx.runQuery(internal.migrations.remintUserDidDb.findUserBySubOrg, {
+      turnkeySubOrgId: auth.turnkeySubOrgId,
+    });
+    if (!user || !user.did) {
+      return errorResponse(request, "No DID on the authenticated account");
+    }
+    if (user.did === newDid) {
+      return jsonResponse(request, { success: true, newDid, rewritten: 0 });
+    }
+
+    const { rewritten } = await ctx.runMutation(
+      internal.migrations.remintUserDidDb.applyRemint,
+      { userId: user._id, oldDid: user.did, newDid }
+    );
+
+    if (didLog && path) {
+      await ctx.runMutation(internal.migrations.remintUserDidDb.storeDidLog, {
+        userDid: newDid,
+        path,
+        log: didLog,
+      });
+    }
+
+    console.log(
+      `[userHttp] Re-minted ${auth.email}: ${user.did} -> ${newDid} (${rewritten} rows)`
+    );
+    return jsonResponse(request, { success: true, newDid, rewritten });
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return unauthorizedResponseWithCors(request, err.message);
+    }
+    console.error("[userHttp] Re-mint error:", err);
+    return errorResponse(
+      request,
+      err instanceof Error ? err.message : "Failed to re-mint DID",
       500
     );
   }
