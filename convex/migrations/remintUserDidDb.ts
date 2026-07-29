@@ -116,6 +116,53 @@ export const findUserByEmail = internalQuery({
   },
 });
 
+export const findUserByDid = internalQuery({
+  args: { did: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_did", (q) => q.eq("did", args.did))
+      .first();
+    return user ? { _id: user._id, did: user.did!, email: user.email } : null;
+  },
+});
+
+/** The stored did.jsonl for a DID — the authorization anchor for a re-mint. */
+export const getDidLogFor = internalQuery({
+  args: { userDid: v.string() },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("didLogs")
+      .withIndex("by_user_did", (q) => q.eq("userDid", args.userDid))
+      .first();
+    return row ? { log: row.log, path: row.path } : null;
+  },
+});
+
+export const storeDidLog = internalMutation({
+  args: { userDid: v.string(), path: v.string(), log: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("didLogs")
+      .withIndex("by_path", (q) => q.eq("path", args.path))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        userDid: args.userDid,
+        log: args.log,
+        updatedAt: Date.now(),
+      });
+      return;
+    }
+    await ctx.db.insert("didLogs", {
+      userDid: args.userDid,
+      path: args.path,
+      log: args.log,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 /** Users whose DID sits on a domain other than the one we mint on today. */
 export const listUsersOnDomain = internalQuery({
   args: { domain: v.string() },

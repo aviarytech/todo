@@ -132,6 +132,36 @@ export function pathFromDid(did: string): string {
   return parts.slice(4).join(":");
 }
 
+/**
+ * The domain a DID minted right now would carry.
+ *
+ * The native check comes FIRST on purpose. VITE_WEBVH_DOMAIN is baked in at
+ * build time, so a locally-built app (`bun run cap:build` reads .env.local)
+ * used to stamp a dev host like `localhost:5173` into real native DIDs,
+ * overriding the boop.ad branch. The env override is dev-only now.
+ */
+export function currentWebvhDomain(): string {
+  if (Capacitor.isNativePlatform()) return "boop.ad";
+  return (import.meta.env.VITE_WEBVH_DOMAIN as string | undefined) || window.location.host;
+}
+
+/** The domain encoded in a did:webvh, percent-decoded (`localhost%3A5173` → `localhost:5173`). */
+export function domainFromDidSafe(did: string): string | null {
+  const parts = did.split(":");
+  if (parts.length < 5 || parts[1] !== "webvh") return null;
+  try {
+    return decodeURIComponent(parts[3]);
+  } catch {
+    return parts[3];
+  }
+}
+
+/** True when this DID names a domain we no longer mint on — its did.jsonl is unreachable. */
+export function isStaleDidDomain(did: string): boolean {
+  const domain = domainFromDidSafe(did);
+  return domain !== null && domain !== currentWebvhDomain();
+}
+
 export async function createUserWebVHDid(params: {
   email: string;
   subOrgId: string;
@@ -139,9 +169,7 @@ export async function createUserWebVHDid(params: {
 }) {
   const { privateKey, publicKeyMultibase } = await getOrCreateKeyPair(params.subOrgId);
   const signer = new BrowserWebVHSigner(privateKey, publicKeyMultibase);
-  const host = Capacitor.isNativePlatform() ? 'boop.ad' : window.location.host;
-  const domain =
-    params.domain || (import.meta.env.VITE_WEBVH_DOMAIN as string | undefined) || host;
+  const domain = params.domain || currentWebvhDomain();
 
   const userSlug = toUserSlug(params.email, params.subOrgId);
 
@@ -191,7 +219,9 @@ export function domainFromDid(did: string): string {
   if (parts.length < 4 || parts[1] !== "webvh") {
     throw new Error(`Cannot extract domain from DID: ${did}`);
   }
-  return parts[3];
+  // A host with a port is stored percent-encoded (`localhost%3A5173`), because
+  // `:` is the DID's own separator. Decode it or the URL has an invalid host.
+  return decodeURIComponent(parts[3]);
 }
 
 /**
@@ -209,5 +239,8 @@ export function buildListResourceDid(userDid: string, listId: string): string {
 export function buildListResourceUrl(userDid: string, listId: string): string {
   const domain = domainFromDid(userDid);
   const path = pathFromDid(userDid);
-  return `https://${domain}/${path}/resources/list-${listId}`;
+  // did:webvh mandates https; local hosts have no certificate, so dev links
+  // would be unopenable otherwise.
+  const scheme = /^(localhost|127\.0\.0\.1)(:|$)/.test(domain) ? "http" : "https";
+  return `${scheme}://${domain}/${path}/resources/list-${listId}`;
 }

@@ -27,6 +27,7 @@ import {
   type ReactNode,
 } from "react";
 import { createUserWebVHDid } from "../lib/webvh";
+import { useDidDomainRemint } from "./useDidDomainRemint";
 import { storageAdapter } from "../lib/storageAdapter";
 import { identifyUser, resetAnalytics } from "../lib/analytics";
 
@@ -401,6 +402,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await storageAdapter.remove(AUTH_STORAGE_KEY);
     await storageAdapter.remove(JWT_STORAGE_KEY);
   }, []);
+
+  // Repairs identities minted on a domain we no longer serve. Temporary.
+  useDidDomainRemint(user);
 
   const value: AuthContextValue = {
     isAuthenticated: user !== null,
