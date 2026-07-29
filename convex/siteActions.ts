@@ -248,13 +248,14 @@ export const createSiteFromUpload = action({
 
     const { privateKey, publicKeyMultibase } = await createSiteKey();
     const signer = new SiteWebVHSigner(privateKey, publicKeyMultibase);
-    const verificationMethodId = signer.getVerificationMethodId();
 
     const didResult = await createDID({
       domain: hostname,
       signer,
       verifier: signer,
-      updateKeys: [verificationMethodId],
+  // Bare multibase, not the did:key URI — see lib/webvh.ts (didwebvh-ts 2.8
+      // compares updateKeys against the parsed keyMultibase by exact equality).
+      updateKeys: [publicKeyMultibase],
       verificationMethods: [
         {
           id: "#key-0",
@@ -337,7 +338,6 @@ export const migrateVerifiedCustomDomain = action({
       encryptionSecret
     );
     const signer = new SiteWebVHSigner(privateKey, record.key.publicKeyMultibase);
-    const verificationMethodId = signer.getVerificationMethodId();
     const migratedDid = `did:webvh:${record.site.scid}:${hostname}`;
     const currentLog = record.didLogEntries.map((entry) => JSON.parse(entry.entryJsonl));
 
@@ -347,7 +347,9 @@ export const migrateVerifiedCustomDomain = action({
       verifier: signer,
       domain: hostname,
       controller: migratedDid,
-      updateKeys: [verificationMethodId],
+  // Bare multibase, not the did:key URI — see lib/webvh.ts (didwebvh-ts 2.8
+      // compares updateKeys against the parsed keyMultibase by exact equality).
+      updateKeys: [record.key.publicKeyMultibase],
       verificationMethods: [
         {
           id: "#key-0",
