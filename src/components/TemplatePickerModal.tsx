@@ -60,6 +60,7 @@ export function TemplatePickerModal({ onClose, onCreateBlank }: TemplatePickerMo
       const listAsset = await createListAsset(listName, did);
       const listId = await createList({
         assetDid: listAsset.assetDid,
+        celEnvelope: listAsset.envelope,
         name: listName,
         ownerDid: did,
         createdAt: Date.now(),
@@ -96,10 +97,13 @@ export function TemplatePickerModal({ onClose, onCreateBlank }: TemplatePickerMo
     haptic('medium');
 
     try {
+      const listAsset = await createListAsset(templateName, did);
       const listId = await createListFromTemplate({
         templateId,
         listName: templateName,
         userDid: did,
+        assetDid: listAsset.assetDid,
+        celEnvelope: listAsset.envelope,
       });
 
       haptic('success');

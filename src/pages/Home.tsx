@@ -118,6 +118,7 @@ export function Home() {
         const listAsset = await createListAsset("Getting Started", did);
         const listId = await createList({
           assetDid: listAsset.assetDid,
+          celEnvelope: listAsset.envelope,
           name: "Getting Started",
           ownerDid: did,
           createdAt: Date.now(),

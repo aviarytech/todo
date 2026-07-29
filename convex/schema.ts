@@ -105,7 +105,7 @@ export default defineSchema({
 
   // Lists table - each list is an Originals asset
   lists: defineTable({
-    assetDid: v.string(), // Originals asset DID (did:peer or did:webvh)
+    assetDid: v.string(), // Originals asset DID (did:cel at genesis, did:webvh once published)
     name: v.string(),
     ownerDid: v.string(), // Creator's DID
     categoryId: v.optional(v.id("categories")), // User's category for this list (Phase 2)
@@ -134,6 +134,19 @@ export default defineSchema({
     .index("by_owner", ["ownerDid"])
     .index("by_asset_did", ["assetDid"])
     .index("by_category", ["categoryId"]),
+
+  // Serialized Originals AssetEnvelope per list — the signed CEL event log that
+  // makes a list's did:cel verifiable. Kept off the lists row (~1.8KB at genesis,
+  // and it grows per event) so the hot list subscriptions stay small; only the
+  // provenance and publish paths read it.
+  listEnvelopes: defineTable({
+    listId: v.id("lists"),
+    assetDid: v.string(),
+    envelope: v.string(), // JSON.stringify(AssetEnvelope)
+    updatedAt: v.number(),
+  })
+    .index("by_list", ["listId"])
+    .index("by_asset_did", ["assetDid"]),
 
   // Items table - items within a list
   items: defineTable({

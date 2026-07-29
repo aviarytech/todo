@@ -97,6 +97,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       const listAsset = await createListAsset(name, did);
       const id = await createList({
         assetDid: listAsset.assetDid,
+        celEnvelope: listAsset.envelope,
         name,
         ownerDid: did,
         createdAt: Date.now(),

@@ -3,11 +3,16 @@ import { mutation, query, internalQuery } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { withMutationObservability } from "./lib/observability";
 import { canUserViewList } from "./lib/permissions";
+import { upsertListEnvelope } from "./lib/listEnvelope";
 
 /**
  * Creates a placeholder Verifiable Credential for list ownership.
+ *
+ * Exported for migrations/celAssetDids — the credential embeds assetDid in both
+ * credentialSubject.id and the serialized proof, so rewriting a list's DID has
+ * to rebuild the VC or the subject points at a DID that no longer names it.
  */
-function createListOwnershipVC(
+export function createListOwnershipVC(
   listId: Id<"lists">,
   assetDid: string,
   ownerDid: string,
@@ -60,6 +65,10 @@ export const createList = mutation({
     ownerDid: v.string(),
     categoryId: v.optional(v.id("categories")),
     createdAt: v.number(),
+    // Serialized AssetEnvelope from createListAsset. Optional so older clients
+    // (and the HTTP agent API) can still create lists; those get an identifier
+    // with no verifiable log until re-genesis.
+    celEnvelope: v.optional(v.string()),
   },
   handler: async (ctx, args) => withMutationObservability("lists.createList", async () => {
     // Input validation
@@ -116,6 +125,10 @@ export const createList = mutation({
     );
 
     await ctx.db.patch(listId, { vcProof });
+
+    if (args.celEnvelope) {
+      await upsertListEnvelope(ctx, listId, args.assetDid, args.celEnvelope);
+    }
 
     // Award 30-day referral Pro to both referee and referrer on first list creation
     if (owner && isFirstList) {
@@ -205,6 +218,26 @@ export const getList = query({
   args: { listId: v.id("lists") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.listId);
+  },
+});
+
+/**
+ * The list's serialized AssetEnvelope, for client-side verification. Kept out of
+ * getList so the hot list subscriptions don't carry it. Returns null when the
+ * list predates envelope persistence.
+ *
+ * Unauthenticated, matching getList above: the envelope holds the DID document,
+ * the signed CEL log and the list's own name/owner — the same surface getList
+ * already returns to any caller with the id.
+ */
+export const getListEnvelope = query({
+  args: { listId: v.id("lists") },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("listEnvelopes")
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
+      .first();
+    return row ? { assetDid: row.assetDid, envelope: row.envelope } : null;
   },
 });
 

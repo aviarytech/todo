@@ -10,11 +10,12 @@
  * Makes the decentralized identity and provenance chain visible to users.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useSettings } from "../hooks/useSettings";
+import { verifyListEnvelope } from "../lib/originals";
 
 interface ListProvenanceProps {
   list: Doc<"lists">;
@@ -163,10 +164,74 @@ function TimestampRow({ label, timestamp }: { label: string; timestamp: number }
 /**
  * Collapsible wrapper for provenance info
  */
-function ProvenanceSection({ 
-  title, 
+type EnvelopeState =
+  | { status: "absent" }
+  | { status: "checking" }
+  | { status: "verified" }
+  | { status: "failed"; detail: string };
+
+/**
+ * Replays the list's signed CEL log client-side. Verification is real work
+ * (signature checks + hashing), so it runs in an effect rather than on render.
+ */
+function useEnvelopeVerification(listId: Doc<"lists">["_id"]): EnvelopeState {
+  const stored = useQuery(api.lists.getListEnvelope, { listId });
+  const envelope = stored?.envelope ?? null;
+  // Keyed by the envelope it describes, so a stale result is never shown for a
+  // newer one — that also keeps loading/absent derivable during render.
+  const [result, setResult] = useState<{ envelope: string; state: EnvelopeState } | null>(null);
+
+  useEffect(() => {
+    if (!envelope) return;
+    let cancelled = false;
+    void verifyListEnvelope(envelope).then((verification) => {
+      if (cancelled) return;
+      setResult({
+        envelope,
+        state: verification.verified
+          ? { status: "verified" }
+          : {
+              status: "failed",
+              detail: verification.error ?? verification.warnings.join("; "),
+            },
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [envelope]);
+
+  if (stored === undefined) return { status: "checking" };
+  if (stored === null) return { status: "absent" };
+  return result?.envelope === envelope ? result.state : { status: "checking" };
+}
+
+function EnvelopeVerificationRow({ state }: { state: EnvelopeState }) {
+  if (state.status === "absent") return null;
+
+  const [icon, text, tone] =
+    state.status === "checking"
+      ? ["⏳", "Verifying event log…", "text-gray-500 dark:text-gray-400"]
+      : state.status === "verified"
+        ? ["✅", "Event log verified", "text-green-600 dark:text-green-400"]
+        : ["⚠️", `Event log failed verification: ${state.detail}`, "text-red-600 dark:text-red-400"];
+
+  return (
+    <div className="py-2">
+      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+        🔗 Chained Event Log
+      </div>
+      <div className={`text-sm ${tone}`}>
+        {icon} {text}
+      </div>
+    </div>
+  );
+}
+
+function ProvenanceSection({
+  title,
   children,
-  defaultOpen = false 
+  defaultOpen = false
 }: { 
   title: string; 
   children: React.ReactNode;
@@ -443,6 +508,8 @@ export function ListProvenanceInfo({ list }: ListProvenanceProps) {
   
   const ownerName = userInfo?.[list.ownerDid]?.displayName ?? null;
 
+  const envelopeState = useEnvelopeVerification(list._id);
+
   // Build timeline events
   const timelineEvents: Array<{
     type: "created" | "vc_issued" | "anchored" | "confirmed" | "completed";
@@ -502,10 +569,12 @@ export function ListProvenanceInfo({ list }: ListProvenanceProps) {
         displayName={ownerName}
         haptic={haptic} 
       />
-      <TimestampRow 
-        label="📅 Created" 
-        timestamp={list.createdAt} 
+      <TimestampRow
+        label="📅 Created"
+        timestamp={list.createdAt}
       />
+
+      <EnvelopeVerificationRow state={envelopeState} />
 
       {/* Ownership VC */}
       {list.vcProof && (
