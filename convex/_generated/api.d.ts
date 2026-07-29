@@ -56,6 +56,8 @@ import type * as listsHttp from "../listsHttp.js";
 import type * as migrations_bucketBackfill from "../migrations/bucketBackfill.js";
 import type * as migrations_celAssetDids from "../migrations/celAssetDids.js";
 import type * as migrations_celAssetDidsDb from "../migrations/celAssetDidsDb.js";
+import type * as migrations_remintUserDid from "../migrations/remintUserDid.js";
+import type * as migrations_remintUserDidDb from "../migrations/remintUserDidDb.js";
 import type * as notificationActions from "../notificationActions.js";
 import type * as notifications from "../notifications.js";
 import type * as originals from "../originals.js";
@@ -131,6 +133,8 @@ declare const fullApi: ApiFromModules<{
   "migrations/bucketBackfill": typeof migrations_bucketBackfill;
   "migrations/celAssetDids": typeof migrations_celAssetDids;
   "migrations/celAssetDidsDb": typeof migrations_celAssetDidsDb;
+  "migrations/remintUserDid": typeof migrations_remintUserDid;
+  "migrations/remintUserDidDb": typeof migrations_remintUserDidDb;
   notificationActions: typeof notificationActions;
   notifications: typeof notifications;
   originals: typeof originals;
