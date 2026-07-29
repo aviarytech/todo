@@ -4,6 +4,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { upsertListEnvelope } from "./lib/listEnvelope";
 // Id type used in function arguments via v.id()
 
 const templateItemValidator = v.object({
@@ -172,6 +173,9 @@ export const createListFromTemplate = mutation({
     templateId: v.id("listTemplates"),
     listName: v.string(),
     userDid: v.string(),
+    // Genesis happens client-side (only the client holds the key), same as lists.createList.
+    assetDid: v.string(),
+    celEnvelope: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId);
@@ -186,11 +190,15 @@ export const createListFromTemplate = mutation({
 
     // Create the list
     const listId = await ctx.db.insert("lists", {
-      assetDid: `did:peer:temp-${now}`, // Will be replaced with proper DID
+      assetDid: args.assetDid,
       name: args.listName,
       ownerDid: args.userDid,
       createdAt: now,
     });
+
+    if (args.celEnvelope) {
+      await upsertListEnvelope(ctx, listId, args.assetDid, args.celEnvelope);
+    }
 
     // Create items from template
     for (const templateItem of template.items) {

@@ -17,6 +17,7 @@ import {
   multibaseEncode,
   prepareDataForSigning,
 } from "didwebvh-ts";
+import type { SigningInput, SigningOutput } from "didwebvh-ts";
 
 const ADJECTIVES = [
   "brisk",
@@ -68,10 +69,7 @@ class SiteWebVHSigner {
     return `did:key:${this.publicKeyMultibase}`;
   }
 
-  async sign(input: {
-    document: unknown;
-    proof: Record<string, unknown>;
-  }): Promise<{ proofValue: string }> {
+  async sign(input: SigningInput): Promise<SigningOutput> {
     const payload = await prepareDataForSigning(
       input.document as Record<string, unknown>,
       input.proof
@@ -174,7 +172,7 @@ function decryptPrivateKey(encryptedPrivateKey: string, secret: string): Uint8Ar
 }
 
 async function createSiteKey() {
-  const privateKey = ed25519.utils.randomPrivateKey();
+  const privateKey = ed25519.utils.randomSecretKey();
   const publicKey = await ed25519.getPublicKeyAsync(privateKey);
   const prefixed = new Uint8Array(ED25519_MULTICODEC_PREFIX.length + publicKey.length);
   prefixed.set(ED25519_MULTICODEC_PREFIX, 0);

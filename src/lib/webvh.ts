@@ -1,5 +1,5 @@
 import { createDID, MultibaseEncoding, multibaseEncode, prepareDataForSigning } from "didwebvh-ts";
-import type { DIDLog } from "didwebvh-ts";
+import type { DIDLog, SigningInput, SigningOutput } from "didwebvh-ts";
 import { getPublicKeyAsync, signAsync, utils, verifyAsync } from "@noble/ed25519";
 import { Capacitor } from '@capacitor/core';
 
@@ -32,10 +32,7 @@ class BrowserWebVHSigner {
     this.publicKeyMultibase = publicKeyMultibase;
   }
 
-  async sign(input: {
-    document: unknown;
-    proof: Record<string, unknown>;
-  }): Promise<{ proofValue: string }> {
+  async sign(input: SigningInput): Promise<SigningOutput> {
     const payload = await prepareDataForSigning(
       input.document as Record<string, unknown>,
       input.proof
@@ -65,7 +62,7 @@ async function getOrCreateKeyPair(subOrgId: string) {
   const existingPrivateKey = localStorage.getItem(storageKey);
   const privateKey = existingPrivateKey
     ? hexToBytes(existingPrivateKey)
-    : utils.randomPrivateKey();
+    : utils.randomSecretKey();
 
   if (!existingPrivateKey) {
     localStorage.setItem(storageKey, bytesToHex(privateKey));

@@ -12,6 +12,7 @@ import {
   multibaseEncode,
   prepareDataForSigning,
 } from "didwebvh-ts";
+import type { SigningInput, SigningOutput } from "didwebvh-ts";
 import { sha512 } from "@noble/hashes/sha2.js";
 import { concatBytes, bytesToHex } from "@noble/hashes/utils.js";
 import * as ed25519 from "@noble/ed25519";
@@ -80,10 +81,7 @@ export class TurnkeyWebVHSigner {
   /**
    * Sign data using Turnkey's API.
    */
-  async sign(input: {
-    document: unknown;
-    proof: Record<string, unknown>;
-  }): Promise<{ proofValue: string }> {
+  async sign(input: SigningInput): Promise<SigningOutput> {
     try {
       const dataToSign = await prepareDataForSigning(
         input.document as Record<string, unknown>,

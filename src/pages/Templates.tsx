@@ -45,6 +45,7 @@ export function Templates() {
       const listAsset = await createListAsset(template.name, did);
       const listId = await createList({
         assetDid: listAsset.assetDid,
+        celEnvelope: listAsset.envelope,
         name: template.name,
         ownerDid: did,
         createdAt: Date.now(),
@@ -78,10 +79,13 @@ export function Templates() {
     haptic('medium');
 
     try {
+      const listAsset = await createListAsset(template.name, did);
       const listId = await createListFromTemplate({
         templateId: template._id,
         listName: template.name,
         userDid: did,
+        assetDid: listAsset.assetDid,
+        celEnvelope: listAsset.envelope,
       });
 
       haptic('success');

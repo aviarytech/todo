@@ -61,6 +61,7 @@ export function CreateListModal({ onClose, onListCreated }: CreateListModalProps
 
       const listId = await createList({
         assetDid: listAsset.assetDid,
+        celEnvelope: listAsset.envelope,
         name: trimmedName,
         ownerDid: did,
         categoryId,
