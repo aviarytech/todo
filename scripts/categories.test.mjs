@@ -225,9 +225,42 @@ test("groupByCategory returns non-empty groups in display order", () => {
   ]);
 });
 
-test("groupByCategory omits empty categories, including Other", () => {
-  const groups = c.groupByCategory([{ name: "Passport", groceryAisle: "luggage" }], packingSet());
-  assert.deepEqual(groups.map((g) => g.category.id), ["luggage"]);
+test("groupByCategory hides untouched built-ins that are empty", () => {
+  // A short grocery list should not be buried under 15 unused aisle headers.
+  const groups = c.groupByCategory([{ name: "bananas" }], c.resolveCategories(undefined));
+  assert.deepEqual(groups.map((g) => g.category.id), ["produce"]);
+});
+
+test("a user-created category stays visible while empty", () => {
+  // The bug this guards: an added category rendered nowhere, so it looked like
+  // it had failed to save — and there was no target to drag items into.
+  const set = c.addCategory(c.materialiseCategories(undefined, []), "Luggage", "\u{1F9F3}");
+  const groups = c.groupByCategory([{ name: "bananas" }], set);
+
+  const ids = groups.map((g) => g.category.id);
+  assert.ok(ids.includes("luggage"), "a category you just made must appear");
+  assert.deepEqual(groups.find((g) => g.category.id === "luggage").items, []);
+  assert.equal(ids.includes("bakery"), false, "untouched empty built-ins stay hidden");
+});
+
+test("a renamed or re-emoji'd built-in stays visible while empty", () => {
+  const renamed = c.renameCategory(c.materialiseCategories(undefined, []), "produce", "Fruit");
+  assert.ok(
+    c.groupByCategory([], renamed).some((g) => g.category.id === "produce"),
+    "renaming signals intent to use it"
+  );
+
+  const re_emoji = c.setCategoryEmoji(c.materialiseCategories(undefined, []), "bakery", "\u{1F950}");
+  assert.ok(c.groupByCategory([], re_emoji).some((g) => g.category.id === "bakery"));
+});
+
+test("every user-made category is visible before anything is filed; empty Other is not", () => {
+  const groups = c.groupByCategory([], packingSet());
+  assert.deepEqual(
+    groups.map((g) => g.category.id),
+    ["luggage", "clothes", "electronics"],
+    "an empty Other bucket is noise — it appears only once something lands in it"
+  );
 });
 
 test("groupByCategory keeps every item exactly once", () => {
