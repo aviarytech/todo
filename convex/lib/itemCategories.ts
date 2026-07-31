@@ -51,6 +51,19 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: "other", name: "Other", emoji: "🛒", order: 99 },
 ];
 
+/**
+ * True for a built-in category the user has never touched.
+ *
+ * Drives visibility: an untouched default is hidden while empty (so a short
+ * grocery list is not buried under 15 unused aisle headers), but anything the
+ * user added, renamed or re-emoji'd stays visible even with no items — you
+ * cannot drag an item into a category you cannot see.
+ */
+export function isPristineDefault(category: Category): boolean {
+  const original = DEFAULT_CATEGORIES.find((d) => d.id === category.id);
+  return !!original && original.name === category.name && original.emoji === category.emoji;
+}
+
 /** True once a list owns its categories and should not be offered grocery aisles. */
 export function hasOwnCategories(categories: Category[] | undefined | null): boolean {
   return Array.isArray(categories) && categories.length > 0;

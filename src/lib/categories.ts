@@ -10,6 +10,7 @@ import { classifyItem } from "./groceryAisles";
 import {
   type Category,
   OTHER_CATEGORY_ID,
+  isPristineDefault,
   resolveCategories,
 } from "../../convex/lib/itemCategories";
 
@@ -40,9 +41,13 @@ export function resolveItemCategory(item: CategorisableItem, categories: Categor
 }
 
 /**
- * Groups items into the list's categories, in display order. Empty categories
- * are dropped so a list is not padded with headers it never uses — except Other,
- * which is also dropped when empty.
+ * Groups items into the list's categories, in display order.
+ *
+ * An empty category is still shown when the user made it theirs — added,
+ * renamed or re-emoji'd. Only untouched built-ins are hidden while empty, so a
+ * short grocery list is not buried under unused aisle headers. Hiding a
+ * user-created category would make it look like it failed to save, and leave no
+ * target to drag items into.
  */
 export function groupByCategory<T extends CategorisableItem>(
   items: T[],
@@ -59,7 +64,10 @@ export function groupByCategory<T extends CategorisableItem>(
   }
 
   return resolved
-    .filter((category) => (buckets.get(category.id)?.length ?? 0) > 0)
-    .map((category) => ({ category, items: buckets.get(category.id)! }));
+    .filter(
+      (category) =>
+        (buckets.get(category.id)?.length ?? 0) > 0 || !isPristineDefault(category)
+    )
+    .map((category) => ({ category, items: buckets.get(category.id) ?? [] }));
 }
 
