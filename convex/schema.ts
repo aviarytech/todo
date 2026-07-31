@@ -121,8 +121,20 @@ export default defineSchema({
       }),
       proof: v.optional(v.string()), // JWT or linked data proof
     })),
-    // Custom grocery aisles created by users for this list
+    // Custom grocery aisles created by users for this list.
+    // Superseded by itemCategories; read only when materialising a list's set.
     customAisles: v.optional(v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      emoji: v.string(),
+      order: v.number(),
+    }))),
+    // This list's own item categories. Absent means it still uses the built-in
+    // grocery set; the first category edit materialises the full set here, after
+    // which it is the complete truth for the list. Named itemCategories, not
+    // categories, because `categoryId` above is the user's folder for the LIST —
+    // a different concept on the same row.
+    itemCategories: v.optional(v.array(v.object({
       id: v.string(),
       name: v.string(),
       emoji: v.string(),
