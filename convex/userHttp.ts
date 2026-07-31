@@ -13,6 +13,17 @@ import {
 } from "./lib/auth";
 import { jsonResponse, errorResponse } from "./lib/httpResponses";
 
+/** The domain encoded in a did:webvh, percent-decoded. Null if not a did:webvh. */
+function didWebvhDomain(did: string): string | null {
+  const parts = did.split(":");
+  if (parts.length < 5 || parts[1] !== "webvh") return null;
+  try {
+    return decodeURIComponent(parts[3]);
+  } catch {
+    return parts[3];
+  }
+}
+
 /**
  * POST /api/user/updateDID
  *
@@ -112,6 +123,20 @@ export const remintUserDID = httpAction(async (ctx, request) => {
     }
     if (user.did === newDid) {
       return jsonResponse(request, { success: true, newDid, rewritten: 0 });
+    }
+
+    // Only ever repair an identity that is actually on a stale domain. Without
+    // this, a client whose cached auth state still holds the pre-migration DID
+    // re-triggers on every reload and walks the account to a new DID each time.
+    const targetDomain = process.env.WEBVH_DOMAIN;
+    const currentDomain = didWebvhDomain(user.did);
+    if (targetDomain && currentDomain === targetDomain) {
+      return jsonResponse(request, {
+        success: true,
+        newDid: user.did,
+        rewritten: 0,
+        skipped: "already on the current domain",
+      });
     }
 
     const { rewritten } = await ctx.runMutation(
