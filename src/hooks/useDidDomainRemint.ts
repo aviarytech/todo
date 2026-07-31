@@ -21,7 +21,11 @@
 import { useEffect, useRef } from "react";
 import { createUserWebVHDid, isStaleDidDomain } from "../lib/webvh";
 import { getConvexHttpUrl } from "../lib/convexUrls";
+import { storageAdapter } from "../lib/storageAdapter";
 import { Sentry } from "../lib/sentry";
+
+/** Must match useAuth's persisted-state key. */
+const AUTH_STORAGE_KEY = "lisa-auth-state";
 
 export function useDidDomainRemint(
   user: { did?: string; email?: string; turnkeySubOrgId?: string } | null,
@@ -63,6 +67,24 @@ export function useDidDomainRemint(
 
         const result = (await response.json()) as { newDid: string; rewritten: number };
         console.info(`[remint] ${did} -> ${result.newDid} (${result.rewritten} rows)`);
+
+        // Persisted auth state is restored on reload without re-contacting the
+        // server, so leaving the old DID cached would re-trigger this on every
+        // load. (The endpoint also refuses a second migration, but burning a
+        // keypair per reload is worth avoiding.)
+        try {
+          const raw = await storageAdapter.get(AUTH_STORAGE_KEY);
+          if (raw) {
+            const state = JSON.parse(raw);
+            if (state?.user) {
+              state.user.did = result.newDid;
+              await storageAdapter.set(AUTH_STORAGE_KEY, JSON.stringify(state));
+            }
+          }
+        } catch (cacheErr) {
+          console.warn("[remint] could not refresh cached auth state", cacheErr);
+        }
+
         // The whole app is keyed by DID; reload so every subscription re-reads
         // under the new identity rather than holding stale rows.
         window.location.reload();

@@ -238,16 +238,24 @@ const verify = httpAction(async (ctx, request) => {
       subOrgId: result.subOrgId,
     });
 
-    // DID creation happens client-side after auth completes.
-    // Server stores user without a DID; client creates did:webvh
-    // using BrowserWebVHSigner and calls /api/user/updateDID.
-
-    // Create/update user (no DID yet — client will create did:webvh and call /api/user/updateDID)
+    // DID creation happens client-side after auth completes: for a NEW account
+    // the client mints a did:webvh with BrowserWebVHSigner and posts it to
+    // /api/user/updateDID.
     await ctx.runMutation(api.auth.upsertUser, {
       turnkeySubOrgId: result.subOrgId,
       email: result.email,
       did: undefined,
       displayName: result.email.split("@")[0],
+    });
+
+    // Return the DID we actually hold. This used to be hardcoded null, so every
+    // login looked like a first login: the client minted a fresh did:webvh and
+    // posted it, upsertUser silently refused to overwrite an existing one, and
+    // the client then treated the discarded DID as its identity. That burned a
+    // keypair per login and, worse, left the client's DID disagreeing with the
+    // database — which is why the stale-domain re-mint never fired.
+    const storedUser = await ctx.runQuery(api.auth.getUserByTurnkeyId, {
+      turnkeySubOrgId: result.subOrgId,
     });
 
     // Get JWT token via internal action
@@ -267,8 +275,8 @@ const verify = httpAction(async (ctx, request) => {
         user: {
           turnkeySubOrgId: result.subOrgId,
           email: result.email,
-          did: null,
-          displayName: result.email.split("@")[0],
+          did: storedUser?.did ?? null,
+          displayName: storedUser?.displayName ?? result.email.split("@")[0],
         },
       },
       200,
